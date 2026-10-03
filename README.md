@@ -2,7 +2,7 @@
 
 Dự án Battleship cho hai người chơi, dự kiến chạy bằng hai client terminal kết nối đến một server TCP. Server giữ trạng thái trận đấu; luật chơi được triển khai bằng các hàm thuần Haskell.
 
-**Trạng thái hiện tại:** đã có package, hai executable và test suite rỗng cho C-01. Các module mới có khung biên dịch; chưa triển khai trò chơi.
+**Trạng thái hiện tại:** đã có package, hai executable và hai smoke test cho khung C-01. Các module mới có khung biên dịch; chưa triển khai trò chơi.
 
 ## Build và test
 
@@ -15,7 +15,7 @@ stack build
 stack test
 ```
 
-`stack build` biên dịch thư viện và hai executable. `stack test` biên dịch và chạy Hspec; tại C-01 kết quả mong đợi là **0 examples, 0 failures** vì chưa có test nghiệp vụ.
+`stack build` biên dịch thư viện và hai executable. `stack test` biên dịch và chạy Hspec; kết quả mong đợi là **2 examples, 0 failures**. Hai smoke test kiểm tra server/client khởi chạy, in thông báo khung và thoát thành công; chưa có test nghiệp vụ. Windows Application Control chặn executable sẽ khiến smoke test thất bại.
 
 Có thể kiểm tra hai điểm vào:
 
@@ -26,7 +26,7 @@ stack exec battleship-client
 
 Hai chương trình hiện chỉ in thông báo khung đã sẵn sàng. `package.yaml` là nguồn cấu hình package; file `.cabal` được Stack/Hpack sinh tự động. Giữ `stack.yaml.lock` trong Git để chia sẻ cùng snapshot.
 
-Khung C-01 chỉ dùng `base` và Hspec. Thêm `containers`, `text`, `bytestring`, `stm`, `async`, `network` và QuickCheck ở task thực sự sử dụng chúng, vào đúng component cần thiết.
+Khung C-01 dùng `base`; test suite dùng Hspec và `process` để khởi chạy executable. Thêm `containers`, `text`, `bytestring`, `stm`, `async`, `network` và QuickCheck ở task thực sự sử dụng chúng, vào đúng component cần thiết.
 
 Thành viên A/B/D lấy nhánh nền đã chứa C-01 bằng `git fetch origin` và checkout/pull nhánh được nhóm thống nhất, rồi chạy hai lệnh trên trước khi thêm mã của mình.
 

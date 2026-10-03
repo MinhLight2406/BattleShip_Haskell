@@ -61,9 +61,13 @@ tests:
   battleship-test:
     main: Spec.hs
     source-dirs: test
+    build-tools:
+      - battleship-haskell:battleship-server
+      - battleship-haskell:battleship-client
     dependencies:
       - battleship-haskell
       - hspec
+      - process
     ghc-options:
       - -Wall
       - -threaded
