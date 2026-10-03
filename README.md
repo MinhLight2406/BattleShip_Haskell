@@ -2,7 +2,33 @@
 
 Dự án Battleship cho hai người chơi, dự kiến chạy bằng hai client terminal kết nối đến một server TCP. Server giữ trạng thái trận đấu; luật chơi được triển khai bằng các hàm thuần Haskell.
 
-**Trạng thái hiện tại:** kho chứa mới có cây thư mục và tài liệu thiết kế. Các file `.hs`, `stack.yaml` và `package.yaml` đã được tạo để nhóm phân công, nhưng chưa có mã hoặc cấu hình build; hiện chưa thể chạy trò chơi.
+**Trạng thái hiện tại:** đã có package, hai executable và test suite rỗng cho C-01. Các module mới có khung biên dịch; chưa triển khai trò chơi.
+
+## Build và test
+
+Cài Git và Stack (đã kiểm tra với Stack 3.11.1). Cấu hình dùng snapshot LTS 24.59, tương ứng GHC 9.10.3. Stack dùng GHC phù hợp có sẵn trên PATH hoặc cài compiler cần thiết. Lần chạy đầu cần Internet để tải compiler/phụ thuộc.
+
+Từ thư mục gốc của repository, chạy:
+
+```sh
+stack build
+stack test
+```
+
+`stack build` biên dịch thư viện và hai executable. `stack test` biên dịch và chạy Hspec; tại C-01 kết quả mong đợi là **0 examples, 0 failures** vì chưa có test nghiệp vụ.
+
+Có thể kiểm tra hai điểm vào:
+
+```sh
+stack exec battleship-server
+stack exec battleship-client
+```
+
+Hai chương trình hiện chỉ in thông báo khung đã sẵn sàng. `package.yaml` là nguồn cấu hình package; file `.cabal` được Stack/Hpack sinh tự động. Giữ `stack.yaml.lock` trong Git để chia sẻ cùng snapshot.
+
+Khung C-01 chỉ dùng `base` và Hspec. Thêm `containers`, `text`, `bytestring`, `stm`, `async`, `network` và QuickCheck ở task thực sự sử dụng chúng, vào đúng component cần thiết.
+
+Thành viên A/B/D lấy nhánh nền đã chứa C-01 bằng `git fetch origin` và checkout/pull nhánh được nhóm thống nhất, rồi chạy hai lệnh trên trước khi thêm mã của mình.
 
 ## Luật chính
 
@@ -24,4 +50,4 @@ Luật đầy đủ ở [docs/game_spec.md](docs/game_spec.md). Sơ đồ hoạt
 | D | `Protocol.hs`, `Client.hs`, `ClientMain.hs`, test giao thức và tích hợp |
 | R | `docs/`, báo cáo, minh chứng kiểm thử và demo |
 
-Trước khi viết mã, cả nhóm chốt kiểu dữ liệu, chữ ký hàm và giao thức tại mốc S-01. Các file nguồn được cố ý để trống theo yêu cầu khởi tạo dự án.
+Trước khi viết mã nghiệp vụ, cả nhóm chốt kiểu dữ liệu, chữ ký hàm và giao thức tại mốc S-01. Các module nguồn và spec hiện chỉ có khai báo tối thiểu để toàn bộ package biên dịch được.

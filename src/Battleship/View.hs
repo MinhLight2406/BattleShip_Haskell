@@ -1,0 +1,1 @@
+module Battleship.View where

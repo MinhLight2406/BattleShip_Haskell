@@ -1,0 +1,1 @@
+module Battleship.Coordinator where
