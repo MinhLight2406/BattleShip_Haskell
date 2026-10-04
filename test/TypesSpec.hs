@@ -1,8 +1,8 @@
 module TypesSpec (spec) where
 
 import Battleship.Types
-import Battleship.Board (placeFleet)
-import Control.Monad (forM_)
+import Battleship.Rules (step)
+import Control.Monad (foldM, forM_)
 import qualified Data.Map.Strict as Map
 import Data.Proxy (Proxy (..))
 import Data.Typeable (typeRep)
@@ -100,27 +100,18 @@ expectedShips :: [(ShipId, Int)]
 expectedShips =
   [(Carrier, 5), (Battleship, 4), (Cruiser, 3), (Submarine, 3), (Destroyer, 2)]
 
--- The example PLACE command in protocol.md occupies five separate rows.
-firstFleet :: Fleet
-firstFleet = fixtureFleet 1
-
-secondFleet :: Fleet
-secondFleet = fixtureFleet 6
-
--- Fixtures also pass the production smart constructor; an invalid fixture must
--- fail the test rather than manufacturing an invalid domain value.
-fixtureFleet :: Int -> Fleet
-fixtureFleet startRow = case placeFleet
-  [ShipPlacement ship (Coord 1 row) Horizontal |
-   (ship, row) <- zip [Carrier, Battleship, Cruiser, Submarine, Destroyer] [startRow ..]] of
-  Right fleet -> fleet
-  Left gameError -> error ("Invalid TypesSpec fixture: " ++ show gameError)
-
 firstPlayer :: PlayerState
-firstPlayer = PlayerState (Just firstFleet) (Map.singleton (Coord 1 6) Hit)
+firstPlayer = gamePlayer1 playingState
 
 secondPlayer :: PlayerState
-secondPlayer = PlayerState (Just secondFleet) (Map.singleton (Coord 10 10) Miss)
+secondPlayer = gamePlayer2 playingState
 
 playingState :: GameState
-playingState = GameState firstPlayer secondPlayer (Turn P1)
+playingState = case foldM (\state (actor, command) -> fst <$> step actor command state) initialGameState
+  [(P1, PlaceFleet (placements 1)), (P2, PlaceFleet (placements 6)),
+   (P1, Fire (Coord 1 6)), (P1, Fire (Coord 10 10)), (P2, Fire (Coord 10 10))] of
+  Right state -> state
+  Left fault -> error ("Invalid TypesSpec command fixture: " ++ show fault)
+  where
+    placements startRow = [ShipPlacement ship (Coord 1 row) Horizontal |
+      (ship, row) <- zip [Carrier, Battleship, Cruiser, Submarine, Destroyer] [startRow ..]]

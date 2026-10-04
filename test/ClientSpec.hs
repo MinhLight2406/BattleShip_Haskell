@@ -4,16 +4,19 @@ import Battleship.Client
 import qualified Battleship.Board as Board
 import Battleship.Protocol
 import Battleship.Types
+import qualified Battleship.View as View
 import Control.Concurrent (threadDelay)
 import Control.Concurrent.Async (cancel, wait, withAsync)
 import Control.Concurrent.MVar (newEmptyMVar, putMVar, readMVar)
 import Control.Exception (IOException, bracket, catch, finally, try)
-import Control.Monad (forM_, void)
+import Control.Monad (foldM, forM_, void)
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Char8 as BSC
 import Data.IORef (modifyIORef', newIORef, readIORef, writeIORef)
 import Foreign.Marshal.Alloc (allocaBytes)
 import Data.List (isInfixOf)
+import qualified Data.Map.Strict as Map
+import RulesSpec (b04Cases, b04Trace)
 import Network.Socket
   ( Family (AF_INET), PortNumber, ShutdownCmd (ShutdownBoth), SockAddr (SockAddrInet),
     Socket, SocketType (Stream), accept, bind, close, defaultProtocol,
@@ -28,6 +31,8 @@ spec :: Spec
 spec = do
   oneShotSpec
   placementSpec
+  firingSpec
+  boardsSpec
 
 oneShotSpec :: Spec
 oneShotSpec = describe "D-02 client" $ do
@@ -303,6 +308,186 @@ placementSpec = describe "D-03 guided placement" $ do
         output `shouldSatisfy` isInfixOf "Đối thủ bắn A1: trúng."
         output `shouldSatisfy` isInfixOf "Người chơi 2 thắng"
         await "D-03 server finish" (wait server)
+
+firingSpec :: Spec
+firingSpec = describe "D-04 firing and turn display" $ do
+  describe "friendly input and presentation" $ do
+    forM_ [("A1", Fire (Coord 1 1)), ("j10", Fire (Coord 10 10)),
+           (" fire\tB2 ", Fire (Coord 2 2)), (" quit ", Quit)] $ \(input, command) ->
+      it ("parses " ++ show input) $ parseFireInput input `shouldBe` Right command
+    forM_ ["", "FIRE", "FIRE A1 EXTRA", "A1 H", "K1", "A0", "A01", "J11",
+           "Ａ1", "Ł1", "A\0\&1", replicate 257 'A'] $ \input ->
+      it ("rejects invalid firing input " ++ take 35 (show input)) $
+        parseFireInput input `shouldSatisfy` either (not . null) (const False)
+    forM_ [P1, P2] $ \viewer -> do
+      it ("distinguishes own turn and opponent turn for " ++ show viewer) $ do
+        renderResponseFor viewer (TurnOf viewer) `shouldSatisfy` isInfixOf "Đến lượt bạn bắn."
+        renderResponseFor viewer (TurnOf (otherPlayer viewer)) `shouldSatisfy` isInfixOf "chưa được bắn"
+        renderResponseFor viewer WaitingOpponent `shouldSatisfy` isInfixOf "Chờ đối thủ đặt đủ tàu"
+      forM_ [AllShipsSunk, OpponentLeft] $ \reason ->
+        it ("distinguishes victory/defeat for " ++ show (viewer, reason)) $ do
+          renderResponseFor viewer (GameOver viewer reason) `shouldSatisfy` isInfixOf "Bạn thắng!"
+          renderResponseFor viewer (GameOver (otherPlayer viewer) reason) `shouldSatisfy` isInfixOf "Bạn thua."
+    forM_ [(Miss, "trượt"), (Hit, "trúng"), (Sunk Cruiser, "chìm tàu tuần dương"), (Win, "thắng")] $
+      \(outcome, message) -> it ("displays both directions for " ++ show outcome) $ do
+        renderResponseFor P1 (Shot (Coord 1 1) outcome) `shouldSatisfy` isInfixOf ("Bạn bắn A1: " ++ message)
+        renderResponseFor P1 (Incoming (Coord 1 1) outcome) `shouldSatisfy` isInfixOf ("Đối thủ bắn A1: " ++ message)
+
+  describe "TCP input gated by server events" $ do
+    it "waits before TURN, allows retry, waits after SHOT, and never fires a coordinate twice" $
+      withMock (\connection -> do
+        begin connection P1
+        sendAll connection (BSC.pack "WAITING OPPONENT\n")
+        assertIdle connection
+        sendAll connection (BSC.pack "START P1\nTURN P1\n")
+        expectLine connection "FIRE A1"
+        assertIdle connection
+        sendAll connection (BSC.pack "ERROR INVALID_COMMAND\n")
+        expectLine connection "FIRE A1"
+        sendAll connection (BSC.pack "SHOT A1 HIT\n")
+        assertIdle connection
+        sendAll connection (BSC.pack "TURN P1\n")
+        expectLine connection "FIRE B1"
+        sendAll connection (BSC.pack "SHOT B1 SUNK DD\nTURN P1\n")
+        expectLine connection "FIRE J10"
+        sendAll connection (BSC.pack "SHOT J10 MISS\nTURN P2\n")
+        assertIdle connection
+        sendAll connection (BSC.pack "INCOMING A1 MISS\nTURN P1\n")
+        expectLine connection "QUIT"
+        sendAll connection (BSC.pack "GAME_OVER P2 OPPONENT_LEFT\n")
+        expectClosed connection) $ \port -> do
+          (_, output) <- withTerminal (guidedInput ++ "GUI\nK1\n" ++ replicate 300 'A' ++ "\nA2\b1\nA2\DEL1\nA1\nb1\nFIRE j10\nQUIT\n")
+            (runPlacementClient "127.0.0.1" port)
+          forM_ ["Tọa độ phải nằm", "Dòng vượt quá giới hạn 256 byte", "Đến lượt bạn bắn", "chưa được bắn", "lệnh không hợp lệ",
+                 "đã bắn A1", "Bạn bắn A1: trúng", "Bạn bắn B1: chìm", "Bạn bắn J10: trượt",
+                 "Đối thủ bắn A1: trượt", "Bạn thua."] $ \message ->
+            output `shouldSatisfy` isInfixOf message
+    it "obeys a WRONG_TURN error and resumes only on the subsequent own TURN" $
+      withMock (\connection -> do
+        begin connection P2
+        sendAll connection (BSC.pack "START P1\nTURN P2\n")
+        expectLine connection "FIRE A1"
+        sendAll connection (BSC.pack "ERROR NOT_YOUR_TURN P1\n")
+        assertIdle connection
+        sendAll connection (BSC.pack "INCOMING J10 MISS\nTURN P2\n")
+        expectLine connection "FIRE A1"
+        sendAll connection (BSC.pack "SHOT A1 WIN\nGAME_OVER P2 ALL_SHIPS_SUNK\n")
+        expectClosed connection) $ \port -> do
+          (_, output) <- withTerminal (guidedInput ++ "GUI\nA1\nA1\nB1\n") (runPlacementClient "127.0.0.1" port)
+          output `shouldSatisfy` isInfixOf "Bạn thắng!"
+    forM_ ["", "QUIT\n", "quit"] $ \ending ->
+      it ("sends exactly one QUIT for own-turn EOF/quit " ++ show ending) $
+        withMock (\connection -> do
+          begin connection P1
+          sendAll connection (BSC.pack "START P1\nTURN P1\n")
+          expectLine connection "QUIT"
+          assertIdle connection
+          sendAll connection (BSC.pack "GAME_OVER P2 OPPONENT_LEFT\n")
+          expectClosed connection) $ \port -> do
+            (_, output) <- withTerminal (guidedInput ++ "GUI\n" ++ ending) (runPlacementClient "127.0.0.1" port)
+            output `shouldSatisfy` isInfixOf "Bạn thua."
+    it "accepts a final firing line without a newline and handles WIN without asking for another shot" $
+      withMock (\connection -> do
+        begin connection P1
+        sendAll connection (BSC.pack "START P1\nTURN P1\n")
+        expectLine connection "FIRE J10"
+        sendAll connection (BSC.pack "SHOT J10 WIN\nGAME_OVER P1 ALL_SHIPS_SUNK\n")
+        expectClosed connection) $ \port -> do
+          (_, output) <- withTerminal (guidedInput ++ "GUI\nJ10") (runPlacementClient "127.0.0.1" port)
+          output `shouldSatisfy` isInfixOf "Bạn thắng!"
+    it "reports server EOF while a firing response is pending" $
+      withMock (\connection -> do
+        begin connection P1
+        sendAll connection (BSC.pack "START P1\nTURN P1\n")
+        expectLine connection "FIRE A1") $ \port ->
+          withTerminal (guidedInput ++ "GUI\nA1\n") (runPlacementClient "127.0.0.1" port)
+            `shouldThrow` (== UnexpectedEOF)
+    forM_ [("SHOT B1 HIT\n", UnexpectedResponse (Shot (Coord 2 1) Hit)),
+           ("TURN P1\n", UnexpectedResponse (TurnOf P1)),
+           ("WELCOME 1 P1\n", UnexpectedResponse (Welcome P1)),
+           ("OK PLACE\n", UnexpectedResponse PlaceOK),
+           ("SHOT K1 HIT\n", ClientProtocolError InvalidMessage),
+           (replicate 257 'X', ClientProtocolError LineTooLong)] $ \(reply, fault) ->
+      it ("rejects invalid data during pending FIRE " ++ take 35 (show reply)) $
+        withMock (\connection -> do
+          begin connection P1
+          sendAll connection (BSC.pack "START P1\nTURN P1\n")
+          expectLine connection "FIRE A1"
+          sendAll connection (BSC.pack reply)
+          expectClosed connection) $ \port ->
+            withTerminal (guidedInput ++ "GUI\nA1\n") (runPlacementClient "127.0.0.1" port)
+              `shouldThrow` (== fault)
+  where
+    begin connection player = do
+      sendAll connection (BSC.pack (if player == P1 then "WELCOME 1 P1\n" else "WELCOME 1 P2\n"))
+      expectLine connection guidedWire
+      sendAll connection (BSC.pack "OK PLACE\n")
+    assertIdle connection = do
+      threadDelay 150000
+      allocaBytes 1 (\pointer -> recvBufNoWait connection pointer 1) >>= (`shouldBe` (-1))
+
+boardsSpec :: Spec
+boardsSpec = describe "D-05 public boards" $ do
+  it "shows a 10x10 unknown target and only the confirmed local fleet initially" $ do
+    let rows = boardRows (renderBoards initialView)
+    length rows `shouldBe` 10
+    map (drop 36) rows `shouldBe`
+      [" 1  ?  ?  ?  ?  ?  ?  ?  ?  ?  ?", " 2  ?  ?  ?  ?  ?  ?  ?  ?  ?  ?",
+       " 3  ?  ?  ?  ?  ?  ?  ?  ?  ?  ?", " 4  ?  ?  ?  ?  ?  ?  ?  ?  ?  ?",
+       " 5  ?  ?  ?  ?  ?  ?  ?  ?  ?  ?", " 6  ?  ?  ?  ?  ?  ?  ?  ?  ?  ?",
+       " 7  ?  ?  ?  ?  ?  ?  ?  ?  ?  ?", " 8  ?  ?  ?  ?  ?  ?  ?  ?  ?  ?",
+       " 9  ?  ?  ?  ?  ?  ?  ?  ?  ?  ?", "10  ?  ?  ?  ?  ?  ?  ?  ?  ?  ?"]
+    take 32 (headRow rows) `shouldBe` " 1 CV CV CV CV CV  .  .  .  .  ."
+
+  forM_ [(Miss, 'o'), (Hit, 'X'), (Sunk Carrier, '#'), (Win, '*')] $ \(outcome, symbol) ->
+    forM_ [False, True] $ \incoming ->
+      it ("marks only the received J10 cell for " ++ show (incoming, outcome)) $ do
+        let response = if incoming then Incoming (Coord 10 10) outcome else Shot (Coord 10 10) outcome
+            updated = updatePlayerView response initialView
+            rows = boardRows (renderBoards updated)
+            row10 = rows !! 9
+            cellColumn = if incoming then 31 else 67
+            target = concatMap (drop 36) rows
+        row10 !! cellColumn `shouldBe` symbol
+        ownFleetView updated `shouldBe` ownFleetView initialView
+        viewPhase updated `shouldBe` Placing
+        length (filter (== '?') target) `shouldBe` if incoming then 100 else 99
+        (if incoming then outgoingShotsView updated else incomingShotsView updated) `shouldBe` Map.empty
+
+  it "leaves both boards unchanged on every wire error" $
+    forM_ [BadCommand, BadCoordinate, FleetSize 4, Missing Destroyer, Duplicate Cruiser,
+           OutOfBounds Carrier, Overlap (Coord 1 1), AlreadyPlaced, NotReady, WrongTurn P2,
+           RepeatedShot (Coord 1 1), GameFinished, TooLong, ServerFull] $ \fault -> do
+      let previous = updatePlayerView (Shot (Coord 1 1) Hit) initialView
+          next = updatePlayerView (Rejected fault) previous
+      next `shouldBe` previous
+      renderBoards next `shouldBe` renderBoards previous
+
+  forM_ [P1, P2] $ \winner -> forM_ [P1, P2] $ \viewer ->
+    it ("matches viewFor after every filtered success/error for " ++ show (winner, viewer)) $ do
+      let playing = [((actor, expected), before, after, result)
+            | ((actor, _, expected), (before, after, result)) <- zip (b04Cases winner) (b04Trace winner),
+              gamePhase before /= Placing]
+      case playing of
+        [] -> ioError (userError "D-05 missing real game trace")
+        (_, first, _, _) : _ -> do
+          final <- foldM (\view ((actor, _), _, after, result) -> do
+            let routed = case result of
+                  Left fault -> [(actor, Rejected (wireError fault))]
+                  Right events -> concatMap (routeEvent (gamePhase after)) events
+                next = foldl (flip updatePlayerView) view [response | (recipient, response) <- routed, recipient == viewer]
+            next `shouldBe` View.viewFor viewer after
+            let target = concatMap (drop 36) (boardRows (renderBoards next))
+            length (filter (== '?') target) `shouldBe` 100 - Map.size (outgoingShotsView next)
+            forM_ ["CV", "BB", "CR", "SB", "DD"] $ \code ->
+              (code `isInfixOf` target) `shouldBe` False
+            pure next) (View.viewFor viewer first) playing
+          viewPhase final `shouldBe` Finished winner AllShipsSunk
+  where
+    initialView = PlayerView P1 Placing (Just checkedFleet) Map.empty Map.empty False
+    checkedFleet = either (error . show) id (Board.placeFleet guidedFleet)
+    boardRows = take 10 . drop 2 . lines
+    headRow rows = case rows of row : _ -> row; [] -> error "D-05 empty board"
 
 guidedInput, guidedWire, ownPreview :: String
 guidedInput = "A1 H\nA2 H\nA3 H\nA4 H\nA5 H\n"

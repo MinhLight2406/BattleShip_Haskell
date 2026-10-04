@@ -1,0 +1,28 @@
+{
+  "Passed": true,
+  "SourceFiles": 27,
+  "Port": 58267,
+  "ResolvedShots": 25,
+  "TurnChanges": 6,
+  "Winner": "P1",
+  "BoardSnapshots": 54,
+  "BoardCellsChecked": 10800,
+  "Players": [
+    {
+      "Player": "P1",
+      "Shots": 20,
+      "Incoming": 5,
+      "Boards": 27,
+      "UnknownTargetCells": 80,
+      "UnshotEnemyFleetCells": 0
+    },
+    {
+      "Player": "P2",
+      "Shots": 5,
+      "Incoming": 20,
+      "Boards": 27,
+      "UnknownTargetCells": 95,
+      "UnshotEnemyFleetCells": 15
+    }
+  ]
+}

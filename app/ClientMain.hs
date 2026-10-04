@@ -20,19 +20,22 @@ main = do
   arguments <- getArgs
   case arguments of
     ["--help"] -> putStrLn usage
-    [] -> place 4000
-    ["--place"] -> place 4000
-    ["--place", port] -> case readMaybe port :: Maybe Integer of
-      Just number | number >= 1 && number <= 65535 -> place (fromInteger number)
+    [] -> play 4000
+    [mode] | mode `elem` ["--play", "--place"] -> play 4000
+    [mode, port] | mode `elem` ["--play", "--place"] -> case readMaybe port :: Maybe Integer of
+      Just number | number >= 1 && number <= 65535 -> play (fromInteger number)
       _ -> failWith usage
-    [command] -> start 4000 command
+    [argument] -> case readMaybe argument :: Maybe Integer of
+      Just number | number >= 1 && number <= 65535 -> play (fromInteger number)
+      Just _ -> failWith usage
+      Nothing -> start 4000 argument
     [port, command] -> case readMaybe port :: Maybe Integer of
       Just number | number >= 1 && number <= 65535 -> start (fromInteger number) command
       _ -> failWith usage
     _ -> failWith usage
 
-place :: PortNumber -> IO ()
-place port = runPlacementClient "127.0.0.1" port stdin stdout
+play :: PortNumber -> IO ()
+play port = runPlacementClient "127.0.0.1" port stdin stdout
   `catches` [Handler reportClientError, Handler reportIOException]
 
 start :: PortNumber -> String -> IO ()
@@ -55,7 +58,7 @@ reportIOException :: IOException -> IO ()
 reportIOException exception = failWith ("Lỗi kết nối: " ++ show exception)
 
 usage :: String
-usage = "Usage: battleship-client --place [PORT] | [PORT] \"COMMAND\" (default 4000; no arguments: guided placement)"
+usage = "Usage: battleship-client [PORT] | --play [PORT] | --place [PORT] | [PORT] \"COMMAND\" (default 4000; no arguments: guided placement and play)"
 
 failWith :: String -> IO a
 failWith message = hPutStrLn stderr message >> exitFailure

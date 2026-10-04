@@ -1,12 +1,15 @@
--- | Two permanent TCP slots with one serialized shared game state.
+-- | Two permanent TCP slots; STM owns the game and each socket has one writer.
 module Battleship.Server (runServer, runServerWith) where
 
-import Battleship.Coordinator (applyCommand, coordinate)
+import Battleship.Coordinator
+  ( Coordinator, newCoordinator, nextFrame, readGameState, submitCommand,
+    submitPayload, submitTooLong, welcomePlayer )
 import Battleship.Types
 import Battleship.Protocol
 import qualified Battleship.Rules as Rules
 import Control.Concurrent (threadDelay)
 import Control.Concurrent.Async (link, race_, wait, withAsync)
+import Control.Concurrent.STM (atomically)
 import Control.Concurrent.MVar
   ( MVar, modifyMVar, modifyMVar_, newEmptyMVar, newMVar, readMVar,
     tryPutMVar )
@@ -14,7 +17,7 @@ import Control.Exception (AssertionFailed (..), IOException, SomeException, brac
 import Control.Monad (forM_, forever, void, when)
 import qualified Data.ByteString as BS
 import Network.Socket
-  ( Family (AF_INET), PortNumber, ShutdownCmd (ShutdownBoth), SockAddr (SockAddrInet), Socket,
+  ( Family (AF_INET), PortNumber, ShutdownCmd (ShutdownBoth, ShutdownSend), SockAddr (SockAddrInet), Socket,
     SocketOption (ReuseAddr), SocketType (Stream), accept, bind, close,
     defaultProtocol, listen, setSocketOption, shutdown, socket, socketPort,
     tupleToHostAddress, withSocketsDo )
@@ -24,8 +27,8 @@ import System.Timeout (timeout)
 
 data Lobby = Lobby
   { clients :: [(PlayerId, Socket)]
-  , ended :: Bool
-  , game :: GameState
+  , stopped :: Bool
+  , drained :: [PlayerId]
   }
 
 -- | Bind IPv4 loopback only. Port 0 lets the OS choose an unused port.
@@ -41,10 +44,11 @@ runServer = runServerWith Rules.step initialGameState
 runServerWith :: Step -> GameState -> PortNumber -> (PortNumber -> IO ()) -> IO ()
 runServerWith core initial port onListening = withSocketsDo $
   bracket (openListener port) close $ \listener -> do
-    lobby <- newMVar (Lobby [] False initial)
+    coordinator <- atomically (newCoordinator initial)
+    lobby <- newMVar (Lobby [] False [])
     finished <- newEmptyMVar
     socketPort listener >>= onListening
-    withAsync (acceptClients core listener lobby finished [P1, P2]) $ \acceptor ->
+    withAsync (acceptClients core coordinator listener lobby finished [P1, P2]) $ \acceptor ->
       race_ (wait acceptor) (readMVar finished >>= either throwIO pure)
         `finally` modifyMVar_ lobby (\state -> do
           -- Windows blocking socket calls need shutdown/close before joining
@@ -52,7 +56,7 @@ runServerWith core initial port onListening = withSocketsDo $
           -- closing first can reset the peer and lose GAME_OVER.
           close listener
           forM_ (clients state) (closeConnection . snd)
-          pure state { ended = True })
+          pure state { stopped = True })
 
 openListener :: PortNumber -> IO Socket
 openListener port = bracketOnError (socket AF_INET Stream defaultProtocol) close $ \listener -> do
@@ -65,59 +69,84 @@ openListener port = bracketOnError (socket AF_INET Stream defaultProtocol) close
 
 -- Nested brackets/withAsync own the two sockets/readers for the whole session.
 -- Rejected connections have a separate short bracket and never get a worker.
-acceptClients :: Step -> Socket -> MVar Lobby -> MVar (Either SomeException ()) -> [PlayerId] -> IO ()
-acceptClients core listener lobby finished available = case available of
+acceptClients :: Step -> Coordinator -> Socket -> MVar Lobby -> MVar (Either SomeException ()) -> [PlayerId] -> IO ()
+acceptClients core coordinator listener lobby finished available = case available of
   [] -> forever $ bracket (fst <$> accept listener) close $ \connection ->
     void (sendResponse connection (Rejected ServerFull))
   actor : remaining -> bracket (fst <$> accept listener) close $ \connection -> do
     welcomed <- modifyMVar lobby $ \state ->
-      if ended state then pure (state, False)
+      if stopped state then pure (state, False)
       else do
-        sent <- sendResponse connection (Welcome actor)
-        pure (state { clients = clients state ++ [(actor, connection)] }, sent)
-    if not welcomed then clientLeft core lobby finished actor
-    else withAsync
-      ((readFrames connection BS.empty (handleFrame core lobby finished actor connection)
-          `catch` ignoreIOException
-          `catch` reportFailure lobby finished)
-        `finally` clientLeft core lobby finished actor) $ \reader -> do
-      link reader
-      acceptClients core listener lobby finished remaining
+        admitted <- atomically (welcomePlayer coordinator actor) >>= requireEncoded
+        pure (if admitted then state { clients = clients state ++ [(actor, connection)] } else state, admitted)
+    if not welcomed then do
+      -- An admission can race a terminal transaction. Existing writers still
+      -- own the final batch; don't unwind their brackets before they drain.
+      admitted <- clients <$> readMVar lobby
+      when (not (null admitted)) (readMVar finished >>= either throwIO pure)
+    else do
+      readerDone <- newEmptyMVar
+      withAsync
+        (writeFrames core coordinator lobby finished actor connection readerDone
+          `catch` reportFailure lobby finished) $ \writer -> do
+        link writer
+        withAsync
+          ((readFrames connection BS.empty (handleFrame core coordinator actor)
+            `catch` ignoreIOException
+            `catch` reportFailure lobby finished)
+            `finally` ((clientLeft core coordinator lobby actor >> discardInput connection)
+              `finally` void (tryPutMVar readerDone ()))) $ \reader -> do
+          link reader
+          acceptClients core coordinator listener lobby finished remaining
 
--- All writes to admitted sockets share this lock: a response cannot interleave
--- bytes with the final broadcast, or appear before that socket's WELCOME.
--- Parsing, step, state commit and ordered writes share the same lock. A
--- rejected command never consumes a turn. Only registered sockets receive
--- events; player identity always comes from acceptClients, never the payload.
--- ponytail: one MVar also covers writes for a two-client MVP; move writes to
--- per-client queues if slow peers need independent delivery in a later task.
-handleFrame :: Step -> MVar Lobby -> MVar (Either SomeException ()) -> PlayerId -> Socket -> Maybe BS.ByteString -> IO Bool
-handleFrame core lobby finished actor connection frame = modifyMVar lobby $ \state ->
-  if ended state then pure (state, False)
-  else case frame of
-    Nothing -> sendResponse connection (Rejected TooLong) >> pure (state, False)
-    Just payload -> do
-      transition <- requireEncoded (coordinate core actor payload (game state))
-      next <- publishTransition finished state transition
-      pure (next, not (ended next))
+-- Readers do only framing and atomic submission. State and response batches
+-- commit together; no MVar serializes gameplay and no socket IO occurs in STM.
+handleFrame :: Step -> Coordinator -> PlayerId -> Maybe BS.ByteString -> IO Bool
+handleFrame core coordinator actor frame = case frame of
+  Nothing -> atomically (submitTooLong coordinator actor) >>= requireEncoded >> pure False
+  Just payload -> atomically (submitPayload core coordinator actor payload) >>= requireEncoded
 
-clientLeft :: Step -> MVar Lobby -> MVar (Either SomeException ()) -> PlayerId -> IO ()
-clientLeft core lobby finished actor = modifyMVar_ lobby $ \state ->
-  if ended state then pure state
-  else do
-    transition <- requireEncoded (applyCommand core actor Quit (game state))
-    publishTransition finished state transition
+clientLeft :: Step -> Coordinator -> MVar Lobby -> PlayerId -> IO ()
+clientLeft core coordinator lobby actor = do
+  running <- not . stopped <$> readMVar lobby
+  when running $ void (atomically (submitCommand core coordinator actor Quit) >>= requireEncoded)
 
-publishTransition :: MVar (Either SomeException ()) -> Lobby -> (GameState, [(PlayerId, BS.ByteString)]) -> IO Lobby
-publishTransition finished state (next, frames) = do
-  forM_ frames $ \(recipient, frame) -> forM_ (lookup recipient (clients state)) $ \connection -> do
-    sent <- sendFrame connection frame
-    -- Wake that socket's reader; its finalizer submits Quit for the correct
-    -- player. A failed send must never make the other player resign.
-    when (not sent) (closeConnection connection)
-  let terminal = case gamePhase next of Finished _ _ -> True; _ -> False
-  when terminal (void (tryPutMVar finished (Right ())))
-  pure state { game = next, ended = terminal }
+-- Exactly one writer consumes each player's FIFO. A failed send submits Quit
+-- for that socket's actor and drains/discards its queue until the end marker;
+-- it cannot resign on behalf of the other player or block their writer.
+writeFrames :: Step -> Coordinator -> MVar Lobby -> MVar (Either SomeException ()) -> PlayerId -> Socket -> MVar () -> IO ()
+writeFrames core coordinator lobby finished actor connection readerDone = loop True
+  where
+    loop usable = do
+      frame <- atomically (nextFrame coordinator actor)
+      case frame of
+        Nothing -> do
+          -- Deliver the final batch and FIN before closing the receive side.
+          -- Closing with unread pipelined commands can reset TCP and discard
+          -- GAME_OVER. Only the existing reader drains them, without step.
+          shutdown connection ShutdownSend `catch` ignoreIOException
+          -- Clients may keep sending or wait for server exit before closing.
+          -- The bounded grace then forces their recv to unblock on Windows.
+          void (timeout 200000 (readMVar readerDone))
+          closeConnection connection
+          writerDrained coordinator lobby finished actor
+        Just bytes -> do
+          sent <- if usable then sendFrame connection bytes else pure False
+          when (usable && not sent) $ do
+            closeConnection connection
+            clientLeft core coordinator lobby actor
+          loop sent
+
+-- Signal completion only after all admitted writers have drained their final
+-- batches. The MVar protects socket ownership/drain bookkeeping, not GameState.
+writerDrained :: Coordinator -> MVar Lobby -> MVar (Either SomeException ()) -> PlayerId -> IO ()
+writerDrained coordinator lobby finished actor = modifyMVar_ lobby $ \state -> do
+  current <- atomically (readGameState coordinator)
+  let next = state { drained = actor : drained state }
+      terminal = case gamePhase current of Finished _ _ -> True; _ -> False
+  when (not (stopped next) && terminal && all ((`elem` drained next) . fst) (clients next)) $
+    void (tryPutMVar finished (Right ()))
+  pure next
 
 requireEncoded :: Either ProtocolError a -> IO a
 requireEncoded = either (throwIO . AssertionFailed . ("Coordinator produced an unencodable response: " ++) . show) pure
@@ -126,7 +155,7 @@ requireEncoded = either (throwIO . AssertionFailed . ("Coordinator produced an u
 -- Otherwise normal session shutdown can race and hide an internal core error.
 reportFailure :: MVar Lobby -> MVar (Either SomeException ()) -> SomeException -> IO a
 reportFailure lobby finished exception = do
-  modifyMVar_ lobby (\state -> pure state { ended = True })
+  modifyMVar_ lobby (\state -> pure state { stopped = True })
   void (tryPutMVar finished (Left exception))
   throwIO exception
 
@@ -146,7 +175,17 @@ readFrames connection pending handle = do
     consume ([], Left _) = void (handle Nothing)
     consume ([], Right next) = readFrames connection next handle
 
--- A peer that stops reading must not hold the lobby lock/shutdown forever.
+-- The session has ended. Drop remaining bytes with a fixed-size buffer; never
+-- parse commands or change gameplay here. The writer bounds this drain by
+-- closing the socket after its grace period, including blocking Windows recv.
+discardInput :: Socket -> IO ()
+discardInput connection = drain `catch` ignoreIOException
+  where
+    drain = do
+      chunk <- recv connection 4096
+      when (not (BS.null chunk)) drain
+
+-- A peer that stops reading must not hold its writer/shutdown forever.
 -- Only expected socket IO failures are absorbed; cancellation still propagates.
 sendFrame :: Socket -> BS.ByteString -> IO Bool
 sendFrame connection frame =

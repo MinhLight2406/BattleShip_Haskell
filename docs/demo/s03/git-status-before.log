@@ -1,0 +1,22 @@
+ M README.md
+ M app/ClientMain.hs
+ M docs/architecture.md
+ M docs/protocol.md
+ M docs/report_final.md
+ M docs/shared_contract.md
+ M docs/test_evidence.md
+ M package.yaml
+ M src/Battleship/Client.hs
+ M src/Battleship/Coordinator.hs
+ M src/Battleship/Protocol.hs
+ M src/Battleship/Server.hs
+ M src/Battleship/View.hs
+ M test/BoardSpec.hs
+ M test/ClientSpec.hs
+ M test/CoordinatorSpec.hs
+ M test/IntegrationSpec.hs
+ M test/RulesSpec.hs
+ M test/ServerSpec.hs
+ M test/TypesSpec.hs
+ M test/ViewSpec.hs
+?? docs/demo/

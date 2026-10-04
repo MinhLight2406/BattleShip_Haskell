@@ -1,10 +1,12 @@
 module BoardSpec (spec) where
 
 import Battleship.Board (inBounds, placeFleet, shipCells)
+import Battleship.Protocol (parseCommand)
 import Battleship.Rules (step)
 import Battleship.Types
 import Control.Exception (bracket)
 import Control.Monad (foldM, forM_)
+import qualified Data.ByteString.Char8 as BSC
 import Data.List (isInfixOf, permutations, sort)
 import qualified Data.Map.Strict as Map
 import qualified Data.Set as Set
@@ -18,6 +20,8 @@ spec :: Spec
 spec = do
   a02Spec
   a03Spec
+  a04Spec
+  a05Spec
 
 a02Spec :: Spec
 a02Spec = describe "A-02 board and checked fleet" $ do
@@ -244,25 +248,28 @@ a03Spec = describe "A-03 complete MVP placement" $ do
                             [FleetAccepted actor])) (placeFleet horizontalFleet)
 
       forM_ [P1, P2] $ \current ->
-        it (show actor ++ " cannot replace fleet in Turn " ++ show current) $
-          case (placeFleet horizontalFleet, placeFleet cornerFleet) of
-            (Right first, Right second) -> do
-              let ready = GameState (PlayerState (Just first) Map.empty)
-                                    (PlayerState (Just second) Map.empty) (Turn current)
-              foldM (rejectPlacement actor FleetAlreadyPlaced) ready replacementRequests
-                >>= (`shouldBe` ready)
-            _ -> expectationFailure "Invalid ready-state fixture"
+        it (show actor ++ " cannot replace fleet in Turn " ++ show current) $ do
+          ready <- playCommands
+            ([(P1, PlaceFleet horizontalFleet), (P2, PlaceFleet cornerFleet)] ++
+             [(P1, Fire (Coord 10 9)) | current == P2])
+          gamePhase ready `shouldBe` Turn current
+          foldM (rejectPlacement actor FleetAlreadyPlaced) ready replacementRequests
+            >>= (`shouldBe` ready)
 
     it "rejects placement after termination without overwriting fleet or winner" $
       forM_ [P1, P2] $ \actor -> forM_ [P1, P2] $ \winner ->
         forM_ [AllShipsSunk, OpponentLeft] $ \reason ->
-          case placeFleet horizontalFleet of
-            Left fault -> expectationFailure (show fault)
-            Right fleet -> do
-              let finished = GameState (PlayerState (Just fleet) Map.empty)
-                                       (PlayerState (Just fleet) Map.empty) (Finished winner reason)
-              foldM (rejectPlacement actor GameAlreadyFinished) finished replacementRequests
-                >>= (`shouldBe` finished)
+          do
+            let ending = case reason of
+                  OpponentLeft -> [(otherPlayer winner, Quit)]
+                  AllShipsSunk -> [(P1, Fire (Coord 10 9)) | winner == P2] ++
+                    [(winner, Fire (Coord column row)) |
+                     (row, (_, size)) <- zip [1 ..] shipSizes, column <- [1 .. size]]
+            finished <- playCommands
+              ([(P1, PlaceFleet horizontalFleet), (P2, PlaceFleet horizontalFleet)] ++ ending)
+            gamePhase finished `shouldBe` Finished winner reason
+            foldM (rejectPlacement actor GameAlreadyFinished) finished replacementRequests
+              >>= (`shouldBe` finished)
 
   describe "Fleet abstraction checked by GHC against the installed public package" $ do
     it "allows checked construction and read access through public imports" $
@@ -282,6 +289,94 @@ a03Spec = describe "A-03 complete MVP placement" $ do
            "import qualified Data.Set as Set", "import Data.Coerce (coerce)", body])
         code `shouldBe` ExitFailure 1
         errors `shouldSatisfy` isInfixOf diagnostic
+
+a04Spec :: Spec
+a04Spec = describe "A-04 fleet invariants" $ do
+  it "accepts one mixed fleet occupying all four corners" $
+    case placeFleet fourCornerFleet of
+      Left fault -> expectationFailure (show fault)
+      Right fleet -> do
+        checkInvariants fleet
+        let occupied = Set.unions (Map.elems (fleetShips fleet))
+        forM_ [Coord 1 1, Coord 10 1, Coord 1 10, Coord 10 10] $ \corner ->
+          Set.member corner occupied `shouldBe` True
+
+  -- Input families only: translation/transposition of this handwritten layout
+  -- preserves its packing. Expected cells are not computed with shipCells.
+  forM_ [False, True] $ \transpose ->
+    it ("preserves all invariants for 25 translated mixed fleets; transpose=" ++ show transpose) $
+      forM_ [(columns, rows) | columns <- [0 .. 4], rows <- [0 .. 4]] $ \(columns, rows) -> do
+        let placements = map (moveStart columns rows . orient) mixedFleet
+            orient placement
+              | not transpose = placement
+              | otherwise = placement
+                  { placementStart = Coord (coordRow (placementStart placement)) (coordColumn (placementStart placement))
+                  , placementOrientation = case placementOrientation placement of
+                      Horizontal -> Vertical
+                      Vertical -> Horizontal }
+        case placeFleet placements of
+          Left fault -> expectationFailure ("Valid mixed layout rejected: " ++ show (placements, fault))
+          Right fleet -> checkInvariants fleet
+
+  forM_ [("left", Coord 1 5, Horizontal, Coord 0 5, InvalidCoordinate (Coord 0 5)),
+         ("top", Coord 6 1, Vertical, Coord 6 0, InvalidCoordinate (Coord 6 0)),
+         ("right", Coord 9 5, Horizontal, Coord 10 5, ShipOutOfBounds Destroyer (Coord 11 5)),
+         ("bottom", Coord 5 9, Vertical, Coord 5 10, ShipOutOfBounds Destroyer (Coord 5 11))] $
+    \(edge, validStart, direction, invalidStart, fault) ->
+      it ("accepts the " ++ edge ++ " edge but rejects moving one cell outside") $ do
+        case placeFleet (replaceShip Destroyer validStart direction fourCornerFleet) of
+          Left unexpected -> expectationFailure (show unexpected)
+          Right fleet -> checkInvariants fleet
+        placeFleet (replaceShip Destroyer invalidStart direction fourCornerFleet) `shouldBe` Left fault
+
+  -- Exercise the public smart constructor around the full board and a one-cell
+  -- outer ring. Inspect EVERY Right, without using production inBounds as an
+  -- oracle or discarding an accepted fleet because a cell looks invalid.
+  forM_ shipSizes $ \(ship, _) -> forM_ [Horizontal, Vertical] $ \direction ->
+    it ("every accepted fleet stays valid across the outer ring: " ++ show (ship, direction)) $ do
+      let accepted = [fleet | column <- [0 .. 11], row <- [0 .. 11],
+                      Right fleet <- [placeFleet (replaceShip ship (Coord column row) direction horizontalFleet)]]
+      accepted `shouldSatisfy` (not . null)
+      forM_ accepted checkInvariants
+
+a05Spec :: Spec
+a05Spec = describe "A-05 parsed placement boundary regression" $
+  it "accepts DD=I10:H ending at J10 but rejects DD=I10:V extending to I11" $ do
+    let expected = replaceShip Destroyer (Coord 9 10) Horizontal horizontalFleet
+        prefix = "PLACE CV=A1:H;BB=A2:H;CR=A3:H;SB=A4:H;DD=I10:"
+    case parseCommand (BSC.pack (prefix ++ "H")) of
+      Right (PlaceFleet placements) -> do
+        placements `shouldBe` expected
+        checkFleet placements
+          (Map.insert Destroyer (Set.fromList [Coord 9 10, Coord 10 10]) expectedHorizontal)
+      other -> expectationFailure ("Unexpected horizontal parse: " ++ show other)
+    case parseCommand (BSC.pack (prefix ++ "V")) of
+      Right (PlaceFleet placements) -> do
+        placements `shouldBe` replaceShip Destroyer (Coord 9 10) Vertical horizontalFleet
+        placeFleet placements `shouldBe` Left (ShipOutOfBounds Destroyer (Coord 9 11))
+      other -> expectationFailure ("Unexpected vertical parse: " ++ show other)
+
+-- Deliberately specified layouts: all four corners, and a 6x6 packing containing
+-- both orientations plus legal end/side contact. No unchecked Fleet is built.
+fourCornerFleet, mixedFleet :: FleetPlacement
+fourCornerFleet =
+  [ShipPlacement Carrier (Coord 1 1) Horizontal,
+   ShipPlacement Battleship (Coord 7 1) Horizontal,
+   ShipPlacement Cruiser (Coord 1 10) Horizontal,
+   ShipPlacement Submarine (Coord 10 8) Vertical,
+   ShipPlacement Destroyer (Coord 5 5) Vertical]
+mixedFleet =
+  [ShipPlacement Carrier (Coord 1 1) Horizontal,
+   ShipPlacement Battleship (Coord 6 1) Vertical,
+   ShipPlacement Cruiser (Coord 3 2) Vertical,
+   ShipPlacement Submarine (Coord 3 5) Horizontal,
+   ShipPlacement Destroyer (Coord 1 5) Vertical]
+
+-- Gameplay fixtures use production transitions, never forged phase/history.
+playCommands :: [(PlayerId, Command)] -> IO GameState
+playCommands = foldM (\state (actor, command) -> case step actor command state of
+  Right (next, _) -> pure next
+  Left fault -> expectationFailure ("Invalid BoardSpec command fixture: " ++ show fault) >> pure state) initialGameState
 
 -- A Left carries neither an updated state nor success events. This test caller
 -- keeps the old state and continues the sequence, just as Coordinator must.
@@ -355,10 +450,17 @@ checkFleet placements expected = case placeFleet placements of
 checkInvariants :: Fleet -> IO ()
 checkInvariants fleet = do
   let ships = fleetShips fleet
+      coordinates = concatMap Set.toList (Map.elems ships)
+      -- R-01's fixed 10x10 domain, independently of inBounds/boardSize.
+      legalCells = Set.fromList [Coord column row | column <- [1 .. 10], row <- [1 .. 10]]
+      multiplicities = Map.fromListWith (+) [(coordinate, 1 :: Int) | coordinate <- coordinates]
   Map.keys ships `shouldBe` map fst shipSizes
   Map.map Set.size ships `shouldBe` Map.fromList shipSizes
-  Set.size (Set.unions (Map.elems ships)) `shouldBe` 17
-  concatMap Set.toList (Map.elems ships) `shouldSatisfy` all inBounds
+  coordinates `shouldSatisfy` all (`Set.member` legalCells)
+  length coordinates `shouldBe` 17
+  -- Every occupied square occurs exactly once across all five ships. This
+  -- counts the returned data instead of repeating Board's intersection test.
+  Map.elems multiplicities `shouldBe` replicate 17 1
 
 replaceShip :: ShipId -> Coord -> Orientation -> FleetPlacement -> FleetPlacement
 replaceShip ship start direction = map $ \placement ->

@@ -1,18 +1,24 @@
--- | D-02 one-shot transport and D-03 guided placement of the player's own fleet.
+{-# LANGUAGE CPP #-}
+-- | Terminal presentation and input; wire data stays in Protocol.
 module Battleship.Client
   ( ClientError (..), runClient, runPlacementClient, promptFleet
-  , parsePlacementInput, renderFleet, renderResponse, renderProtocolError
+  , parsePlacementInput, parseFireInput, renderFleet, renderBoards, updatePlayerView
+  , renderResponse, renderResponseFor, renderProtocolError
   ) where
 
 import qualified Battleship.Board as Board
 import Battleship.Protocol
 import Battleship.Types
 import Control.Concurrent (threadDelay)
-import Control.Concurrent.Async (wait, withAsync)
+import Control.Concurrent.Async (waitCatchSTM, withAsync)
+import Control.Concurrent.STM
+  ( atomically, newTQueueIO, orElse, readTQueue, retry, throwSTM, writeTQueue )
 import Control.Exception (Exception, IOException, bracket, catch, finally, throwIO)
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Char8 as BSC
 import Data.Char (ord, toUpper)
+import GHC.IO.Handle.Internals (withHandle_)
+import GHC.IO.Handle.Types (haInputNL, haOutputNL)
 import qualified Data.Map.Strict as Map
 import qualified Data.Set as Set
 import Network.Socket
@@ -21,7 +27,17 @@ import Network.Socket
     defaultHints, getAddrInfo, shutdown, socket, withSocketsDo )
 import Network.Socket.ByteString (recv, sendAll)
 import System.Timeout (timeout)
-import System.IO (Handle, hFlush, hGetLine, hIsEOF, hPutStr, hPutStrLn)
+import System.IO
+  ( BufferMode (NoBuffering), Handle, NewlineMode (NewlineMode), hFlush, hGetBuffering, hGetChar, hGetEcho,
+    hGetLine, hIsEOF, hIsTerminalDevice, hPutStr, hPutStrLn, hSetBuffering,
+    hSetEcho, hSetNewlineMode, hWaitForInput, noNewlineTranslation )
+import System.IO.Error (isEOFError)
+#ifdef mingw32_HOST_OS
+import Data.Bits ((.&.), (.|.), complement)
+import System.Win32.Console (eNABLE_ECHO_INPUT, eNABLE_LINE_INPUT, getConsoleMode, setConsoleMode)
+import System.Win32.File
+  ( closeHandle, createFile, fILE_SHARE_READ, fILE_SHARE_WRITE, gENERIC_READ, gENERIC_WRITE, oPEN_EXISTING )
+#endif
 
 data ClientError
   = ClientProtocolError ProtocolError | UnexpectedResponse Response
@@ -94,14 +110,48 @@ parsePlacementInput ship input
 
 -- | No opponent data is accepted by this renderer. Fleet is already checked.
 renderFleet :: Fleet -> String
-renderFleet fleet = unlines $
-  "Bàn của bạn (. = ô trống):" : "    A  B  C  D  E  F  G  H  I  J" :
-  [padRow row ++ " " ++ unwords [Map.findWithDefault " ." (Coord column row) cells |
-                                 column <- [1 .. boardSize]] | row <- [1 .. boardSize]]
+renderFleet fleet = unlines ("Bàn của bạn (. = ô trống):" :
+  renderGrid (\position -> Map.findWithDefault " ." position (fleetCells fleet)))
+
+fleetCells :: Fleet -> Map.Map Coord String
+fleetCells fleet = Map.fromList
+  [(position, shipCode ship) | (ship, positions) <- Map.toList (fleetShips fleet), position <- Set.toList positions]
+
+renderGrid :: (Coord -> String) -> [String]
+renderGrid cell = "    A  B  C  D  E  F  G  H  I  J" :
+  [padRow row ++ " " ++ unwords [cell (Coord column row) | column <- [1 .. boardSize]] | row <- [1 .. boardSize]]
   where
-    cells = Map.fromList [(position, shipCode ship) | (ship, positions) <- Map.toList (fleetShips fleet),
-                                                   position <- Set.toList positions]
     padRow row = (if row < 10 then " " else "") ++ show row
+
+-- | Render only the public projection. Unknown opponent cells remain unknown,
+-- including after SUNK/WIN: no opponent layout is accepted or inferred here.
+renderBoards :: PlayerView -> String
+renderBoards view = unlines (zipWith beside own target ++
+  ["Ký hiệu: CV/BB/CR/SB/DD = tàu mình; . = nước; ? = chưa bắn đối thủ.",
+   "o = trượt; X = trúng; # = phát làm chìm; * = phát thắng. Ô X cũ giữ nguyên."])
+  where
+    own = "Bàn của bạn:" : renderGrid (\position ->
+      maybe (maybe " ?" (Map.findWithDefault " ." position . fleetCells) (ownFleetView view)) mark
+        (Map.lookup position (incomingShotsView view)))
+    target = "Mục tiêu đối thủ:" : renderGrid (\position ->
+      maybe " ?" mark (Map.lookup position (outgoingShotsView view)))
+    beside left right = left ++ replicate (max 2 (36 - length left)) ' ' ++ right
+    mark Miss = " o"
+    mark Hit = " X"
+    mark (Sunk _) = " #"
+    mark Win = " *"
+
+-- | Fold filtered wire events into the client's public data. Fleet identity
+-- stays local; rejected input cannot add a shot or consume a turn here.
+updatePlayerView :: Response -> PlayerView -> PlayerView
+updatePlayerView response view = case response of
+  WaitingOpponent -> view { viewPhase = Placing }
+  Start owner -> view { viewPhase = Turn owner, opponentReady = True }
+  TurnOf owner -> view { viewPhase = Turn owner, opponentReady = True }
+  Shot position outcome -> view { outgoingShotsView = Map.insert position outcome (outgoingShotsView view) }
+  Incoming position outcome -> view { incomingShotsView = Map.insert position outcome (incomingShotsView view) }
+  GameOver winner reason -> view { viewPhase = Finished winner reason }
+  _ -> view
 
 -- | Build/edit a draft offline. EOF/HUY cancels without opening a socket;
 -- only explicit GUI after preview returns a complete Board-validated request.
@@ -156,52 +206,202 @@ promptFleet input output = do
             Nothing -> hPutStrLn output "Mã tàu phải là CV, BB, CR, SB hoặc DD." >> review draft
           _ -> hPutStrLn output "Chọn GUI, SUA <mã tàu> hoặc HUY." >> review draft
 
--- | Send one confirmed PLACE, then retain the socket for asynchronous events.
+-- | Send one confirmed PLACE, then play using server-authorized turns.
 -- The 10-second deadline covers connection/handshake/PLACE acknowledgment,
--- not human input or waiting for another player. Firing input belongs to D-04.
+-- not human input or waiting for another player.
 runPlacementClient :: HostName -> PortNumber -> Handle -> Handle -> IO ()
 runPlacementClient host port input output = do
   draft <- promptFleet input output
   case draft of
     Nothing -> hPutStrLn output "Đã hủy đặt tàu; chưa gửi đội tàu."
     Just placements -> do
+      fleet <- either (ioError . userError . renderGameError) pure (Board.placeFleet placements)
       encoded <- fromProtocol (encodeCommand (PlaceFleet placements))
       withSocketAddress host port $ \connection address -> do
         buffer <- withDeadline connection $ do
           connect connection address
           (greeting, pending) <- readResponse connection ([], Right BS.empty)
           case greeting of
-            Welcome _ -> do
+            Welcome player -> do
               display greeting
               sendAll connection encoded
               (response, next) <- readResponse connection pending
               case response of
-                PlaceOK -> display response >> pure (Just next)
+                PlaceOK -> display response >> pure (Just (player, next))
                 Rejected _ -> display response >> pure Nothing
-                GameOver _ _ -> display response >> pure Nothing
+                GameOver _ _ -> hPutStrLn output (renderResponseFor player response) >> pure Nothing
                 _ -> throwIO (UnexpectedResponse response)
             Rejected ServerFull -> display greeting >> pure Nothing
             _ -> throwIO (UnexpectedResponse greeting)
         case buffer of
           Nothing -> pure ()
-          Just pending -> do
-            hPutStrLn output "Đã đặt tàu. Giữ kết nối để nhận thông báo; Ctrl+C để rời trận."
-            -- Wait in a supervisor: cancellation closes the socket before
-            -- withAsync joins its reader, waking blocking Windows recv.
-            withAsync (listenForEnd connection pending) $ \reader ->
-              wait reader `finally` closeConnection connection
+          Just (player, pending) -> playSession connection player fleet pending input output
   where
     display = hPutStrLn output . renderResponse
-    listenForEnd connection buffer = do
-      (response, next) <- readResponse connection buffer
-      case response of
-        GameOver _ _ -> display response
-        WaitingOpponent -> continue response next
-        Start P1 -> continue response next
-        TurnOf _ -> continue response next
-        Incoming _ _ -> continue response next
-        _ -> throwIO (UnexpectedResponse response)
-      where continue response next = display response >> listenForEnd connection next
+
+-- | Friendly input only: no player ID or fleet data is supplied by the user.
+parseFireInput :: String -> Either String Command
+parseFireInput input
+  | length input > maxLineBytes = Left (renderProtocolError LineTooLong)
+  | not (all (\character -> ord character <= 127) input) = Left "Tọa độ phải nằm trong A1..J10."
+  | otherwise = case words (map toUpper input) of
+      ["QUIT"] -> Right Quit
+      [position] -> fire position
+      ["FIRE", position] -> fire position
+      _ -> Left "Nhập A1..J10 hoặc FIRE A1; QUIT để rời trận."
+  where
+    fire = either (Left . renderProtocolError) (Right . Fire) . parseCoord . BSC.pack
+
+-- These are UI states, not a second implementation of the game's rules.
+-- In particular, a HIT/SUNK does not authorize input until TURN arrives.
+data InputStage = Waiting | YourTurn | AwaitShot Coord | AwaitTurn | Leaving
+  deriving (Eq)
+
+playSession :: Socket -> PlayerId -> Fleet -> ReceiveBuffer -> Handle -> Handle -> IO ()
+playSession connection player fleet pending input output = withKeyboard input $ \echoInput -> do
+  inbox <- newTQueueIO
+  let receive buffer = do
+        (response, next) <- readResponse connection buffer
+        atomically (writeTQueue inbox response)
+        case response of GameOver _ _ -> pure (); _ -> receive next
+  withAsync (receive pending) $ \reader -> do
+    let nextResponse = (Just <$> readTQueue inbox) `orElse` do
+          result <- waitCatchSTM reader
+          either throwSTM (const retry) result
+        display response = hPutStrLn output (renderResponseFor player response) >> hFlush output
+        boards view = hPutStr output (renderBoards view) >> hFlush output
+        prompt = hPutStrLn output "Nhập A1..J10 hoặc FIRE A1; QUIT để rời trận:" >> hFlush output
+        send command = fromProtocol (encodeCommand command) >>= sendAll connection
+        loop stage view typed = do
+          message <- atomically (nextResponse `orElse` if stage == YourTurn then pure Nothing else retry)
+          case message of
+            Just response -> (if echoInput && not (null typed) then hPutStrLn output "" else pure ()) >>
+              let next = updatePlayerView response view in case response of
+              GameOver _ _ -> boards next >> display response
+              WaitingOpponent -> display response >> loop Waiting next ""
+              Start P1 -> display response >> loop stage next typed
+              TurnOf owner -> do
+                case stage of
+                  AwaitShot _ -> throwIO (UnexpectedResponse response)
+                  Leaving -> loop Leaving next ""
+                  _ -> do
+                    display response
+                    if owner == player then prompt >> loop YourTurn next typed
+                    else loop Waiting next ""
+              Incoming _ _ -> display response >> boards next >> loop stage next typed
+              Shot coordinate _ -> case stage of
+                AwaitShot expected | coordinate == expected ->
+                  display response >> boards next >> loop AwaitTurn next ""
+                _ -> throwIO (UnexpectedResponse response)
+              Rejected fault -> case stage of
+                AwaitShot _ -> do
+                  display response
+                  case fault of
+                    WrongTurn owner -> do
+                      display (TurnOf owner)
+                      let corrected = updatePlayerView (TurnOf owner) next
+                      if owner == player then prompt >> loop YourTurn corrected "" else loop Waiting corrected ""
+                    NotReady -> display WaitingOpponent >> loop Waiting (updatePlayerView WaitingOpponent next) ""
+                    GameFinished -> hPutStrLn output "Chờ thông báo kết thúc trận." >> hFlush output >> loop AwaitTurn next ""
+                    _ -> prompt >> loop YourTurn next ""
+                _ -> throwIO (UnexpectedResponse response)
+              _ -> throwIO (UnexpectedResponse response)
+            Nothing -> do
+              -- Poll characters with a bounded wait instead of blocking on a
+              -- whole line: GAME_OVER must remain visible during partial input.
+              character <- pollCharacter input
+              case character of
+                Nothing -> loop stage view typed
+                Just Nothing | null typed -> leave view
+                Just Nothing -> submit view typed
+                Just (Just value) | value == '\n' || value == '\r' -> do
+                  echo "\n"
+                  submit view typed
+                Just (Just value) | value == '\b' || value == '\DEL' -> do
+                  if null typed then pure () else echo "\b \b"
+                  loop stage view (take (max 0 (length typed - 1)) typed)
+                Just (Just value) -> do
+                  if length typed > maxLineBytes then echo "\BEL" >> loop stage view typed else do
+                    echo [value]
+                    loop stage view (typed ++ [value])
+        echo text = if echoInput then hPutStr output text >> hFlush output else pure ()
+        leave view = do
+          hPutStrLn output "Đang rời trận; chờ kết quả từ server."
+          hFlush output
+          send Quit
+          loop Leaving view ""
+        submit view typed = case parseFireInput typed of
+          Left message -> hPutStrLn output message >> prompt >> loop YourTurn view ""
+          Right Quit -> leave view
+          Right (Fire coordinate)
+            | Map.member coordinate (outgoingShotsView view) -> do
+                display (Rejected (RepeatedShot coordinate))
+                prompt
+                loop YourTurn view ""
+            | otherwise -> do
+                send (Fire coordinate)
+                hPutStrLn output "Đã gửi phát bắn; chờ phản hồi từ server."
+                hFlush output
+                loop (AwaitShot coordinate) view ""
+          Right _ -> ioError (userError "Client: unexpected local command")
+    let initialView = PlayerView player Placing (Just fleet) Map.empty Map.empty False
+    (boards initialView >> hPutStrLn output "Đã đặt tàu. Chờ server bắt đầu trận; Ctrl+C để rời trận." >>
+      hFlush output >> loop Waiting initialView "") `finally` closeConnection connection
+
+-- Windows console readiness can report a key before a complete cooked line;
+-- hGetChar would then block until Enter. Read keys directly for this session,
+-- echo them in the UI, and restore the caller's console modes on every exit.
+-- Files/pipes retain their buffering and do not need manual echo.
+withKeyboard :: Handle -> (Bool -> IO a) -> IO a
+withKeyboard input action = do
+  terminal <- hIsTerminalDevice input
+  if not terminal then action False else withConsoleInput $
+    bracket (hGetBuffering input) (hSetBuffering input) $ \_ ->
+      bracket (hGetEcho input) (hSetEcho input) $ \_ ->
+        -- System.IO has no newline-mode getter; use base's handle lock to
+        -- preserve the caller's exact mode rather than assume native CRLF.
+        bracket (withHandle_ "Client keyboard" input $ \handle ->
+          pure (NewlineMode (haInputNL handle) (haOutputNL handle))) (hSetNewlineMode input) $ \_ -> do
+            hSetBuffering input NoBuffering
+            hSetEcho input False
+            -- A raw Enter is CR on Windows, not a cooked CRLF pair. The
+            -- CRLF decoder would wait for the following key inside hGetChar.
+            hSetNewlineMode input noNewlineTranslation
+            action True
+
+-- Use the attached input console, without taking ownership of the supplied
+-- Haskell Handle. Native Windows line input must also be disabled explicitly.
+withConsoleInput :: IO a -> IO a
+#ifdef mingw32_HOST_OS
+withConsoleInput action = bracket
+  (createFile "CONIN$" (gENERIC_READ .|. gENERIC_WRITE) (fILE_SHARE_READ .|. fILE_SHARE_WRITE)
+    Nothing oPEN_EXISTING 0 Nothing) closeHandle $ \console ->
+      bracket (getConsoleMode console) (setConsoleMode console) $ \mode -> do
+        setConsoleMode console (mode .&. complement (eNABLE_LINE_INPUT .|. eNABLE_ECHO_INPUT))
+        action
+#else
+withConsoleInput = id
+#endif
+
+-- Nothing = no character yet; Just Nothing = EOF; Just (Just c) = input.
+pollCharacter :: Handle -> IO (Maybe (Maybe Char))
+pollCharacter input = (do
+  ready <- hWaitForInput input 100
+  if ready then Just . Just <$> hGetChar input else pure Nothing) `catch` eof
+  where
+    eof :: IOException -> IO (Maybe (Maybe Char))
+    eof exception = if isEOFError exception then pure (Just Nothing) else throwIO exception
+
+-- | Identity-aware presentation used by the interactive client. Protocol
+-- constructors and the legacy one-command renderer keep their wire meaning.
+renderResponseFor :: PlayerId -> Response -> String
+renderResponseFor viewer response = renderResponse response ++ case response of
+  TurnOf owner | owner == viewer -> " Đến lượt bạn bắn."
+               | otherwise -> " Hãy chờ đối thủ; chưa được bắn. Ctrl+C để rời trận."
+  WaitingOpponent -> " Chờ đối thủ đặt đủ tàu; chưa được bắn. Ctrl+C để rời trận."
+  GameOver winner _ | winner == viewer -> " Bạn thắng! Trận đấu đã kết thúc."
+                   | otherwise -> " Bạn thua. Trận đấu đã kết thúc."
+  _ -> ""
 
 withSocketAddress :: HostName -> PortNumber -> (Socket -> SockAddr -> IO a) -> IO a
 withSocketAddress host port action = withSocketsDo $ do

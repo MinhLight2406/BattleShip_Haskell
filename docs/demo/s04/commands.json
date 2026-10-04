@@ -1,0 +1,26 @@
+{
+  "Branch": "Luong_nhap_gui_dat_tau",
+  "BaseCommit": "4eea8b544a4da77995d451a137dd98b8f0a574c3",
+  "Stack": "3.11.1",
+  "Snapshot": "lts-24.59",
+  "GHC": "9.10.3",
+  "Platform": "Windows",
+  "Commands": [
+    {
+      "Command": "stack build --ghc-options=-Werror",
+      "StartedAt": "2026-10-05T04:10:11.8630353+07:00",
+      "FinishedAt": "2026-10-05T04:10:21.5846373+07:00",
+      "ExitCode": 0
+    },
+    {
+      "Command": "stack test --ghc-options=-Werror",
+      "StartedAt": "2026-10-05T04:10:39.9094102+07:00",
+      "FinishedAt": "2026-10-05T04:12:05.1369476+07:00",
+      "ExitCode": 0
+    }
+  ],
+  "Examples": 815,
+  "Failures": 0,
+  "TestSeconds": 74.574,
+  "GroupConfirmation": "Pending"
+}

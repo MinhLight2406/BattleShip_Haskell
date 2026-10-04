@@ -182,8 +182,9 @@ wireError err = case err of
   AlreadyFired coordinate -> RepeatedShot coordinate
   GameAlreadyFinished -> GameFinished
 
--- Logical recipients; Coordinator filters disconnected sockets. No fleet or
--- state is serialized. Phase is needed only for WAITING after FleetAccepted.
+-- Logical recipients; Coordinator enqueues each frame in its recipient's
+-- private outbox, consumed only by that socket's writer. No fleet or state is
+-- serialized. Phase is needed only for WAITING after FleetAccepted.
 routeEvent :: Phase -> Event -> [(PlayerId, Response)]
 routeEvent phase event = case event of
   FleetAccepted player -> (player, PlaceOK) : [(player, WaitingOpponent) | phase == Placing]

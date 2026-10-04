@@ -23,11 +23,16 @@ dependencies:
 
 library:
   source-dirs: src
+  when:
+    - condition: os(windows)
+      dependencies:
+        - Win32
   dependencies:
     - containers
     - network
     - bytestring
     - async
+    - stm
   exposed-modules:
     - Battleship.Board
     - Battleship.Client
@@ -89,6 +94,7 @@ tests:
       - filepath
       - network >= 3.2.9 && < 3.3
       - async
+      - stm
     ghc-options:
       - -Wall
       - -threaded

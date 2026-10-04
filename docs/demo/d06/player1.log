@@ -1,0 +1,496 @@
+ĐẶT ĐỘI TÀU CỦA BẠN — bàn 10×10 (A1..J10).
+Nhập từng tàu bằng: tọa độ đầu H/V, ví dụ A1 H.
+H = ngang sang phải; V = dọc xuống dưới. Không chồng/vượt biên; được chạm cạnh.
+Năm tàu: CV=5, BB=4, CR=3, SB=3, DD=2 ô. HUY hoặc hết input để hủy.
+CV — tàu sân bay (5 ô), nhập A1 H: H10 H
+Lỗi: tàu sân bay vượt mép bàn.
+CV — tàu sân bay (5 ô), nhập A1 H: B6 H
+BB — thiết giáp hạm (4 ô), nhập A1 H: J2 V
+CR — tàu tuần dương (3 ô), nhập A1 H: D8 H
+SB — tàu ngầm (3 ô), nhập A1 H: A1 V
+DD — tàu khu trục (2 ô), nhập A1 H: G9 H
+Bàn của bạn (. = ô trống):
+    A  B  C  D  E  F  G  H  I  J
+ 1 SB  .  .  .  .  .  .  .  .  .
+ 2 SB  .  .  .  .  .  .  .  . BB
+ 3 SB  .  .  .  .  .  .  .  . BB
+ 4  .  .  .  .  .  .  .  .  . BB
+ 5  .  .  .  .  .  .  .  .  . BB
+ 6  . CV CV CV CV CV  .  .  .  .
+ 7  .  .  .  .  .  .  .  .  .  .
+ 8  .  .  . CR CR CR  .  .  .  .
+ 9  .  .  .  .  .  . DD DD  .  .
+10  .  .  .  .  .  .  .  .  .  .
+GUI để gửi; SUA CV/BB/CR/SB/DD để sửa một tàu; HUY để hủy: SUA DD
+DD — tàu khu trục (2 ô), nhập A1 H: J10 V
+Lỗi: tàu khu trục vượt mép bàn.
+DD — tàu khu trục (2 ô), nhập A1 H:H9 V
+Bàn của bạn (. = ô trống):
+    A  B  C  D  E  F  G  H  I  J
+ 1 SB  .  .  .  .  .  .  .  .  .
+ 2 SB  .  .  .  .  .  .  .  . BB
+ 3 SB  .  .  .  .  .  .  .  . BB
+ 4  .  .  .  .  .  .  .  .  . BB
+ 5  .  .  .  .  .  .  .  .  . BB
+ 6  . CV CV CV CV CV  .  .  .  .
+ 7  .  .  .  .  .  .  .  .  .  .
+ 8  .  .  . CR CR CR  .  .  .  .
+ 9  .  .  .  .  .  .  . DD  .  .
+10  .  .  .  .  .  .  . DD  .  .
+GUI để gửi; SUA CV/BB/CR/SB/DD để sửa một tàu; HUY để hủy: GUI
+Bạn là Người chơi 1.
+Đã nhận đội tàu.
+Bàn của bạn:                        Mục tiêu đối thủ:
+    A  B  C  D  E  F  G  H  I  J        A  B  C  D  E  F  G  H  I  J
+ 1 SB  .  .  .  .  .  .  .  .  .     1  ?  ?  ?  ?  ?  ?  ?  ?  ?  ?
+ 2 SB  .  .  .  .  .  .  .  . BB     2  ?  ?  ?  ?  ?  ?  ?  ?  ?  ?
+ 3 SB  .  .  .  .  .  .  .  . BB     3  ?  ?  ?  ?  ?  ?  ?  ?  ?  ?
+ 4  .  .  .  .  .  .  .  .  . BB     4  ?  ?  ?  ?  ?  ?  ?  ?  ?  ?
+ 5  .  .  .  .  .  .  .  .  . BB     5  ?  ?  ?  ?  ?  ?  ?  ?  ?  ?
+ 6  . CV CV CV CV CV  .  .  .  .     6  ?  ?  ?  ?  ?  ?  ?  ?  ?  ?
+ 7  .  .  .  .  .  .  .  .  .  .     7  ?  ?  ?  ?  ?  ?  ?  ?  ?  ?
+ 8  .  .  . CR CR CR  .  .  .  .     8  ?  ?  ?  ?  ?  ?  ?  ?  ?  ?
+ 9  .  .  .  .  .  .  . DD  .  .     9  ?  ?  ?  ?  ?  ?  ?  ?  ?  ?
+10  .  .  .  .  .  .  . DD  .  .    10  ?  ?  ?  ?  ?  ?  ?  ?  ?  ?
+Ký hiệu: CV/BB/CR/SB/DD = tàu mình; . = nước; ? = chưa bắn đối thủ.
+o = trượt; X = trúng; # = phát làm chìm; * = phát thắng. Ô X cũ giữ nguyên.     
+Đã đặt tàu. Chờ server bắt đầu trận; Ctrl+C để rời trận.
+Đang chờ đối thủ. Chờ đối thủ đặt đủ tàu; chưa được bắn. Ctrl+C để rời trận.    
+Trận đấu bắt đầu; Người chơi 1 bắn trước.
+Lượt của Người chơi 1. Đến lượt bạn bắn.
+Nhập A1..J10 hoặc FIRE A1; QUIT để rời trận:
+K0
+Tọa độ phải nằm trong A1..J10.
+Nhập A1..J10 hoặc FIRE A1; QUIT để rời trận:
+E2 
+Đã gửi phát bắn; chờ phản hồi từ server.
+Bạn bắn E2: trúng.
+Bàn của bạn:                        Mục tiêu đối thủ:
+    A  B  C  D  E  F  G  H  I  J        A  B  C  D  E  F  G  H  I  J
+ 1 SB  .  .  .  .  .  .  .  .  .     1  ?  ?  ?  ?  ?  ?  ?  ?  ?  ?
+ 2 SB  .  .  .  .  .  .  .  . BB     2  ?  ?  ?  ?  X  ?  ?  ?  ?  ?
+ 3 SB  .  .  .  .  .  .  .  . BB     3  ?  ?  ?  ?  ?  ?  ?  ?  ?  ?
+ 4  .  .  .  .  .  .  .  .  . BB     4  ?  ?  ?  ?  ?  ?  ?  ?  ?  ?
+ 5  .  .  .  .  .  .  .  .  . BB     5  ?  ?  ?  ?  ?  ?  ?  ?  ?  ?
+ 6  . CV CV CV CV CV  .  .  .  .     6  ?  ?  ?  ?  ?  ?  ?  ?  ?  ?
+ 7  .  .  .  .  .  .  .  .  .  .     7  ?  ?  ?  ?  ?  ?  ?  ?  ?  ?
+ 8  .  .  . CR CR CR  .  .  .  .     8  ?  ?  ?  ?  ?  ?  ?  ?  ?  ?
+ 9  .  .  .  .  .  .  . DD  .  .     9  ?  ?  ?  ?  ?  ?  ?  ?  ?  ?
+10  .  .  .  .  .  .  . DD  .  .    10  ?  ?  ?  ?  ?  ?  ?  ?  ?  ?
+Ký hiệu: CV/BB/CR/SB/DD = tàu mình; . = nước; ? = chưa bắn đối thủ.
+o = trượt; X = trúng; # = phát làm chìm; * = phát thắng. Ô X cũ giữ nguyên.     
+Lượt của Người chơi 1. Đến lượt bạn bắn.
+Nhập A1..J10 hoặc FIRE A1; QUIT để rời trận:
+J10
+Đã gửi phát bắn; chờ phản hồi từ server.
+Bạn bắn J10: trượt.
+Bàn của bạn:                        Mục tiêu đối thủ:
+    A  B  C  D  E  F  G  H  I  J        A  B  C  D  E  F  G  H  I  J
+ 1 SB  .  .  .  .  .  .  .  .  .     1  ?  ?  ?  ?  ?  ?  ?  ?  ?  ?
+ 2 SB  .  .  .  .  .  .  .  . BB     2  ?  ?  ?  ?  X  ?  ?  ?  ?  ?
+ 3 SB  .  .  .  .  .  .  .  . BB     3  ?  ?  ?  ?  ?  ?  ?  ?  ?  ?
+ 4  .  .  .  .  .  .  .  .  . BB     4  ?  ?  ?  ?  ?  ?  ?  ?  ?  ?
+ 5  .  .  .  .  .  .  .  .  . BB     5  ?  ?  ?  ?  ?  ?  ?  ?  ?  ?
+ 6  . CV CV CV CV CV  .  .  .  .     6  ?  ?  ?  ?  ?  ?  ?  ?  ?  ?
+ 7  .  .  .  .  .  .  .  .  .  .     7  ?  ?  ?  ?  ?  ?  ?  ?  ?  ?
+ 8  .  .  . CR CR CR  .  .  .  .     8  ?  ?  ?  ?  ?  ?  ?  ?  ?  ?
+ 9  .  .  .  .  .  .  . DD  .  .     9  ?  ?  ?  ?  ?  ?  ?  ?  ?  ?
+10  .  .  .  .  .  .  . DD  .  .    10  ?  ?  ?  ?  ?  ?  ?  ?  ?  o
+Ký hiệu: CV/BB/CR/SB/DD = tàu mình; . = nước; ? = chưa bắn đối thủ.
+o = trượt; X = trúng; # = phát làm chìm; * = phát thắng. Ô X cũ giữ nguyên.     
+Lượt của Người chơi 2. Hãy chờ đối thủ; chưa được bắn. Ctrl+C để rời trận.      
+Đối thủ bắn B6: trúng.
+Bàn của bạn:                        Mục tiêu đối thủ:
+    A  B  C  D  E  F  G  H  I  J        A  B  C  D  E  F  G  H  I  J
+ 1 SB  .  .  .  .  .  .  .  .  .     1  ?  ?  ?  ?  ?  ?  ?  ?  ?  ?
+ 2 SB  .  .  .  .  .  .  .  . BB     2  ?  ?  ?  ?  X  ?  ?  ?  ?  ?
+ 3 SB  .  .  .  .  .  .  .  . BB     3  ?  ?  ?  ?  ?  ?  ?  ?  ?  ?
+ 4  .  .  .  .  .  .  .  .  . BB     4  ?  ?  ?  ?  ?  ?  ?  ?  ?  ?
+ 5  .  .  .  .  .  .  .  .  . BB     5  ?  ?  ?  ?  ?  ?  ?  ?  ?  ?
+ 6  .  X CV CV CV CV  .  .  .  .     6  ?  ?  ?  ?  ?  ?  ?  ?  ?  ?
+ 7  .  .  .  .  .  .  .  .  .  .     7  ?  ?  ?  ?  ?  ?  ?  ?  ?  ?
+ 8  .  .  . CR CR CR  .  .  .  .     8  ?  ?  ?  ?  ?  ?  ?  ?  ?  ?
+ 9  .  .  .  .  .  .  . DD  .  .     9  ?  ?  ?  ?  ?  ?  ?  ?  ?  ?
+10  .  .  .  .  .  .  . DD  .  .    10  ?  ?  ?  ?  ?  ?  ?  ?  ?  o
+Ký hiệu: CV/BB/CR/SB/DD = tàu mình; . = nước; ? = chưa bắn đối thủ.
+o = trượt; X = trúng; # = phát làm chìm; * = phát thắng. Ô X cũ giữ nguyên.     
+Lượt của Người chơi 2. Hãy chờ đối thủ; chưa được bắn. Ctrl+C để rời trận.      
+Đối thủ bắn J10: trượt.
+Bàn của bạn:                        Mục tiêu đối thủ:
+    A  B  C  D  E  F  G  H  I  J        A  B  C  D  E  F  G  H  I  J
+ 1 SB  .  .  .  .  .  .  .  .  .     1  ?  ?  ?  ?  ?  ?  ?  ?  ?  ?
+ 2 SB  .  .  .  .  .  .  .  . BB     2  ?  ?  ?  ?  X  ?  ?  ?  ?  ?
+ 3 SB  .  .  .  .  .  .  .  . BB     3  ?  ?  ?  ?  ?  ?  ?  ?  ?  ?
+ 4  .  .  .  .  .  .  .  .  . BB     4  ?  ?  ?  ?  ?  ?  ?  ?  ?  ?
+ 5  .  .  .  .  .  .  .  .  . BB     5  ?  ?  ?  ?  ?  ?  ?  ?  ?  ?
+ 6  .  X CV CV CV CV  .  .  .  .     6  ?  ?  ?  ?  ?  ?  ?  ?  ?  ?
+ 7  .  .  .  .  .  .  .  .  .  .     7  ?  ?  ?  ?  ?  ?  ?  ?  ?  ?
+ 8  .  .  . CR CR CR  .  .  .  .     8  ?  ?  ?  ?  ?  ?  ?  ?  ?  ?
+ 9  .  .  .  .  .  .  . DD  .  .     9  ?  ?  ?  ?  ?  ?  ?  ?  ?  ?
+10  .  .  .  .  .  .  . DD  .  o    10  ?  ?  ?  ?  ?  ?  ?  ?  ?  o
+Ký hiệu: CV/BB/CR/SB/DD = tàu mình; . = nước; ? = chưa bắn đối thủ.
+o = trượt; X = trúng; # = phát làm chìm; * = phát thắng. Ô X cũ giữ nguyên.     
+Lượt của Người chơi 1. Đến lượt bạn bắn.
+Nhập A1..J10 hoặc FIRE A1; QUIT để rời trận:
+E3
+Đã gửi phát bắn; chờ phản hồi từ server.
+Bạn bắn E3: trúng.
+Bàn của bạn:                        Mục tiêu đối thủ:
+    A  B  C  D  E  F  G  H  I  J        A  B  C  D  E  F  G  H  I  J
+ 1 SB  .  .  .  .  .  .  .  .  .     1  ?  ?  ?  ?  ?  ?  ?  ?  ?  ?
+ 2 SB  .  .  .  .  .  .  .  . BB     2  ?  ?  ?  ?  X  ?  ?  ?  ?  ?
+ 3 SB  .  .  .  .  .  .  .  . BB     3  ?  ?  ?  ?  X  ?  ?  ?  ?  ?
+ 4  .  .  .  .  .  .  .  .  . BB     4  ?  ?  ?  ?  ?  ?  ?  ?  ?  ?
+ 5  .  .  .  .  .  .  .  .  . BB     5  ?  ?  ?  ?  ?  ?  ?  ?  ?  ?
+ 6  .  X CV CV CV CV  .  .  .  .     6  ?  ?  ?  ?  ?  ?  ?  ?  ?  ?
+ 7  .  .  .  .  .  .  .  .  .  .     7  ?  ?  ?  ?  ?  ?  ?  ?  ?  ?
+ 8  .  .  . CR CR CR  .  .  .  .     8  ?  ?  ?  ?  ?  ?  ?  ?  ?  ?
+ 9  .  .  .  .  .  .  . DD  .  .     9  ?  ?  ?  ?  ?  ?  ?  ?  ?  ?
+10  .  .  .  .  .  .  . DD  .  o    10  ?  ?  ?  ?  ?  ?  ?  ?  ?  o
+Ký hiệu: CV/BB/CR/SB/DD = tàu mình; . = nước; ? = chưa bắn đối thủ.
+o = trượt; X = trúng; # = phát làm chìm; * = phát thắng. Ô X cũ giữ nguyên.     
+Lượt của Người chơi 1. Đến lượt bạn bắn.
+Nhập A1..J10 hoặc FIRE A1; QUIT để rời trận:
+I9
+Đã gửi phát bắn; chờ phản hồi từ server.
+Bạn bắn I9: trượt.
+Bàn của bạn:                        Mục tiêu đối thủ:
+    A  B  C  D  E  F  G  H  I  J        A  B  C  D  E  F  G  H  I  J
+ 1 SB  .  .  .  .  .  .  .  .  .     1  ?  ?  ?  ?  ?  ?  ?  ?  ?  ?
+ 2 SB  .  .  .  .  .  .  .  . BB     2  ?  ?  ?  ?  X  ?  ?  ?  ?  ?
+ 3 SB  .  .  .  .  .  .  .  . BB     3  ?  ?  ?  ?  X  ?  ?  ?  ?  ?
+ 4  .  .  .  .  .  .  .  .  . BB     4  ?  ?  ?  ?  ?  ?  ?  ?  ?  ?
+ 5  .  .  .  .  .  .  .  .  . BB     5  ?  ?  ?  ?  ?  ?  ?  ?  ?  ?
+ 6  .  X CV CV CV CV  .  .  .  .     6  ?  ?  ?  ?  ?  ?  ?  ?  ?  ?
+ 7  .  .  .  .  .  .  .  .  .  .     7  ?  ?  ?  ?  ?  ?  ?  ?  ?  ?
+ 8  .  .  . CR CR CR  .  .  .  .     8  ?  ?  ?  ?  ?  ?  ?  ?  ?  ?
+ 9  .  .  .  .  .  .  . DD  .  .     9  ?  ?  ?  ?  ?  ?  ?  ?  o  ?
+10  .  .  .  .  .  .  . DD  .  o    10  ?  ?  ?  ?  ?  ?  ?  ?  ?  o
+Ký hiệu: CV/BB/CR/SB/DD = tàu mình; . = nước; ? = chưa bắn đối thủ.
+o = trượt; X = trúng; # = phát làm chìm; * = phát thắng. Ô X cũ giữ nguyên.     
+Lượt của Người chơi 2. Hãy chờ đối thủ; chưa được bắn. Ctrl+C để rời trận.      
+Đối thủ bắn A1: trúng.
+Bàn của bạn:                        Mục tiêu đối thủ:
+    A  B  C  D  E  F  G  H  I  J        A  B  C  D  E  F  G  H  I  J
+ 1  X  .  .  .  .  .  .  .  .  .     1  ?  ?  ?  ?  ?  ?  ?  ?  ?  ?
+ 2 SB  .  .  .  .  .  .  .  . BB     2  ?  ?  ?  ?  X  ?  ?  ?  ?  ?
+ 3 SB  .  .  .  .  .  .  .  . BB     3  ?  ?  ?  ?  X  ?  ?  ?  ?  ?
+ 4  .  .  .  .  .  .  .  .  . BB     4  ?  ?  ?  ?  ?  ?  ?  ?  ?  ?
+ 5  .  .  .  .  .  .  .  .  . BB     5  ?  ?  ?  ?  ?  ?  ?  ?  ?  ?
+ 6  .  X CV CV CV CV  .  .  .  .     6  ?  ?  ?  ?  ?  ?  ?  ?  ?  ?
+ 7  .  .  .  .  .  .  .  .  .  .     7  ?  ?  ?  ?  ?  ?  ?  ?  ?  ?
+ 8  .  .  . CR CR CR  .  .  .  .     8  ?  ?  ?  ?  ?  ?  ?  ?  ?  ?
+ 9  .  .  .  .  .  .  . DD  .  .     9  ?  ?  ?  ?  ?  ?  ?  ?  o  ?
+10  .  .  .  .  .  .  . DD  .  o    10  ?  ?  ?  ?  ?  ?  ?  ?  ?  o
+Ký hiệu: CV/BB/CR/SB/DD = tàu mình; . = nước; ? = chưa bắn đối thủ.
+o = trượt; X = trúng; # = phát làm chìm; * = phát thắng. Ô X cũ giữ nguyên.     
+Lượt của Người chơi 2. Hãy chờ đối thủ; chưa được bắn. Ctrl+C để rời trận.      
+Đối thủ bắn J9: trượt.
+Bàn của bạn:                        Mục tiêu đối thủ:
+    A  B  C  D  E  F  G  H  I  J        A  B  C  D  E  F  G  H  I  J
+ 1  X  .  .  .  .  .  .  .  .  .     1  ?  ?  ?  ?  ?  ?  ?  ?  ?  ?
+ 2 SB  .  .  .  .  .  .  .  . BB     2  ?  ?  ?  ?  X  ?  ?  ?  ?  ?
+ 3 SB  .  .  .  .  .  .  .  . BB     3  ?  ?  ?  ?  X  ?  ?  ?  ?  ?
+ 4  .  .  .  .  .  .  .  .  . BB     4  ?  ?  ?  ?  ?  ?  ?  ?  ?  ?
+ 5  .  .  .  .  .  .  .  .  . BB     5  ?  ?  ?  ?  ?  ?  ?  ?  ?  ?
+ 6  .  X CV CV CV CV  .  .  .  .     6  ?  ?  ?  ?  ?  ?  ?  ?  ?  ?
+ 7  .  .  .  .  .  .  .  .  .  .     7  ?  ?  ?  ?  ?  ?  ?  ?  ?  ?
+ 8  .  .  . CR CR CR  .  .  .  .     8  ?  ?  ?  ?  ?  ?  ?  ?  ?  ?
+ 9  .  .  .  .  .  .  . DD  .  o     9  ?  ?  ?  ?  ?  ?  ?  ?  o  ?
+10  .  .  .  .  .  .  . DD  .  o    10  ?  ?  ?  ?  ?  ?  ?  ?  ?  o
+Ký hiệu: CV/BB/CR/SB/DD = tàu mình; . = nước; ? = chưa bắn đối thủ.
+o = trượt; X = trúng; # = phát làm chìm; * = phát thắng. Ô X cũ giữ nguyên.     
+Lượt của Người chơi 1. Đến lượt bạn bắn.
+Nhập A1..J10 hoặc FIRE A1; QUIT để rời trận:
+E4
+Đã gửi phát bắn; chờ phản hồi từ server.
+Bạn bắn E4: trúng.
+Bàn của bạn:                        Mục tiêu đối thủ:
+    A  B  C  D  E  F  G  H  I  J        A  B  C  D  E  F  G  H  I  J
+ 1  X  .  .  .  .  .  .  .  .  .     1  ?  ?  ?  ?  ?  ?  ?  ?  ?  ?
+ 2 SB  .  .  .  .  .  .  .  . BB     2  ?  ?  ?  ?  X  ?  ?  ?  ?  ?
+ 3 SB  .  .  .  .  .  .  .  . BB     3  ?  ?  ?  ?  X  ?  ?  ?  ?  ?
+ 4  .  .  .  .  .  .  .  .  . BB     4  ?  ?  ?  ?  X  ?  ?  ?  ?  ?
+ 5  .  .  .  .  .  .  .  .  . BB     5  ?  ?  ?  ?  ?  ?  ?  ?  ?  ?
+ 6  .  X CV CV CV CV  .  .  .  .     6  ?  ?  ?  ?  ?  ?  ?  ?  ?  ?
+ 7  .  .  .  .  .  .  .  .  .  .     7  ?  ?  ?  ?  ?  ?  ?  ?  ?  ?
+ 8  .  .  . CR CR CR  .  .  .  .     8  ?  ?  ?  ?  ?  ?  ?  ?  ?  ?
+ 9  .  .  .  .  .  .  . DD  .  o     9  ?  ?  ?  ?  ?  ?  ?  ?  o  ?
+10  .  .  .  .  .  .  . DD  .  o    10  ?  ?  ?  ?  ?  ?  ?  ?  ?  o
+Ký hiệu: CV/BB/CR/SB/DD = tàu mình; . = nước; ? = chưa bắn đối thủ.
+o = trượt; X = trúng; # = phát làm chìm; * = phát thắng. Ô X cũ giữ nguyên.     
+Lượt của Người chơi 1. Đến lượt bạn bắn.
+Nhập A1..J10 hoặc FIRE A1; QUIT để rời trận:
+I8
+Đã gửi phát bắn; chờ phản hồi từ server.
+Bạn bắn I8: trượt.
+Bàn của bạn:                        Mục tiêu đối thủ:
+    A  B  C  D  E  F  G  H  I  J        A  B  C  D  E  F  G  H  I  J
+ 1  X  .  .  .  .  .  .  .  .  .     1  ?  ?  ?  ?  ?  ?  ?  ?  ?  ?
+ 2 SB  .  .  .  .  .  .  .  . BB     2  ?  ?  ?  ?  X  ?  ?  ?  ?  ?
+ 3 SB  .  .  .  .  .  .  .  . BB     3  ?  ?  ?  ?  X  ?  ?  ?  ?  ?
+ 4  .  .  .  .  .  .  .  .  . BB     4  ?  ?  ?  ?  X  ?  ?  ?  ?  ?
+ 5  .  .  .  .  .  .  .  .  . BB     5  ?  ?  ?  ?  ?  ?  ?  ?  ?  ?
+ 6  .  X CV CV CV CV  .  .  .  .     6  ?  ?  ?  ?  ?  ?  ?  ?  ?  ?
+ 7  .  .  .  .  .  .  .  .  .  .     7  ?  ?  ?  ?  ?  ?  ?  ?  ?  ?
+ 8  .  .  . CR CR CR  .  .  .  .     8  ?  ?  ?  ?  ?  ?  ?  ?  o  ?
+ 9  .  .  .  .  .  .  . DD  .  o     9  ?  ?  ?  ?  ?  ?  ?  ?  o  ?
+10  .  .  .  .  .  .  . DD  .  o    10  ?  ?  ?  ?  ?  ?  ?  ?  ?  o
+Ký hiệu: CV/BB/CR/SB/DD = tàu mình; . = nước; ? = chưa bắn đối thủ.
+o = trượt; X = trúng; # = phát làm chìm; * = phát thắng. Ô X cũ giữ nguyên.     
+Lượt của Người chơi 2. Hãy chờ đối thủ; chưa được bắn. Ctrl+C để rời trận.      
+Đối thủ bắn C6: trúng.
+Bàn của bạn:                        Mục tiêu đối thủ:
+    A  B  C  D  E  F  G  H  I  J        A  B  C  D  E  F  G  H  I  J
+ 1  X  .  .  .  .  .  .  .  .  .     1  ?  ?  ?  ?  ?  ?  ?  ?  ?  ?
+ 2 SB  .  .  .  .  .  .  .  . BB     2  ?  ?  ?  ?  X  ?  ?  ?  ?  ?
+ 3 SB  .  .  .  .  .  .  .  . BB     3  ?  ?  ?  ?  X  ?  ?  ?  ?  ?
+ 4  .  .  .  .  .  .  .  .  . BB     4  ?  ?  ?  ?  X  ?  ?  ?  ?  ?
+ 5  .  .  .  .  .  .  .  .  . BB     5  ?  ?  ?  ?  ?  ?  ?  ?  ?  ?
+ 6  .  X  X CV CV CV  .  .  .  .     6  ?  ?  ?  ?  ?  ?  ?  ?  ?  ?
+ 7  .  .  .  .  .  .  .  .  .  .     7  ?  ?  ?  ?  ?  ?  ?  ?  ?  ?
+ 8  .  .  . CR CR CR  .  .  .  .     8  ?  ?  ?  ?  ?  ?  ?  ?  o  ?
+ 9  .  .  .  .  .  .  . DD  .  o     9  ?  ?  ?  ?  ?  ?  ?  ?  o  ?
+10  .  .  .  .  .  .  . DD  .  o    10  ?  ?  ?  ?  ?  ?  ?  ?  ?  o
+Ký hiệu: CV/BB/CR/SB/DD = tàu mình; . = nước; ? = chưa bắn đối thủ.
+o = trượt; X = trúng; # = phát làm chìm; * = phát thắng. Ô X cũ giữ nguyên.     
+Lượt của Người chơi 2. Hãy chờ đối thủ; chưa được bắn. Ctrl+C để rời trận.      
+Đối thủ bắn D6: trúng.
+Bàn của bạn:                        Mục tiêu đối thủ:
+    A  B  C  D  E  F  G  H  I  J        A  B  C  D  E  F  G  H  I  J
+ 1  X  .  .  .  .  .  .  .  .  .     1  ?  ?  ?  ?  ?  ?  ?  ?  ?  ?
+ 2 SB  .  .  .  .  .  .  .  . BB     2  ?  ?  ?  ?  X  ?  ?  ?  ?  ?
+ 3 SB  .  .  .  .  .  .  .  . BB     3  ?  ?  ?  ?  X  ?  ?  ?  ?  ?
+ 4  .  .  .  .  .  .  .  .  . BB     4  ?  ?  ?  ?  X  ?  ?  ?  ?  ?
+ 5  .  .  .  .  .  .  .  .  . BB     5  ?  ?  ?  ?  ?  ?  ?  ?  ?  ?
+ 6  .  X  X  X CV CV  .  .  .  .     6  ?  ?  ?  ?  ?  ?  ?  ?  ?  ?
+ 7  .  .  .  .  .  .  .  .  .  .     7  ?  ?  ?  ?  ?  ?  ?  ?  ?  ?
+ 8  .  .  . CR CR CR  .  .  .  .     8  ?  ?  ?  ?  ?  ?  ?  ?  o  ?
+ 9  .  .  .  .  .  .  . DD  .  o     9  ?  ?  ?  ?  ?  ?  ?  ?  o  ?
+10  .  .  .  .  .  .  . DD  .  o    10  ?  ?  ?  ?  ?  ?  ?  ?  ?  o
+Ký hiệu: CV/BB/CR/SB/DD = tàu mình; . = nước; ? = chưa bắn đối thủ.
+o = trượt; X = trúng; # = phát làm chìm; * = phát thắng. Ô X cũ giữ nguyên.     
+Lượt của Người chơi 2. Hãy chờ đối thủ; chưa được bắn. Ctrl+C để rời trận.      
+Đối thủ bắn E6: trúng.
+Bàn của bạn:                        Mục tiêu đối thủ:
+    A  B  C  D  E  F  G  H  I  J        A  B  C  D  E  F  G  H  I  J
+ 1  X  .  .  .  .  .  .  .  .  .     1  ?  ?  ?  ?  ?  ?  ?  ?  ?  ?
+ 2 SB  .  .  .  .  .  .  .  . BB     2  ?  ?  ?  ?  X  ?  ?  ?  ?  ?
+ 3 SB  .  .  .  .  .  .  .  . BB     3  ?  ?  ?  ?  X  ?  ?  ?  ?  ?
+ 4  .  .  .  .  .  .  .  .  . BB     4  ?  ?  ?  ?  X  ?  ?  ?  ?  ?
+ 5  .  .  .  .  .  .  .  .  . BB     5  ?  ?  ?  ?  ?  ?  ?  ?  ?  ?
+ 6  .  X  X  X  X CV  .  .  .  .     6  ?  ?  ?  ?  ?  ?  ?  ?  ?  ?
+ 7  .  .  .  .  .  .  .  .  .  .     7  ?  ?  ?  ?  ?  ?  ?  ?  ?  ?
+ 8  .  .  . CR CR CR  .  .  .  .     8  ?  ?  ?  ?  ?  ?  ?  ?  o  ?
+ 9  .  .  .  .  .  .  . DD  .  o     9  ?  ?  ?  ?  ?  ?  ?  ?  o  ?
+10  .  .  .  .  .  .  . DD  .  o    10  ?  ?  ?  ?  ?  ?  ?  ?  ?  o
+Ký hiệu: CV/BB/CR/SB/DD = tàu mình; . = nước; ? = chưa bắn đối thủ.
+o = trượt; X = trúng; # = phát làm chìm; * = phát thắng. Ô X cũ giữ nguyên.     
+Lượt của Người chơi 2. Hãy chờ đối thủ; chưa được bắn. Ctrl+C để rời trận.      
+Đối thủ bắn F6: chìm tàu sân bay.
+Bàn của bạn:                        Mục tiêu đối thủ:
+    A  B  C  D  E  F  G  H  I  J        A  B  C  D  E  F  G  H  I  J
+ 1  X  .  .  .  .  .  .  .  .  .     1  ?  ?  ?  ?  ?  ?  ?  ?  ?  ?
+ 2 SB  .  .  .  .  .  .  .  . BB     2  ?  ?  ?  ?  X  ?  ?  ?  ?  ?
+ 3 SB  .  .  .  .  .  .  .  . BB     3  ?  ?  ?  ?  X  ?  ?  ?  ?  ?
+ 4  .  .  .  .  .  .  .  .  . BB     4  ?  ?  ?  ?  X  ?  ?  ?  ?  ?
+ 5  .  .  .  .  .  .  .  .  . BB     5  ?  ?  ?  ?  ?  ?  ?  ?  ?  ?
+ 6  .  X  X  X  X  #  .  .  .  .     6  ?  ?  ?  ?  ?  ?  ?  ?  ?  ?
+ 7  .  .  .  .  .  .  .  .  .  .     7  ?  ?  ?  ?  ?  ?  ?  ?  ?  ?
+ 8  .  .  . CR CR CR  .  .  .  .     8  ?  ?  ?  ?  ?  ?  ?  ?  o  ?
+ 9  .  .  .  .  .  .  . DD  .  o     9  ?  ?  ?  ?  ?  ?  ?  ?  o  ?
+10  .  .  .  .  .  .  . DD  .  o    10  ?  ?  ?  ?  ?  ?  ?  ?  ?  o
+Ký hiệu: CV/BB/CR/SB/DD = tàu mình; . = nước; ? = chưa bắn đối thủ.
+o = trượt; X = trúng; # = phát làm chìm; * = phát thắng. Ô X cũ giữ nguyên.     
+Lượt của Người chơi 2. Hãy chờ đối thủ; chưa được bắn. Ctrl+C để rời trận.      
+Đối thủ bắn J2: trúng.
+Bàn của bạn:                        Mục tiêu đối thủ:
+    A  B  C  D  E  F  G  H  I  J        A  B  C  D  E  F  G  H  I  J
+ 1  X  .  .  .  .  .  .  .  .  .     1  ?  ?  ?  ?  ?  ?  ?  ?  ?  ?
+ 2 SB  .  .  .  .  .  .  .  .  X     2  ?  ?  ?  ?  X  ?  ?  ?  ?  ?
+ 3 SB  .  .  .  .  .  .  .  . BB     3  ?  ?  ?  ?  X  ?  ?  ?  ?  ?
+ 4  .  .  .  .  .  .  .  .  . BB     4  ?  ?  ?  ?  X  ?  ?  ?  ?  ?
+ 5  .  .  .  .  .  .  .  .  . BB     5  ?  ?  ?  ?  ?  ?  ?  ?  ?  ?
+ 6  .  X  X  X  X  #  .  .  .  .     6  ?  ?  ?  ?  ?  ?  ?  ?  ?  ?
+ 7  .  .  .  .  .  .  .  .  .  .     7  ?  ?  ?  ?  ?  ?  ?  ?  ?  ?
+ 8  .  .  . CR CR CR  .  .  .  .     8  ?  ?  ?  ?  ?  ?  ?  ?  o  ?
+ 9  .  .  .  .  .  .  . DD  .  o     9  ?  ?  ?  ?  ?  ?  ?  ?  o  ?
+10  .  .  .  .  .  .  . DD  .  o    10  ?  ?  ?  ?  ?  ?  ?  ?  ?  o
+Ký hiệu: CV/BB/CR/SB/DD = tàu mình; . = nước; ? = chưa bắn đối thủ.
+o = trượt; X = trúng; # = phát làm chìm; * = phát thắng. Ô X cũ giữ nguyên.     
+Lượt của Người chơi 2. Hãy chờ đối thủ; chưa được bắn. Ctrl+C để rời trận.      
+Đối thủ bắn J3: trúng.
+Bàn của bạn:                        Mục tiêu đối thủ:
+    A  B  C  D  E  F  G  H  I  J        A  B  C  D  E  F  G  H  I  J
+ 1  X  .  .  .  .  .  .  .  .  .     1  ?  ?  ?  ?  ?  ?  ?  ?  ?  ?
+ 2 SB  .  .  .  .  .  .  .  .  X     2  ?  ?  ?  ?  X  ?  ?  ?  ?  ?
+ 3 SB  .  .  .  .  .  .  .  .  X     3  ?  ?  ?  ?  X  ?  ?  ?  ?  ?
+ 4  .  .  .  .  .  .  .  .  . BB     4  ?  ?  ?  ?  X  ?  ?  ?  ?  ?
+ 5  .  .  .  .  .  .  .  .  . BB     5  ?  ?  ?  ?  ?  ?  ?  ?  ?  ?
+ 6  .  X  X  X  X  #  .  .  .  .     6  ?  ?  ?  ?  ?  ?  ?  ?  ?  ?
+ 7  .  .  .  .  .  .  .  .  .  .     7  ?  ?  ?  ?  ?  ?  ?  ?  ?  ?
+ 8  .  .  . CR CR CR  .  .  .  .     8  ?  ?  ?  ?  ?  ?  ?  ?  o  ?
+ 9  .  .  .  .  .  .  . DD  .  o     9  ?  ?  ?  ?  ?  ?  ?  ?  o  ?
+10  .  .  .  .  .  .  . DD  .  o    10  ?  ?  ?  ?  ?  ?  ?  ?  ?  o
+Ký hiệu: CV/BB/CR/SB/DD = tàu mình; . = nước; ? = chưa bắn đối thủ.
+o = trượt; X = trúng; # = phát làm chìm; * = phát thắng. Ô X cũ giữ nguyên.     
+Lượt của Người chơi 2. Hãy chờ đối thủ; chưa được bắn. Ctrl+C để rời trận.      
+Đối thủ bắn J4: trúng.
+Bàn của bạn:                        Mục tiêu đối thủ:
+    A  B  C  D  E  F  G  H  I  J        A  B  C  D  E  F  G  H  I  J
+ 1  X  .  .  .  .  .  .  .  .  .     1  ?  ?  ?  ?  ?  ?  ?  ?  ?  ?
+ 2 SB  .  .  .  .  .  .  .  .  X     2  ?  ?  ?  ?  X  ?  ?  ?  ?  ?
+ 3 SB  .  .  .  .  .  .  .  .  X     3  ?  ?  ?  ?  X  ?  ?  ?  ?  ?
+ 4  .  .  .  .  .  .  .  .  .  X     4  ?  ?  ?  ?  X  ?  ?  ?  ?  ?
+ 5  .  .  .  .  .  .  .  .  . BB     5  ?  ?  ?  ?  ?  ?  ?  ?  ?  ?
+ 6  .  X  X  X  X  #  .  .  .  .     6  ?  ?  ?  ?  ?  ?  ?  ?  ?  ?
+ 7  .  .  .  .  .  .  .  .  .  .     7  ?  ?  ?  ?  ?  ?  ?  ?  ?  ?
+ 8  .  .  . CR CR CR  .  .  .  .     8  ?  ?  ?  ?  ?  ?  ?  ?  o  ?
+ 9  .  .  .  .  .  .  . DD  .  o     9  ?  ?  ?  ?  ?  ?  ?  ?  o  ?
+10  .  .  .  .  .  .  . DD  .  o    10  ?  ?  ?  ?  ?  ?  ?  ?  ?  o
+Ký hiệu: CV/BB/CR/SB/DD = tàu mình; . = nước; ? = chưa bắn đối thủ.
+o = trượt; X = trúng; # = phát làm chìm; * = phát thắng. Ô X cũ giữ nguyên.     
+Lượt của Người chơi 2. Hãy chờ đối thủ; chưa được bắn. Ctrl+C để rời trận.      
+Đối thủ bắn J5: chìm thiết giáp hạm.
+Bàn của bạn:                        Mục tiêu đối thủ:
+    A  B  C  D  E  F  G  H  I  J        A  B  C  D  E  F  G  H  I  J
+ 1  X  .  .  .  .  .  .  .  .  .     1  ?  ?  ?  ?  ?  ?  ?  ?  ?  ?
+ 2 SB  .  .  .  .  .  .  .  .  X     2  ?  ?  ?  ?  X  ?  ?  ?  ?  ?
+ 3 SB  .  .  .  .  .  .  .  .  X     3  ?  ?  ?  ?  X  ?  ?  ?  ?  ?
+ 4  .  .  .  .  .  .  .  .  .  X     4  ?  ?  ?  ?  X  ?  ?  ?  ?  ?
+ 5  .  .  .  .  .  .  .  .  .  #     5  ?  ?  ?  ?  ?  ?  ?  ?  ?  ?
+ 6  .  X  X  X  X  #  .  .  .  .     6  ?  ?  ?  ?  ?  ?  ?  ?  ?  ?
+ 7  .  .  .  .  .  .  .  .  .  .     7  ?  ?  ?  ?  ?  ?  ?  ?  ?  ?
+ 8  .  .  . CR CR CR  .  .  .  .     8  ?  ?  ?  ?  ?  ?  ?  ?  o  ?
+ 9  .  .  .  .  .  .  . DD  .  o     9  ?  ?  ?  ?  ?  ?  ?  ?  o  ?
+10  .  .  .  .  .  .  . DD  .  o    10  ?  ?  ?  ?  ?  ?  ?  ?  ?  o
+Ký hiệu: CV/BB/CR/SB/DD = tàu mình; . = nước; ? = chưa bắn đối thủ.
+o = trượt; X = trúng; # = phát làm chìm; * = phát thắng. Ô X cũ giữ nguyên.     
+Lượt của Người chơi 2. Hãy chờ đối thủ; chưa được bắn. Ctrl+C để rời trận.      
+Đối thủ bắn D8: trúng.
+Bàn của bạn:                        Mục tiêu đối thủ:
+    A  B  C  D  E  F  G  H  I  J        A  B  C  D  E  F  G  H  I  J
+ 1  X  .  .  .  .  .  .  .  .  .     1  ?  ?  ?  ?  ?  ?  ?  ?  ?  ?
+ 2 SB  .  .  .  .  .  .  .  .  X     2  ?  ?  ?  ?  X  ?  ?  ?  ?  ?
+ 3 SB  .  .  .  .  .  .  .  .  X     3  ?  ?  ?  ?  X  ?  ?  ?  ?  ?
+ 4  .  .  .  .  .  .  .  .  .  X     4  ?  ?  ?  ?  X  ?  ?  ?  ?  ?
+ 5  .  .  .  .  .  .  .  .  .  #     5  ?  ?  ?  ?  ?  ?  ?  ?  ?  ?
+ 6  .  X  X  X  X  #  .  .  .  .     6  ?  ?  ?  ?  ?  ?  ?  ?  ?  ?
+ 7  .  .  .  .  .  .  .  .  .  .     7  ?  ?  ?  ?  ?  ?  ?  ?  ?  ?
+ 8  .  .  .  X CR CR  .  .  .  .     8  ?  ?  ?  ?  ?  ?  ?  ?  o  ?
+ 9  .  .  .  .  .  .  . DD  .  o     9  ?  ?  ?  ?  ?  ?  ?  ?  o  ?
+10  .  .  .  .  .  .  . DD  .  o    10  ?  ?  ?  ?  ?  ?  ?  ?  ?  o
+Ký hiệu: CV/BB/CR/SB/DD = tàu mình; . = nước; ? = chưa bắn đối thủ.
+o = trượt; X = trúng; # = phát làm chìm; * = phát thắng. Ô X cũ giữ nguyên.     
+Lượt của Người chơi 2. Hãy chờ đối thủ; chưa được bắn. Ctrl+C để rời trận.      
+Đối thủ bắn E8: trúng.
+Bàn của bạn:                        Mục tiêu đối thủ:
+    A  B  C  D  E  F  G  H  I  J        A  B  C  D  E  F  G  H  I  J
+ 1  X  .  .  .  .  .  .  .  .  .     1  ?  ?  ?  ?  ?  ?  ?  ?  ?  ?
+ 2 SB  .  .  .  .  .  .  .  .  X     2  ?  ?  ?  ?  X  ?  ?  ?  ?  ?
+ 3 SB  .  .  .  .  .  .  .  .  X     3  ?  ?  ?  ?  X  ?  ?  ?  ?  ?
+ 4  .  .  .  .  .  .  .  .  .  X     4  ?  ?  ?  ?  X  ?  ?  ?  ?  ?
+ 5  .  .  .  .  .  .  .  .  .  #     5  ?  ?  ?  ?  ?  ?  ?  ?  ?  ?
+ 6  .  X  X  X  X  #  .  .  .  .     6  ?  ?  ?  ?  ?  ?  ?  ?  ?  ?
+ 7  .  .  .  .  .  .  .  .  .  .     7  ?  ?  ?  ?  ?  ?  ?  ?  ?  ?
+ 8  .  .  .  X  X CR  .  .  .  .     8  ?  ?  ?  ?  ?  ?  ?  ?  o  ?
+ 9  .  .  .  .  .  .  . DD  .  o     9  ?  ?  ?  ?  ?  ?  ?  ?  o  ?
+10  .  .  .  .  .  .  . DD  .  o    10  ?  ?  ?  ?  ?  ?  ?  ?  ?  o
+Ký hiệu: CV/BB/CR/SB/DD = tàu mình; . = nước; ? = chưa bắn đối thủ.
+o = trượt; X = trúng; # = phát làm chìm; * = phát thắng. Ô X cũ giữ nguyên.     
+Lượt của Người chơi 2. Hãy chờ đối thủ; chưa được bắn. Ctrl+C để rời trận.      
+Đối thủ bắn F8: chìm tàu tuần dương.
+Bàn của bạn:                        Mục tiêu đối thủ:
+    A  B  C  D  E  F  G  H  I  J        A  B  C  D  E  F  G  H  I  J
+ 1  X  .  .  .  .  .  .  .  .  .     1  ?  ?  ?  ?  ?  ?  ?  ?  ?  ?
+ 2 SB  .  .  .  .  .  .  .  .  X     2  ?  ?  ?  ?  X  ?  ?  ?  ?  ?
+ 3 SB  .  .  .  .  .  .  .  .  X     3  ?  ?  ?  ?  X  ?  ?  ?  ?  ?
+ 4  .  .  .  .  .  .  .  .  .  X     4  ?  ?  ?  ?  X  ?  ?  ?  ?  ?
+ 5  .  .  .  .  .  .  .  .  .  #     5  ?  ?  ?  ?  ?  ?  ?  ?  ?  ?
+ 6  .  X  X  X  X  #  .  .  .  .     6  ?  ?  ?  ?  ?  ?  ?  ?  ?  ?
+ 7  .  .  .  .  .  .  .  .  .  .     7  ?  ?  ?  ?  ?  ?  ?  ?  ?  ?
+ 8  .  .  .  X  X  #  .  .  .  .     8  ?  ?  ?  ?  ?  ?  ?  ?  o  ?
+ 9  .  .  .  .  .  .  . DD  .  o     9  ?  ?  ?  ?  ?  ?  ?  ?  o  ?
+10  .  .  .  .  .  .  . DD  .  o    10  ?  ?  ?  ?  ?  ?  ?  ?  ?  o
+Ký hiệu: CV/BB/CR/SB/DD = tàu mình; . = nước; ? = chưa bắn đối thủ.
+o = trượt; X = trúng; # = phát làm chìm; * = phát thắng. Ô X cũ giữ nguyên.     
+Lượt của Người chơi 2. Hãy chờ đối thủ; chưa được bắn. Ctrl+C để rời trận.      
+Đối thủ bắn A2: trúng.
+Bàn của bạn:                        Mục tiêu đối thủ:
+    A  B  C  D  E  F  G  H  I  J        A  B  C  D  E  F  G  H  I  J
+ 1  X  .  .  .  .  .  .  .  .  .     1  ?  ?  ?  ?  ?  ?  ?  ?  ?  ?
+ 2  X  .  .  .  .  .  .  .  .  X     2  ?  ?  ?  ?  X  ?  ?  ?  ?  ?
+ 3 SB  .  .  .  .  .  .  .  .  X     3  ?  ?  ?  ?  X  ?  ?  ?  ?  ?
+ 4  .  .  .  .  .  .  .  .  .  X     4  ?  ?  ?  ?  X  ?  ?  ?  ?  ?
+ 5  .  .  .  .  .  .  .  .  .  #     5  ?  ?  ?  ?  ?  ?  ?  ?  ?  ?
+ 6  .  X  X  X  X  #  .  .  .  .     6  ?  ?  ?  ?  ?  ?  ?  ?  ?  ?
+ 7  .  .  .  .  .  .  .  .  .  .     7  ?  ?  ?  ?  ?  ?  ?  ?  ?  ?
+ 8  .  .  .  X  X  #  .  .  .  .     8  ?  ?  ?  ?  ?  ?  ?  ?  o  ?
+ 9  .  .  .  .  .  .  . DD  .  o     9  ?  ?  ?  ?  ?  ?  ?  ?  o  ?
+10  .  .  .  .  .  .  . DD  .  o    10  ?  ?  ?  ?  ?  ?  ?  ?  ?  o
+Ký hiệu: CV/BB/CR/SB/DD = tàu mình; . = nước; ? = chưa bắn đối thủ.
+o = trượt; X = trúng; # = phát làm chìm; * = phát thắng. Ô X cũ giữ nguyên.
+Lượt của Người chơi 2. Hãy chờ đối thủ; chưa được bắn. Ctrl+C để rời trận.      
+Đối thủ bắn A3: chìm tàu ngầm.
+Bàn của bạn:                        Mục tiêu đối thủ:
+    A  B  C  D  E  F  G  H  I  J        A  B  C  D  E  F  G  H  I  J
+ 1  X  .  .  .  .  .  .  .  .  .     1  ?  ?  ?  ?  ?  ?  ?  ?  ?  ?
+ 2  X  .  .  .  .  .  .  .  .  X     2  ?  ?  ?  ?  X  ?  ?  ?  ?  ?
+ 3  #  .  .  .  .  .  .  .  .  X     3  ?  ?  ?  ?  X  ?  ?  ?  ?  ?
+ 4  .  .  .  .  .  .  .  .  .  X     4  ?  ?  ?  ?  X  ?  ?  ?  ?  ?
+ 5  .  .  .  .  .  .  .  .  .  #     5  ?  ?  ?  ?  ?  ?  ?  ?  ?  ?
+ 6  .  X  X  X  X  #  .  .  .  .     6  ?  ?  ?  ?  ?  ?  ?  ?  ?  ?
+ 7  .  .  .  .  .  .  .  .  .  .     7  ?  ?  ?  ?  ?  ?  ?  ?  ?  ?
+ 8  .  .  .  X  X  #  .  .  .  .     8  ?  ?  ?  ?  ?  ?  ?  ?  o  ?
+ 9  .  .  .  .  .  .  . DD  .  o     9  ?  ?  ?  ?  ?  ?  ?  ?  o  ?
+10  .  .  .  .  .  .  . DD  .  o    10  ?  ?  ?  ?  ?  ?  ?  ?  ?  o
+Ký hiệu: CV/BB/CR/SB/DD = tàu mình; . = nước; ? = chưa bắn đối thủ.
+o = trượt; X = trúng; # = phát làm chìm; * = phát thắng. Ô X cũ giữ nguyên.     
+Lượt của Người chơi 2. Hãy chờ đối thủ; chưa được bắn. Ctrl+C để rời trận.      
+Đối thủ bắn H9: trúng.
+Bàn của bạn:                        Mục tiêu đối thủ:
+    A  B  C  D  E  F  G  H  I  J        A  B  C  D  E  F  G  H  I  J
+ 1  X  .  .  .  .  .  .  .  .  .     1  ?  ?  ?  ?  ?  ?  ?  ?  ?  ?
+ 2  X  .  .  .  .  .  .  .  .  X     2  ?  ?  ?  ?  X  ?  ?  ?  ?  ?
+ 3  #  .  .  .  .  .  .  .  .  X     3  ?  ?  ?  ?  X  ?  ?  ?  ?  ?
+ 4  .  .  .  .  .  .  .  .  .  X     4  ?  ?  ?  ?  X  ?  ?  ?  ?  ?
+ 5  .  .  .  .  .  .  .  .  .  #     5  ?  ?  ?  ?  ?  ?  ?  ?  ?  ?
+ 6  .  X  X  X  X  #  .  .  .  .     6  ?  ?  ?  ?  ?  ?  ?  ?  ?  ?
+ 7  .  .  .  .  .  .  .  .  .  .     7  ?  ?  ?  ?  ?  ?  ?  ?  ?  ?
+ 8  .  .  .  X  X  #  .  .  .  .     8  ?  ?  ?  ?  ?  ?  ?  ?  o  ?
+ 9  .  .  .  .  .  .  .  X  .  o     9  ?  ?  ?  ?  ?  ?  ?  ?  o  ?
+10  .  .  .  .  .  .  . DD  .  o    10  ?  ?  ?  ?  ?  ?  ?  ?  ?  o
+Ký hiệu: CV/BB/CR/SB/DD = tàu mình; . = nước; ? = chưa bắn đối thủ.
+o = trượt; X = trúng; # = phát làm chìm; * = phát thắng. Ô X cũ giữ nguyên.     
+Lượt của Người chơi 2. Hãy chờ đối thủ; chưa được bắn. Ctrl+C để rời trận.      
+Đối thủ bắn H10: thắng.
+Bàn của bạn:                        Mục tiêu đối thủ:
+    A  B  C  D  E  F  G  H  I  J        A  B  C  D  E  F  G  H  I  J
+ 1  X  .  .  .  .  .  .  .  .  .     1  ?  ?  ?  ?  ?  ?  ?  ?  ?  ?
+ 2  X  .  .  .  .  .  .  .  .  X     2  ?  ?  ?  ?  X  ?  ?  ?  ?  ?
+ 3  #  .  .  .  .  .  .  .  .  X     3  ?  ?  ?  ?  X  ?  ?  ?  ?  ?
+ 4  .  .  .  .  .  .  .  .  .  X     4  ?  ?  ?  ?  X  ?  ?  ?  ?  ?
+ 5  .  .  .  .  .  .  .  .  .  #     5  ?  ?  ?  ?  ?  ?  ?  ?  ?  ?
+ 6  .  X  X  X  X  #  .  .  .  .     6  ?  ?  ?  ?  ?  ?  ?  ?  ?  ?
+ 7  .  .  .  .  .  .  .  .  .  .     7  ?  ?  ?  ?  ?  ?  ?  ?  ?  ?
+ 8  .  .  .  X  X  #  .  .  .  .     8  ?  ?  ?  ?  ?  ?  ?  ?  o  ?
+ 9  .  .  .  .  .  .  .  X  .  o     9  ?  ?  ?  ?  ?  ?  ?  ?  o  ?
+10  .  .  .  .  .  .  .  *  .  o    10  ?  ?  ?  ?  ?  ?  ?  ?  ?  o
+Ký hiệu: CV/BB/CR/SB/DD = tàu mình; . = nước; ? = chưa bắn đối thủ.
+o = trượt; X = trúng; # = phát làm chìm; * = phát thắng. Ô X cũ giữ nguyên.
+Bàn của bạn:                        Mục tiêu đối thủ:
+    A  B  C  D  E  F  G  H  I  J        A  B  C  D  E  F  G  H  I  J
+ 1  X  .  .  .  .  .  .  .  .  .     1  ?  ?  ?  ?  ?  ?  ?  ?  ?  ?
+ 2  X  .  .  .  .  .  .  .  .  X     2  ?  ?  ?  ?  X  ?  ?  ?  ?  ?
+ 3  #  .  .  .  .  .  .  .  .  X     3  ?  ?  ?  ?  X  ?  ?  ?  ?  ?
+ 4  .  .  .  .  .  .  .  .  .  X     4  ?  ?  ?  ?  X  ?  ?  ?  ?  ?
+ 5  .  .  .  .  .  .  .  .  .  #     5  ?  ?  ?  ?  ?  ?  ?  ?  ?  ?
+ 6  .  X  X  X  X  #  .  .  .  .     6  ?  ?  ?  ?  ?  ?  ?  ?  ?  ?
+ 7  .  .  .  .  .  .  .  .  .  .     7  ?  ?  ?  ?  ?  ?  ?  ?  ?  ?
+ 8  .  .  .  X  X  #  .  .  .  .     8  ?  ?  ?  ?  ?  ?  ?  ?  o  ?
+ 9  .  .  .  .  .  .  .  X  .  o     9  ?  ?  ?  ?  ?  ?  ?  ?  o  ?
+10  .  .  .  .  .  .  .  *  .  o    10  ?  ?  ?  ?  ?  ?  ?  ?  ?  o
+Ký hiệu: CV/BB/CR/SB/DD = tàu mình; . = nước; ? = chưa bắn đối thủ.
+o = trượt; X = trúng; # = phát làm chìm; * = phát thắng. Ô X cũ giữ nguyên.     
+Người chơi 2 thắng: đã chìm toàn bộ tàu đối thủ. Bạn thua. Trận đấu đã kết thúc.
+
