@@ -35,3 +35,21 @@ Ví dụ cú pháp dòng để nhóm xem xét: `FIRE B7` và `PLACE CV=A1:H;BB=A
 Sau `Hit` hoặc `Sunk`, `Turn` vẫn là **người vừa bắn**. Sau `Miss`, `Turn` là **đối thủ**. Nếu `Win`, gửi `GameOver` và không phát thêm `Turn`.
 
 Server chỉ gửi sự kiện và góc nhìn riêng `viewFor`; không serialize nguyên `GameState` ra TCP. C và D cần chốt cách encode các thông báo trên trong S-01 và lưu một transcript mẫu để test hai phía.
+
+## Ánh xạ kiểu A-01
+
+Các `Event` trong `Types` là sự kiện nội bộ, cần định tuyến trước khi encode:
+
+| Event nội bộ | Ánh xạ thông báo logic |
+|---|---|
+| `FleetAccepted player` | Gửi `Waiting` cho người đó nếu trạng thái mới còn `Placing` |
+| `GameStarted P1` | Gửi `Start P1` cho cả hai; thông báo lượt qua `TurnReady P1` |
+| `ShotResolved shooter coord outcome` | `ShotResult` cho shooter; `IncomingShot` cho người còn lại |
+| `TurnReady player` | Gửi `Turn player` cho cả hai, kể cả khi người bắn giữ lượt |
+| `GameEnded winner reason` | Gửi `GameOver winner reason` cho các kết nối còn hoạt động |
+
+`Welcome` do Server tạo khi gán socket. `Error` do Coordinator tạo từ `Left GameError`, chỉ gửi cho người gây lỗi. Hai thông báo này không phải sự kiện thành công của `step`.
+
+Khi bắt đầu, Rules trả các sự kiện `FleetAccepted`, `GameStarted P1`, `TurnReady P1` theo thứ tự. Phát bắn chưa thắng trả `ShotResolved` rồi `TurnReady`; phát bắn thắng trả `ShotResolved ... Win` rồi `GameEnded ... AllShipsSunk`, không có `TurnReady`. `Quit` và ngắt kết nối kết thúc với `OpponentLeft` khi trận chưa kết thúc.
+
+Tên constructor `Carrier/Battleship/Cruiser/Submarine/Destroyer` tương ứng `CV/BB/CR/SB/DD`; `Horizontal/Vertical` tương ứng `H/V`. `Show` phục vụ debug nội bộ, không phải bộ encode giao thức và không dùng để gửi `GameState` cho client.

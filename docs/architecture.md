@@ -1,6 +1,6 @@
 # Kiến trúc điều phối Battleship
 
-Phạm vi: một server, hai client terminal, một trận. Server giữ trạng thái duy nhất; các module `Board`, `Rules` và `View` là hàm thuần. Các file `.hs` hiện còn trống; sơ đồ dưới đây là hợp đồng triển khai dự kiến.
+Phạm vi: một server, hai client terminal, một trận. Server giữ trạng thái duy nhất; các module `Board`, `Rules` và `View` là hàm thuần. A-01 đã định nghĩa kiểu và hợp đồng hàm trong `Types.hs`; các bước xử lý dưới đây được triển khai ở các task tiếp theo.
 
 ```mermaid
 flowchart LR
@@ -44,4 +44,33 @@ flowchart LR
 | `Protocol.hs`, `Client.hs` | D | Parse/encode và giao diện terminal |
 | `docs/` | R | Luật, kiến trúc, báo cáo, minh chứng |
 
-Chữ ký hàm lõi dự kiến: `step :: PlayerId -> Command -> GameState -> Either GameError (GameState, [Event])` và `viewFor :: PlayerId -> GameState -> PlayerView`. Chốt kiểu chi tiết ở S-01. Client không nhận `GameState` thô hoặc tàu đối thủ chưa lộ.
+## Hợp đồng A-01 để A/B/C/D review
+
+Các chữ ký đầy đủ đã công bố trong Haddock của `src/Battleship/Types.hs`:
+
+```haskell
+-- A-02: Battleship.Board
+placeFleet :: FleetPlacement -> Either GameError Fleet
+
+-- B: Battleship.Rules
+step :: PlayerId -> Command -> GameState
+     -> Either GameError (GameState, [Event])
+
+-- B: Battleship.View
+viewFor :: PlayerId -> GameState -> PlayerView
+```
+
+`Types` xuất type alias `PlaceFleetFn`, `Step`, `ViewFor` tương ứng. Khi viết cài đặt có thể dùng `placeFleet :: PlaceFleetFn`, `step :: Step`, `viewFor :: ViewFor`. A-01 công bố hợp đồng; chưa tạo các hàm nghiệp vụ giả hoặc cài đặt luật trong `Main`.
+
+- `Coord` dùng cột/hàng bắt đầu từ 1; `A1 = Coord 1 1`, `J10 = Coord 10 10`. Giá trị ngoài bàn vẫn biểu diễn được để trả `InvalidCoordinate`; A-02/Rules phải kiểm tra trước khi dùng.
+- `ShipPlacement` gồm ID, điểm đầu, hướng; độ dài lấy từ `shipLength`, không nhận độ dài tự chọn. `FleetPlacement` là danh sách để không mất tàu trùng ID trước bước kiểm tra.
+- `Fleet` là `Map ShipId (Set Coord)` sau khi A-02 kiểm tra đủ năm tàu, đúng độ dài/hình dạng, trong bàn, không chồng. Cho phép chạm cạnh/góc như R-01. Constructor mở cho các module/fixture, không tự bảo đảm các bất biến nghiệp vụ.
+- `PlayerState` giữ `Maybe Fleet` và lịch sử bắn vào đối thủ `Map Coord Outcome`. `Nothing` nghĩa là chưa đặt tàu; chỉ `Right fleet` của `placeFleet` được gắn bằng `Just`. Các ô bị đối thủ bắn trên bàn mình lấy từ lịch sử của người kia, tránh lưu hai bản dữ liệu có thể lệch nhau.
+- `GameState` luôn có `gamePlayer1`, `gamePlayer2`, `gamePhase`. `setPlayerState` chỉ thay một record, không kiểm tra luật/chuyển giai đoạn. `Turn` đòi hỏi cả hai đội tàu đã hợp lệ; `Finished winner AllShipsSunk` không có lượt tiếp theo. `Finished winner OpponentLeft` cũng có thể xảy ra khi đang đặt tàu.
+- `Left GameError` không trả trạng thái mới: C giữ nguyên toàn bộ trạng thái cũ, chỉ báo lỗi cho người gửi. `Right` trả trạng thái/sự kiện mới. Rules chọn thứ tự kiểm tra lỗi; A-01 chưa chốt ưu tiên nếu một lệnh mắc nhiều lỗi.
+- C truyền `PlayerId` của socket vào `step`; D không parse danh tính trong `Command`. C chuyển ngắt kết nối bất thường thành `Quit` của người đó. Sau khi kết thúc, Rules từ chối mọi lệnh bằng `GameAlreadyFinished`.
+- `PlayerView` có fleet của chính người nhận, lịch sử bắn ra/bắn vào, phase và readiness của đối thủ. Không có field fleet đối thủ. B phải kiểm tra `ownFleetView` lấy đúng người; A-01 chưa chứng minh cài đặt `viewFor` lọc bí mật đúng.
+
+Luật R-01 giữ nguyên: đủ hai đội tàu thì `Turn P1`; `Miss` đổi lượt, `Hit`/`Sunk` giữ lượt; `Win` kết thúc ngay. Các kiểm thử chuyển trạng thái, kiểm tra đội tàu và lọc bí mật thuộc A-02/B; test A-01 chỉ kiểm tra kiểu, hằng số và helper thuần đã có.
+
+Trạng thái review: A-01 đã có hợp đồng để B/C/D đối chiếu; chưa có xác nhận review của các thành viên.

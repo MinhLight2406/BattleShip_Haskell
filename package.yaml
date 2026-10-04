@@ -20,6 +20,8 @@ dependencies:
 
 library:
   source-dirs: src
+  dependencies:
+    - containers
   exposed-modules:
     - Battleship.Board
     - Battleship.Client
@@ -68,6 +70,7 @@ tests:
       - battleship-haskell
       - hspec
       - process
+      - containers
     ghc-options:
       - -Wall
       - -threaded

@@ -6,10 +6,12 @@ import qualified IntegrationSpec
 import qualified ProtocolSpec
 import qualified RulesSpec
 import Test.Hspec (hspec)
+import qualified TypesSpec
 import qualified ViewSpec
 
 main :: IO ()
 main = hspec $ do
+  TypesSpec.spec
   BoardSpec.spec
   RulesSpec.spec
   ViewSpec.spec
