@@ -1,0 +1,96 @@
+spec-version: 0.36.0
+name: battleship-haskell
+version: 0.1.0.0
+synopsis: Two-player Battleship over TCP
+description: Please see the README.md file for the project specification.
+category: Game
+github: MinhLight2406/BattleShip_Haskell
+author: BattleShip Haskell team
+maintainer: MinhLight2406
+license: AllRightsReserved
+
+extra-source-files:
+  - README.md
+  - docs/*.md
+
+data-files:
+  - docs/protocol.md
+
+language: Haskell2010
+
+dependencies:
+  - base >= 4.18 && < 5
+
+library:
+  source-dirs: src
+  dependencies:
+    - containers
+    - network
+    - bytestring
+    - async
+  exposed-modules:
+    - Battleship.Board
+    - Battleship.Client
+    - Battleship.Coordinator
+    - Battleship.Protocol
+    - Battleship.Rules
+    - Battleship.Server
+    - Battleship.Types
+    - Battleship.View
+  other-modules:
+    - Battleship.Internal.Fleet
+  ghc-options:
+    - -Wall
+
+executables:
+  battleship-server:
+    main: ServerMain.hs
+    source-dirs: app
+    other-modules: []
+    dependencies:
+      - battleship-haskell
+      - network
+    ghc-options:
+      - -Wall
+      - -threaded
+      - -rtsopts
+      - -with-rtsopts=-N
+
+  battleship-client:
+    main: ClientMain.hs
+    source-dirs: app
+    other-modules: []
+    dependencies:
+      - battleship-haskell
+      - network
+      - bytestring
+    ghc-options:
+      - -Wall
+      - -threaded
+      - -rtsopts
+      - -with-rtsopts=-N
+
+tests:
+  battleship-test:
+    main: Spec.hs
+    source-dirs: test
+    generated-other-modules:
+      - Paths_battleship_haskell
+    build-tools:
+      - battleship-haskell:battleship-server
+      - battleship-haskell:battleship-client
+    dependencies:
+      - battleship-haskell
+      - hspec
+      - process
+      - containers
+      - bytestring
+      - directory
+      - filepath
+      - network >= 3.2.9 && < 3.3
+      - async
+    ghc-options:
+      - -Wall
+      - -threaded
+      - -rtsopts
+      - -with-rtsopts=-N
