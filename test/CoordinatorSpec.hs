@@ -5,20 +5,28 @@ import Battleship.Protocol
 import qualified Battleship.Rules as Rules
 import Battleship.Server (runServerWith)
 import Battleship.Types
-import Control.Concurrent.Async (Async, mapConcurrently_, race, wait, withAsync)
+import Control.Concurrent.Async (Async, mapConcurrently, mapConcurrently_, race, wait, withAsync)
 import Control.Concurrent.MVar (newEmptyMVar, putMVar, readMVar)
-import Control.Exception (SomeException)
+import Control.Concurrent.STM
+import Control.Exception (AssertionFailed (..), SomeException)
 import Control.Monad (foldM, forM_)
 import qualified Data.ByteString.Char8 as BSC
 import qualified Data.Map.Strict as Map
 import Data.List (isInfixOf, sort)
-import Network.Socket (PortNumber, ShutdownCmd (ShutdownSend), Socket, shutdown, withSocketsDo)
+import Network.Socket (PortNumber, ShutdownCmd (ShutdownSend), Socket, close, shutdown, withSocketsDo)
 import Network.Socket.ByteString (sendAll)
 import ServerSpec (await, expectClosed, expectLine, readLine, withClient, withServer)
-import Test.Hspec (Spec, describe, expectationFailure, it, shouldBe, shouldThrow)
+import Test.Hspec (Spec, anyException, describe, expectationFailure, it, shouldBe, shouldReturn, shouldSatisfy, shouldThrow)
 
 spec :: Spec
-spec = describe "C-03 Coordinator" $ do
+spec = do
+  c03Spec
+  c04Spec
+  c05Spec
+  c06Spec
+
+c03Spec :: Spec
+c03Spec = describe "C-03 Coordinator" $ do
   describe "pure command boundary" $ do
     forM_ [("UNKNOWN", BadCommand), ("", BadCommand), ("P2 FIRE A1", BadCommand),
            ("FIRE", BadCommand), ("FIRE K1", BadCoordinate), ("FIRE A01", BadCoordinate),
@@ -192,6 +200,345 @@ spec = describe "C-03 Coordinator" $ do
         shutdown second ShutdownSend
         expectFinal first second "P2" "ALL_SHIPS_SUNK" server
 
+c04Spec :: Spec
+c04Spec = describe "C-04 atomic STM coordinator" $ do
+  it "starts with one authoritative state and two empty independent outboxes" $ do
+    coordinator <- atomically (newCoordinator readyState)
+    atomically (snapshot coordinator) `shouldReturn` (readyState, [], [])
+
+  it "rejects malformed input without calling step, changing state or notifying the opponent" $
+    forM_ [("UNKNOWN", "ERROR INVALID_COMMAND\n"), ("FIRE K1", "ERROR INVALID_COORDINATE\n"),
+           (replicate 257 'X', "ERROR LINE_TOO_LONG\n")] $ \(payload, reply) -> do
+      coordinator <- atomically (newCoordinator readyState)
+      atomically (submitPayload unusedCore coordinator P2 (b payload)) `shouldReturn` Right True
+      atomically (snapshot coordinator) `shouldReturn` (readyState, [], [Just (b reply)])
+
+  forM_ [P1, P2] $ \actor ->
+    it ("keeps all state and emits only " ++ show actor ++ "'s error on rule rejection") $ do
+      coordinator <- atomically (newCoordinator readyState)
+      let command = if actor == P1 then Fire (Coord 0 1) else Fire (Coord 10 10)
+          reply = Just (b (if actor == P1 then "ERROR INVALID_COORDINATE\n" else "ERROR NOT_YOUR_TURN P1\n"))
+      atomically (submitCommand Rules.step coordinator actor command) `shouldReturn` Right True
+      atomically (snapshot coordinator) `shouldReturn`
+        (readyState, [reply | actor == P1], [reply | actor == P2])
+
+  it "commits simultaneous placements with exactly one START and one waiting reply" $ do
+    coordinator <- atomically (newCoordinator initialGameState)
+    concurrentlySubmit coordinator [(P1, PlaceFleet (placements 1)), (P2, PlaceFleet (placements 6))]
+      `shouldReturn` [Right True, Right True]
+    (state, first, second) <- atomically (snapshot coordinator)
+    state `shouldBe` readyState
+    forM_ [first, second] $ \frames -> do
+      length (filter (== Just (b "OK PLACE\n")) frames) `shouldBe` 1
+      length (filter (== Just (b "START P1\n")) frames) `shouldBe` 1
+      length (filter (== Just (b "TURN P1\n")) frames) `shouldBe` 1
+    length (filter (== Just (b "WAITING OPPONENT\n")) (first ++ second)) `shouldBe` 1
+    take 1 first `shouldBe` [Just (b "OK PLACE\n")]
+    take 1 second `shouldBe` [Just (b "OK PLACE\n")]
+
+  it "never accepts two distinct Miss shots against the same old P1 turn (50 races)" $
+    forM_ [1 :: Int .. 50] $ \_ -> do
+      coordinator <- atomically (newCoordinator readyState)
+      concurrentlySubmit coordinator [(P1, Fire (Coord 10 10)), (P1, Fire (Coord 10 9))]
+        `shouldReturn` [Right True, Right True]
+      actual@(state, first, _) <- atomically (snapshot coordinator)
+      Map.size (playerShots (gamePlayer1 state)) `shouldBe` 1
+      gamePhase state `shouldBe` Turn P2
+      last first `shouldBe` Just (b "ERROR NOT_YOUR_TURN P2\n")
+      actual `shouldSatisfy` (`elem` serialSnapshots [(P1, Fire (Coord 10 10)), (P1, Fire (Coord 10 9))])
+
+  it "serializes competing P1/P2 misses according to the newly committed turn (50 races)" $
+    forM_ [1 :: Int .. 50] $ \_ -> do
+      coordinator <- atomically (newCoordinator readyState)
+      let commands = [(P1, Fire (Coord 10 10)), (P2, Fire (Coord 10 9))]
+      concurrentlySubmit coordinator commands `shouldReturn` [Right True, Right True]
+      actual <- atomically (snapshot coordinator)
+      actual `shouldSatisfy` (`elem` serialSnapshots commands)
+
+  it "keeps both hits on a retained turn without losing state or interleaving event batches (50 races)" $
+    forM_ [1 :: Int .. 50] $ \_ -> do
+      coordinator <- atomically (newCoordinator readyState)
+      let commands = [(P1, Fire (Coord 1 6)), (P1, Fire (Coord 2 6))]
+      concurrentlySubmit coordinator commands `shouldReturn` [Right True, Right True]
+      actual@(state, _, _) <- atomically (snapshot coordinator)
+      playerShots (gamePlayer1 state) `shouldBe` Map.fromList [(Coord 1 6, Hit), (Coord 2 6, Hit)]
+      actual `shouldSatisfy` (`elem` serialSnapshots commands)
+
+  it "records a concurrent duplicate hit once and then sends AlreadyFired (50 races)" $
+    forM_ [1 :: Int .. 50] $ \_ -> do
+      coordinator <- atomically (newCoordinator readyState)
+      let commands = [(P1, Fire (Coord 1 6)), (P1, Fire (Coord 1 6))]
+      concurrentlySubmit coordinator commands `shouldReturn` [Right True, Right True]
+      actual@(state, _, _) <- atomically (snapshot coordinator)
+      playerShots (gamePlayer1 state) `shouldBe` Map.singleton (Coord 1 6) Hit
+      actual `shouldSatisfy` (`elem` serialSnapshots commands)
+
+  it "enqueues one consistent GAME_OVER and FIFO end markers for simultaneous Quit (50 races)" $
+    forM_ [1 :: Int .. 50] $ \_ -> do
+      coordinator <- atomically (newCoordinator readyState)
+      concurrentlySubmit coordinator [(P1, Quit), (P2, Quit)] `shouldReturn` [Right False, Right False]
+      (state, first, second) <- atomically (snapshot coordinator)
+      let winner = case gamePhase state of Finished player OpponentLeft -> player; _ -> error "Quit did not finish"
+      first `shouldBe` [Just (b ("GAME_OVER " ++ show winner ++ " OPPONENT_LEFT\n")), Nothing]
+      second `shouldBe` first
+      atomically (submitCommand Rules.step coordinator winner Quit) `shouldReturn` Right False
+      atomically (snapshot coordinator) `shouldReturn` (state, [], [])
+
+  forM_ [P1, P2] $ \actor ->
+    it ("commits " ++ show actor ++ "'s last ship cell, WIN/GAME_OVER and closure together") $ do
+      let before = nearWin actor
+          (almost, _) = either (error . show) id (Rules.step actor (Fire (Coord 2 10)) before)
+          (finished, _) = either (error . show) id (Rules.step actor (Fire (Coord 5 6)) almost)
+          outgoing = [Just (b "SHOT E6 WIN\n"), Just (b ("GAME_OVER " ++ show actor ++ " ALL_SHIPS_SUNK\n")), Nothing]
+          incoming = [Just (b "INCOMING E6 WIN\n"), Just (b ("GAME_OVER " ++ show actor ++ " ALL_SHIPS_SUNK\n")), Nothing]
+      coordinator <- atomically (newCoordinator almost)
+      atomically (submitPayload Rules.step coordinator actor (b "FIRE E6")) `shouldReturn` Right False
+      atomically (snapshot coordinator) `shouldReturn`
+        (finished, if actor == P1 then outgoing else incoming, if actor == P2 then outgoing else incoming)
+      atomically (welcomePlayer coordinator (otherPlayer actor)) `shouldReturn` Right False
+      atomically (submitCommand Rules.step coordinator (otherPlayer actor) Quit) `shouldReturn` Right False
+      atomically (snapshot coordinator) `shouldReturn` (finished, [], [])
+
+  it "does not commit state or a partial batch when encoding a core event fails" $ do
+    coordinator <- atomically (newCoordinator readyState)
+    atomically (submitCommand badEventStub coordinator P1 (Fire (Coord 1 6))) `shouldReturn` Left InvalidCoordinateToken
+    atomically (snapshot coordinator) `shouldReturn` (readyState, [], [])
+
+  it "does not commit an unencodable rule error" $ do
+    coordinator <- atomically (newCoordinator readyState)
+    atomically (submitCommand (\_ _ _ -> Left (InvalidFleetSize 257)) coordinator P1 Quit) `shouldReturn` Left InvalidMessage
+    atomically (snapshot coordinator) `shouldReturn` (readyState, [], [])
+
+  it "rolls back both state and outboxes when the enclosing transaction throws" $ do
+    coordinator <- atomically (newCoordinator readyState)
+    (atomically (submitCommand Rules.step coordinator P1 (Fire (Coord 1 6)) >> throwSTM (AssertionFailed "rollback")) :: IO ())
+      `shouldThrow` anyException
+    atomically (snapshot coordinator) `shouldReturn` (readyState, [], [])
+
+  it "rolls back speculative state and frames on retry/orElse" $ do
+    coordinator <- atomically (newCoordinator readyState)
+    atomically ((submitCommand Rules.step coordinator P1 (Fire (Coord 1 6)) >> retry) `orElse` pure ())
+    atomically (snapshot coordinator) `shouldReturn` (readyState, [], [])
+
+  it "puts WELCOME first at admission and clears only that absent player's older frames" $ do
+    coordinator <- atomically (newCoordinator readyState)
+    atomically (submitCommand Rules.step coordinator P1 (Fire (Coord 10 10))) `shouldReturn` Right True
+    atomically (welcomePlayer coordinator P2) `shouldReturn` Right True
+    let (after, _) = either (error . show) id (Rules.step P1 (Fire (Coord 10 10)) readyState)
+    atomically (snapshot coordinator) `shouldReturn`
+      (after, map (Just . b) ["SHOT J10 MISS\n", "TURN P2\n"], [Just (b "WELCOME 1 P2\n")])
+
+  it "queues LINE_TOO_LONG before Quit's terminal response without changing state on the error" $ do
+    coordinator <- atomically (newCoordinator readyState)
+    atomically (submitTooLong coordinator P1) `shouldReturn` Right True
+    atomically (readGameState coordinator) `shouldReturn` readyState
+    atomically (submitCommand Rules.step coordinator P1 Quit) `shouldReturn` Right False
+    let (finished, _) = either (error . show) id (Rules.step P1 Quit readyState)
+    atomically (snapshot coordinator) `shouldReturn`
+      (finished, [Just (b "ERROR LINE_TOO_LONG\n"), Just (b "GAME_OVER P2 OPPONENT_LEFT\n"), Nothing],
+                 [Just (b "GAME_OVER P2 OPPONENT_LEFT\n"), Nothing])
+
+  it "can commit another command while neither recipient drains its queue" $ do
+    coordinator <- atomically (newCoordinator readyState)
+    forM_ [1 :: Int .. 100] $ \_ ->
+      atomically (submitPayload Rules.step coordinator P2 (b "FIRE J10")) `shouldReturn` Right True
+    await "C-04 commit without socket writer" (atomically (submitPayload Rules.step coordinator P1 (b "FIRE A6")))
+      `shouldReturn` Right True
+    state <- atomically (readGameState coordinator)
+    playerShots (gamePlayer1 state) `shouldBe` Map.singleton (Coord 1 6) Hit
+
+c05Spec :: Spec
+c05Spec = describe "C-05 recipient queues and terminal delivery" $ do
+  forM_ [P1, P2] $ \early ->
+    it ("keeps " ++ show early ++ "'s fleet private and delivers the exact start batch to each player") $ do
+      coordinator <- atomically (newCoordinator initialGameState)
+      let late = otherPlayer early
+          row actor = if actor == P1 then 1 else 6
+          ownQueue actor frames = if actor == P1 then (frames, []) else ([], frames)
+          (earlyFrames, otherFrames) = ownQueue early (map (Just . b) ["OK PLACE\n", "WAITING OPPONENT\n"])
+          placed = fixture (fst <$> Rules.step early (PlaceFleet (placements (row early))) initialGameState)
+      atomically (submitCommand Rules.step coordinator early (PlaceFleet (placements (row early)))) `shouldReturn` Right True
+      atomically (snapshot coordinator) `shouldReturn` (placed, earlyFrames, otherFrames)
+      atomically (submitCommand Rules.step coordinator late (PlaceFleet (placements (row late)))) `shouldReturn` Right True
+      (state, first, second) <- atomically (snapshot coordinator)
+      state `shouldBe` readyState
+      forM_ [(P1, first), (P2, second)] $ \(recipient, frames) ->
+        frames `shouldBe` map (Just . b) (["OK PLACE\n" | recipient == late] ++ ["START P1\n", "TURN P1\n"])
+
+  forM_ [P1, P2] $ \actor ->
+    it ("sends SHOT only to " ++ show actor ++ " and INCOMING only to its opponent") $ do
+      let initial = if actor == P1 then readyState
+            else fixture (fst <$> Rules.step P1 (Fire (Coord 10 10)) readyState)
+          position = if actor == P1 then Coord 1 6 else Coord 1 1
+          token = if actor == P1 then "A6" else "A1"
+          expected = fixture (fst <$> Rules.step actor (Fire position) initial)
+      coordinator <- atomically (newCoordinator initial)
+      atomically (submitCommand Rules.step coordinator actor (Fire position)) `shouldReturn` Right True
+      (state, first, second) <- atomically (snapshot coordinator)
+      state `shouldBe` expected
+      forM_ [(P1, first), (P2, second)] $ \(recipient, frames) ->
+        frames `shouldBe` map (Just . b)
+          [(if recipient == actor then "SHOT " else "INCOMING ") ++ token ++ " HIT\n", "TURN " ++ show actor ++ "\n"]
+
+  forM_ [P1, P2] $ \departing ->
+    forM_ [("unplaced", initialGameState), ("waiting", fixture (fst <$> Rules.step (otherPlayer departing)
+            (PlaceFleet (placements 1)) initialGameState)), ("playing", readyState)] $ \(stage, initial) ->
+      it ("ends once for " ++ show departing ++ " leaving during " ++ stage ++ " without later frames") $ do
+        coordinator <- atomically (newCoordinator initial)
+        atomically (submitCommand Rules.step coordinator departing Quit) `shouldReturn` Right False
+        let winner = otherPlayer departing
+            expected = initial { gamePhase = Finished winner OpponentLeft }
+            frames = [Just (b ("GAME_OVER " ++ show winner ++ " OPPONENT_LEFT\n")), Nothing]
+        atomically (snapshot coordinator) `shouldReturn` (expected, frames, frames)
+        -- EOF finalizers, failed writers and buffered commands can all arrive
+        -- after the first terminal transaction. They cannot rewrite the winner
+        -- or append frames behind an end marker that a writer has consumed.
+        forM_ [P1, P2] $ \actor -> do
+          atomically (submitCommand Rules.step coordinator actor Quit) `shouldReturn` Right False
+          atomically (submitPayload Rules.step coordinator actor (b "FIRE J10")) `shouldReturn` Right False
+          atomically (submitTooLong coordinator actor) `shouldReturn` Right False
+          atomically (welcomePlayer coordinator actor) `shouldReturn` Right False
+        atomically (snapshot coordinator) `shouldReturn` (expected, [], [])
+
+c06Spec :: Spec
+c06Spec = describe "C-06 concurrent shots and disconnects" $ do
+  forM_ [P1, P2] $ \current -> do
+    it (show current ++ " alone commits a Hit against the other player's concurrent shot (100 STM races)") $
+      forM_ [1 :: Int .. 100] $ \_ -> do
+        let before = if current == P1 then readyState
+              else fixture (fst <$> Rules.step P1 (Fire (Coord 10 10)) readyState)
+            position = if current == P1 then Coord 1 6 else Coord 1 1
+            token = if current == P1 then "A6" else "A1"
+            forbidden = otherPlayer current
+            forbiddenPosition = if current == P1 then Coord 1 1 else Coord 1 6
+            shooter = playerStateFor current before
+            expected = setPlayerState current
+              (shooter { playerShots = Map.insert position Hit (playerShots shooter) }) before
+            allowedFrames = map (Just . b) ["SHOT " ++ token ++ " HIT\n", "TURN " ++ show current ++ "\n"]
+            incoming = map (Just . b) ["INCOMING " ++ token ++ " HIT\n", "TURN " ++ show current ++ "\n"]
+            rejected = Just (b ("ERROR NOT_YOUR_TURN " ++ show current ++ "\n"))
+            possibilities = [(expected, if current == P1 then allowedFrames else peerFrames,
+                               if current == P2 then allowedFrames else peerFrames)
+                            | peerFrames <- [rejected : incoming, incoming ++ [rejected]]]
+        coordinator <- atomically (newCoordinator before)
+        concurrentlySubmit coordinator [(current, Fire position), (forbidden, Fire forbiddenPosition)]
+          `shouldReturn` [Right True, Right True]
+        actual <- atomically (snapshot coordinator)
+        actual `shouldSatisfy` (`elem` possibilities)
+
+    it (show current ++ " alone fires over TCP, and the rejected shot remains unfired (20 sessions)") $
+      forM_ [1 :: Int .. 20] $ \_ ->
+        withServer $ \port server -> withPair port $ \first second -> do
+          startMatch first second
+          if current == P2 then do
+            send first "FIRE J10\n"
+            expectLine first "SHOT J10 MISS"
+            expectLine second "INCOMING J10 MISS"
+            expectTurns first second "P2"
+          else pure ()
+          let (shooter, peer, target, peerTarget) = if current == P1
+                then (first, second, "A6", "A1") else (second, first, "A1", "A6")
+              errorLine = "ERROR NOT_YOUR_TURN " ++ show current
+          _ <- await "C-06 gated TCP sends" $ concurrentlyAtGate
+            [send shooter ("FIRE " ++ target ++ "\n"), send peer ("FIRE " ++ peerTarget ++ "\n")]
+          expectLine shooter ("SHOT " ++ target ++ " HIT")
+          expectLine shooter ("TURN " ++ show current)
+          replies <- sequence [readLine peer, readLine peer, readLine peer]
+          replies `shouldSatisfy` (`elem` map (map b)
+            [[errorLine, "INCOMING " ++ target ++ " HIT", "TURN " ++ show current],
+             ["INCOMING " ++ target ++ " HIT", "TURN " ++ show current, errorLine]])
+          -- Hit retains the turn. A later Miss deliberately releases it;
+          -- the rejected coordinate must now produce a first Hit, not a repeat.
+          send shooter "FIRE J9\n"
+          expectLine shooter "SHOT J9 MISS"
+          expectLine peer "INCOMING J9 MISS"
+          expectTurns first second (show (otherPlayer current))
+          send peer ("FIRE " ++ peerTarget ++ "\n")
+          expectLine peer ("SHOT " ++ peerTarget ++ " HIT")
+          expectLine shooter ("INCOMING " ++ peerTarget ++ " HIT")
+          expectTurns first second (show (otherPlayer current))
+          send peer "QUIT\n"
+          expectFinal first second (show current) "OPPONENT_LEFT" server
+
+  forM_ [P1, P2] $ \departing ->
+    forM_ [False, True] $ \playing ->
+      forM_ [False, True] $ \hardClose ->
+        it (show departing ++ " leaves " ++ (if playing then "midgame" else "after placing while waiting") ++
+            (if hardClose then " by close" else " by EOF") ++ " without hanging (5 sessions)") $
+          forM_ [1 :: Int .. 5] $ \_ ->
+            withServer $ \port server -> withPair port $ \first second -> do
+              let (leaver, survivor) = if departing == P1 then (first, second) else (second, first)
+              if playing then do
+                startMatch first second
+                send first "FIRE A6\n"
+                expectLine first "SHOT A6 HIT"
+                expectLine second "INCOMING A6 HIT"
+                expectTurns first second "P1"
+              else do
+                send leaver ((if departing == P1 then place1 else place2) ++ "\n")
+                expectLine leaver "OK PLACE"
+                expectLine leaver "WAITING OPPONENT"
+              if hardClose then close leaver else shutdown leaver ShutdownSend
+              expectLine survivor ("GAME_OVER " ++ show (otherPlayer departing) ++ " OPPONENT_LEFT")
+              expectClosed survivor
+              if hardClose then pure () else do
+                expectLine leaver ("GAME_OVER " ++ show (otherPlayer departing) ++ " OPPONENT_LEFT")
+                expectClosed leaver
+              await "C-06 server joins workers and closes listener" (wait server)
+
+startMatch :: Socket -> Socket -> IO ()
+startMatch first second = do
+  send first (place1 ++ "\n")
+  expectLine first "OK PLACE"
+  expectLine first "WAITING OPPONENT"
+  send second (place2 ++ "\n")
+  expectLine second "OK PLACE"
+  forM_ [first, second] $ \connection -> do
+    expectLine connection "START P1"
+    expectLine connection "TURN P1"
+
+-- Both workers reach the gate before it opens. No external gameplay lock is
+-- introduced: only STM serializes submissions, and network IO stays outside it.
+concurrentlySubmit :: Coordinator -> [(PlayerId, Command)] -> IO [Either ProtocolError Bool]
+concurrentlySubmit coordinator commands = concurrentlyAtGate
+  [atomically (submitCommand Rules.step coordinator actor command) | (actor, command) <- commands]
+
+concurrentlyAtGate :: [IO a] -> IO [a]
+concurrentlyAtGate actions = do
+  gate <- newEmptyTMVarIO
+  started <- newTVarIO (0 :: Int)
+  let worker action = do
+        atomically (modifyTVar' started (+ 1))
+        atomically (readTMVar gate)
+        action
+  withAsync (mapConcurrently worker actions) $ \workers -> do
+    await "concurrent workers reached gate" $ atomically $ do
+      count <- readTVar started
+      check (count == length actions)
+      putTMVar gate ()
+    await "concurrent actions completed" (wait workers)
+
+type Snapshot = (GameState, [Maybe BSC.ByteString], [Maybe BSC.ByteString])
+
+snapshot :: Coordinator -> STM Snapshot
+snapshot coordinator = (,,) <$> readGameState coordinator <*> drain P1 <*> drain P2
+  where
+    drain player = do
+      queued <- (Just <$> nextFrame coordinator player) `orElse` pure Nothing
+      case queued of
+        Nothing -> pure []
+        Just frameValue -> (frameValue :) <$> drain player
+
+serialSnapshots :: [(PlayerId, Command)] -> [Snapshot]
+serialSnapshots commands = map simulate [commands, reverse commands]
+  where
+    simulate order = case foldM (\(state, previous) (actor, command) -> do
+      (next, frames) <- applyCommand Rules.step actor command state
+      pure (next, previous ++ frames)) (readyState, []) order of
+        Left fault -> error (show fault)
+        Right (state, frames) -> (state, recipient P1 frames, recipient P2 frames)
+    recipient player frames = [Just bytes | (actor, bytes) <- frames, actor == player]
+
 -- Test doubles emit distinctive outcomes to identify the injected core. They
 -- do not detect hits/sunk/victory. Production always uses Rules.step.
 unusedCore :: Step
@@ -228,8 +575,9 @@ nearWin :: PlayerId -> GameState
 nearWin actor = fixture $ do
   (first, _) <- Rules.step P1 (PlaceFleet (placements 6)) initialGameState
   (ready, _) <- Rules.step P2 (PlaceFleet (placements 6)) first
+  active <- if actor == P1 then pure ready else fst <$> Rules.step P1 (Fire (Coord 10 10)) ready
   foldM (\state position -> fst <$> Rules.step actor (Fire position) state)
-    (ready { gamePhase = Turn actor })
+    active
     [Coord column row | (row, width) <- [(6, 5), (7, 4), (8, 3), (9, 3), (10, 2)],
                        column <- [1 .. width], Coord column row `notElem` [Coord 2 10, Coord 5 6]]
 

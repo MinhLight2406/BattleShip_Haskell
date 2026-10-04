@@ -1,0 +1,24 @@
+{
+  "clean": {
+    "command": "stack clean",
+    "exitCode": 0
+  },
+  "build": {
+    "command": "stack build --ghc-options=-Werror",
+    "exitCode": 0
+  },
+  "test": {
+    "command": "stack test --ghc-options=-Werror",
+    "exitCode": 0,
+    "examples": 794,
+    "failures": 0,
+    "seconds": 56.6764
+  },
+  "demo": {
+    "port": 58267,
+    "runtime": "Windows PowerShell, real PTY consoles",
+    "baseHead": "4eea8b544a4da77995d451a137dd98b8f0a574c3",
+    "branch": "Luong_nhap_gui_dat_tau",
+    "signoffs": "Pending; no human signoffs supplied"
+  }
+}

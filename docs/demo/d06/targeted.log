@@ -1,0 +1,15 @@
+battleship-haskell> test (suite: battleship-test, args: --match D-06)
+
+
+D-06 three production executables driven by output
+  repairs errors, changes turns and lets P2 win a new mixed fleet game without an input script [v]
+  stops the server when the first real client closes while waiting for the second [v]
+  P1 closes midgame; the other interactive process sees victory and exits [v]
+  P2 closes midgame; the other interactive process sees victory and exits [v]
+
+Finished in 0.6240 seconds
+4 examples, 0 failures
+
+
+
+battleship-haskell> Test suite battleship-test passed

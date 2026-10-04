@@ -12,15 +12,20 @@ import Data.List (sort)
 import Foreign.Marshal.Alloc (allocaBytes)
 import Network.Socket
   ( Family (AF_INET), PortNumber, ShutdownCmd (ShutdownBoth, ShutdownSend),
-    SockAddr (SockAddrInet), Socket, SocketType (Stream), close, connect,
-    defaultProtocol, recvBufNoWait, shutdown, socket, tupleToHostAddress, withSocketsDo )
+    SockAddr (SockAddrInet), Socket, SocketOption (RecvBuffer), SocketType (Stream), close, connect,
+    defaultProtocol, recvBufNoWait, setSocketOption, shutdown, socket, tupleToHostAddress, withSocketsDo )
 import Network.Socket.ByteString (recv, sendAll)
 import System.Timeout (timeout)
 import Test.Hspec
   ( Expectation, Spec, describe, it, shouldBe, shouldSatisfy )
 
 spec :: Spec
-spec = describe "C-02 TCP server" $ do
+spec = do
+  c02Spec
+  c05Spec
+
+c02Spec :: Spec
+c02Spec = describe "C-02 TCP server" $ do
   it "welcomes an idle first client as P1 and the next as P2" $
     withServer $ \port _ -> withPair port $ \_ _ -> pure ()
 
@@ -180,6 +185,108 @@ spec = describe "C-02 TCP server" $ do
       result <- await "occupied port failure" (try (runServer port (const (pure ()))))
         :: IO (Either IOException ())
       result `shouldSatisfy` either (const True) (const False)
+
+c05Spec :: Spec
+c05Spec = describe "C-05 private delivery and disconnect cleanup" $ do
+  forM_ ["P1", "P2"] $ \earlier ->
+    it (earlier ++ " alone receives placement acknowledgement/waiting; both receive START exactly once") $
+      withServer $ \port server -> withPair port $ \first second -> do
+        let (early, late) = if earlier == "P1" then (first, second) else (second, first)
+        placeAndWait early (if earlier == "P1" then 1 else 6)
+        expectNoData late
+        sendText early "FIRE J10\n"
+        expectLine early "ERROR FLEETS_NOT_READY"
+        expectNoData late
+        sendText late (placementLine (if earlier == "P1" then 6 else 1))
+        expectLine late "OK PLACE"
+        forM_ [first, second] $ \connection -> do
+          expectLine connection "START P1"
+          expectLine connection "TURN P1"
+        -- The next frame proves no private PLACE/error or duplicate START
+        -- was queued ahead of this public shot result.
+        sendText first "FIRE A6\n"
+        expectLine first "SHOT A6 HIT"
+        expectLine second "INCOMING A6 HIT"
+        forM_ [first, second] $ \connection -> expectLine connection "TURN P1"
+        quitAndWait first [first, second] "P2" server
+
+  forM_ ["P1", "P2"] $ \actor ->
+    forM_ ["unplaced", "waiting", "playing"] $ \stage ->
+      forM_ ["EOF", "close", "partial EOF"] $ \ending ->
+        it (actor ++ " leaving via " ++ ending ++ " during " ++ stage ++ " announces the right winner and releases the port") $
+          withServer $ \port server -> withPair port $ \first second -> do
+            let (departing, survivor, winner) = if actor == "P1" then (first, second, "P2") else (second, first, "P1")
+            case stage of
+              "waiting" -> placeAndWait survivor (if winner == "P1" then 1 else 6)
+              "playing" -> do
+                placeAndWait first 1
+                sendText second (placementLine 6)
+                expectLine second "OK PLACE"
+                forM_ [first, second] $ \connection -> do
+                  expectLine connection "START P1"
+                  expectLine connection "TURN P1"
+                sendText first "FIRE A6\n"
+                expectLine first "SHOT A6 HIT"
+                expectLine second "INCOMING A6 HIT"
+                forM_ [first, second] $ \connection -> expectLine connection "TURN P1"
+              _ -> pure ()
+            case ending of
+              "close" -> close departing
+              "partial EOF" -> sendText departing "FIRE A" >> shutdown departing ShutdownSend
+              _ -> shutdown departing ShutdownSend
+            expectEnd [survivor] winner
+            if ending == "close" then pure () else expectEnd [departing] winner
+            await "C-05 server exits after disconnect" (wait server)
+            expectCanRestart port
+
+  forM_ [False, True] $ \placed ->
+    it ("EOF before P2 connects does not leave accept blocked; fleet placed = " ++ show placed) $
+      withServer $ \port server -> withClient port $ \first -> do
+        expectLine first "WELCOME 1 P1"
+        if placed then placeAndWait first 1 else pure ()
+        shutdown first ShutdownSend
+        expectEnd [first] "P2"
+        await "C-05 exit while waiting for second connection" (wait server)
+        expectCanRestart port
+
+  it "stops and releases the listener when both sockets disappear together (20 races)" $
+    forM_ [1 :: Int .. 20] $ \_ ->
+      withServer $ \port server -> withPair port $ \first second -> do
+        void (mapConcurrently close [first, second])
+        await "C-05 simultaneous disconnect exit" (wait server)
+        expectCanRestart port
+
+  it "disconnects a client that stops reading without blocking the opponent or server shutdown" $
+    withServer $ \port server -> withPair port $ \first second -> do
+      -- Keep P1's socket open, stop receiving after WELCOME and force its send
+      -- window to fill with actor-only errors. No Quit/EOF is sent by the test:
+      -- the server's failed-send watchdog must end this session itself.
+      setSocketOption first RecvBuffer 4096
+      void (awaitSocket "C-05 slow reader flood" first
+        (try (sendText first (concat (replicate 50000 "UNKNOWN\n"))) :: IO (Either IOException ())))
+      expectEnd [second] "P2"
+      await "C-05 exit after stalled writer" (wait server)
+      expectCanRestart port
+
+  it "delivers GAME_OVER before EOF even with unread commands following Quit (10 sessions)" $
+    forM_ [1 :: Int .. 10] $ \_ ->
+      withServer $ \port server -> withPair port $ \first second -> do
+        -- Much more than one recv chunk: closing with the remainder unread
+        -- can reset TCP and discard the final response on Windows.
+        void (try (sendText first (concat (replicate 2000 "QUIT\n"))) :: IO (Either IOException ()))
+        expectEnd [first, second] "P2"
+        await "C-05 exit after pipelined terminal command" (wait server)
+
+placementLine :: Int -> String
+placementLine row = "PLACE " ++ concat
+  [ (if offset == 0 then "" else ";") ++ ship ++ "=A" ++ show (row + offset) ++ ":H"
+  | (ship, offset) <- zip ["CV", "BB", "CR", "SB", "DD"] [0 :: Int ..] ] ++ "\n"
+
+placeAndWait :: Socket -> Int -> IO ()
+placeAndWait connection row = do
+  sendText connection (placementLine row)
+  expectLine connection "OK PLACE"
+  expectLine connection "WAITING OPPONENT"
 
 quitReadFailure :: String -> IOException -> IO a
 quitReadFailure stage exception = ioError (userError ("C-02 simultaneous QUIT " ++ stage ++ ": " ++ show exception))

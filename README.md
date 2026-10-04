@@ -1,12 +1,48 @@
 # BattleShip Haskell
 
-Dự án Battleship cho hai người chơi, dự kiến chạy bằng hai client terminal kết nối đến một server TCP. Server giữ trạng thái trận đấu; luật chơi được triển khai bằng các hàm thuần Haskell.
+Dự án Battleship cho hai người chơi bằng hai client terminal kết nối đến một server TCP. Server giữ trạng thái trận đấu; luật chơi được triển khai bằng các hàm thuần Haskell.
 
-**Trạng thái hiện tại:** đã có C-01, A-01, D-01, Board A-02/A-03, Rules B-01/B-02, server C-02, codec/client D-02, Coordinator C-03 và nhập đặt tàu D-03. Server thực thi PLACE/FIRE/QUIT qua Rules thật; MVar bảo vệ trạng thái và phản hồi. Client hướng dẫn nhập/sửa năm tàu, xem trước bàn của mình, xác nhận rồi gửi PLACE và giữ kết nối nhận thông báo. `viewFor`, nhập nước bắn/render diễn biến hai bàn và STM/queue writer chưa triển khai.
+**Trạng thái hiện tại:** đã có C-01, A-01, D-01, Board A-02/A-03/A-04, Rules B-01/B-02/B-04, View B-03, server C-02/C-05, codec/client D-02, Coordinator C-03/C-04 và client tương tác D-03/D-04/D-05. Server thực thi PLACE/FIRE/QUIT qua Rules thật; một TVar giữ GameState, STM commit trạng thái/phản hồi cùng lúc và hai writer gửi từ TQueue riêng. Client hướng dẫn nhập/sửa năm tàu, nhập bắn theo lượt, cập nhật hai bàn từ dữ liệu riêng tư và hiển thị kết quả đến thắng/thua.
 
 **S-01:** bản hợp đồng chung v2 cập nhật A-02 ở [docs/shared_contract.md](docs/shared_contract.md). Chưa khóa mốc vì còn chờ xác nhận A/B/C/D; việc ẩn constructor Fleet, chủ sở hữu file và quy trình thay đổi được ghi tại đó.
 
+**S-02:** nghiệm thu kỹ thuật lõi thuần và kịch bản 25 lệnh ở [docs/report_final.md](docs/report_final.md); còn chờ A/B xác nhận. Fixture chơi hợp lệ trong test lõi được dựng qua `Rules.step` thật.
+
+**S-03:** đã build sạch, chạy 794 test xanh và chơi trọn trận với hai terminal/lõi thật; [hồ sơ và log demo](docs/s03_acceptance.md). Còn chờ xác nhận A/B/C/D và R; một vấn đề trình bày nhỏ được ghi tại [task Đợt 9](docs/round9_fixes.md).
+
+**S-04:** A-05/B-05/C-06/D-06 đã được kiểm tra kỹ thuật; [hồ sơ chốt tính năng](docs/s04_feature_freeze.md) ghi bản mã, build/test và lỗi còn lại. Sau commit chốt chỉ sửa lỗi, test và tài liệu; không thêm GUI, AI, nhiều phòng hoặc lưu trận. Còn chờ nhóm xác nhận cùng commit để chọn bản báo cáo.
+
 ## Build và test
+
+### Nghiệm thu đầu cuối D-06 từ checkout sạch
+
+Để dùng bản chốt S-04, clone repository vào thư mục mới và checkout SHA của commit chốt ghi trong [hồ sơ S-04](docs/s04_feature_freeze.md), rồi chạy `stack build` và `stack test`. Không lấy HEAD mới hơn làm bản báo cáo nếu nhóm chưa duyệt revision đó.
+
+Bundle `docs/demo/d06/source.bundle` giữ nguyên snapshot được nghiệm thu D-06 trước khi tạo commit chốt; dùng nó để tái hiện đúng log lịch sử. Từ repository có file bundle, clone vào một thư mục mới (đích phải chưa tồn tại):
+
+```sh
+git clone docs/demo/d06/source.bundle .stack-work/d06-replay
+cd .stack-work/d06-replay
+git status --porcelain
+stack build
+stack test
+stack test --ghc-options=-Werror --test-arguments="--match D-06"
+```
+
+`git status --porcelain` phải rỗng trước build; clone không mang `.stack-work` hoặc binary từ bản gốc. Snapshot dùng đúng cấu hình compiler/dependency bên dưới; cache GHC/dependency của Stack có thể được dùng lại. Bundle không phải chữ ký nhóm và SHA snapshot D-06 khác SHA commit chốt S-04.
+
+Sau build, mở ba terminal **cùng tại thư mục checkout vừa tạo**, mỗi terminal chạy một lệnh:
+
+```sh
+# Terminal 1
+stack exec battleship-server -- 4000
+# Terminal 2: đặt tàu và GUI trước để được P1
+stack exec battleship-client -- 4000
+# Terminal 3
+stack exec battleship-client -- --play 4000
+```
+
+Nếu port 4000 đang dùng, chọn port khác cho cả ba. Nhập từng tàu theo prompt, xem preview rồi `GUI`; client chưa kết nối khi chưa xác nhận. Chỉ bắn khi hiện lượt của mình. [Kịch bản D-06](docs/d06_demo.md) có đội tàu mới, lệnh lỗi, thắng và cách thử đóng client; có cả bước tự chọn input khác và quyết định từ phản hồi. Test D-06 chạy ba executable production, đọc prompt trước từng input, không nạp sẵn cả transcript vào stdin. Log thực tế và thông tin snapshot nằm ở `docs/demo/d06/`.
 
 Cài Git và Stack (đã kiểm tra với Stack 3.11.1). Cấu hình dùng snapshot LTS 24.59, tương ứng GHC 9.10.3. Stack dùng GHC phù hợp có sẵn trên PATH hoặc cài compiler cần thiết. Lần chạy đầu cần Internet để tải compiler/phụ thuộc.
 
@@ -17,7 +53,7 @@ stack build
 stack test
 ```
 
-`stack build` biên dịch thư viện và hai executable. `stack test` chạy Types/Board/Rules, Protocol/Client, hợp đồng S-01, Server C-02, Coordinator C-03, executable và smoke test C-01. Test TCP dùng port do OS cấp, gồm cả stub và Rules production; ProtocolSpec kiểm tra các transcript trong tài liệu. Windows Application Control chặn executable sẽ khiến smoke test thất bại.
+`stack build` biên dịch thư viện và hai executable. `stack test` chạy Types/Board/Rules/View, Protocol/Client, hợp đồng S-01, Server C-02, Coordinator C-03/C-04, executable và smoke test C-01. Test TCP dùng port do OS cấp, gồm cả stub và Rules production; ProtocolSpec kiểm tra các transcript trong tài liệu. Windows Application Control chặn executable sẽ khiến smoke test thất bại.
 
 Chạy riêng hợp đồng giao thức:
 
@@ -58,6 +94,22 @@ stack test --ghc-options=-Werror --test-arguments="--match B-02"
 
 `step :: Step` có đủ nhánh Command/Phase. FIRE kiểm tra readiness → lượt → tọa độ → bắn lặp; sai trả Left và không tiêu lượt. FIRE hợp lệ ghi đúng một tọa độ/kết quả vào `playerShots` của người bắn; `shotsReceived opponent state` đọc chính lịch sử đó cho bàn đối thủ, không lưu bản sao thứ hai. Miss đổi lượt; Hit/Sunk giữ lượt; trúng toàn bộ ô tàu trả Win và Finished. Sự kiện là ShotResolved rồi TurnReady hoặc GameEnded, không có TURN sau WIN. C-03 kiểm chứng Coordinator giữ state cũ khi Left qua unit test và TCP thật.
 
+Chạy riêng nghiệm thu S-02 (26 test, không mở socket/server trong các test này):
+
+```sh
+stack test --ghc-options=-Werror --test-arguments="--match S-02"
+```
+
+Stack vẫn biên dịch các build-tools của package. Kịch bản gọi trực tiếp `step` từ trạng thái rỗng, kiểm tra đặt tàu/chờ/trượt/trúng/chìm/thắng và giữ trạng thái khi lệnh sai; bảng sự kiện cùng lệnh biên dịch riêng lõi chỉ với `base`/`containers` có trong báo cáo.
+
+Chạy riêng góc nhìn và lọc bí mật B-03:
+
+```sh
+stack test --ghc-options=-Werror --test-arguments="--match B-03"
+```
+
+`View.viewFor` trả fleet của chính người nhận, lịch sử bắn ra/bắn vào, phase và readiness của đối thủ. Không trả fleet đối thủ hoặc tự lộ tàu khi kết thúc. Test kiểm tra P1/P2, 72 bố trí đối thủ, mọi tọa độ chưa bị bắn, cùng tọa độ trên hai bàn và toàn ván đến thắng. Wire v1 tiếp tục gửi sự kiện đã lọc qua Coordinator/Protocol, không gửi snapshot PlayerView hay serialize GameState.
+
 Thử hàm thuần bằng `stack ghci battleship-haskell:lib`:
 
 ```haskell
@@ -89,7 +141,15 @@ fmap (Map.size . shotsReceived P2 . fst) game -- Right 17
 fmap (take 1 . reverse . snd) game -- batch cuối gồm ShotResolved ... Win, GameEnded P1 AllShipsSunk
 ```
 
-## Chạy và kiểm tra server C-02/C-03
+## Cập nhật nguyên tử C-04
+
+```sh
+stack test --ghc-options=-Werror --test-arguments="--match C-04"
+```
+
+Coordinator giữ một TVar GameState và hai TQueue cho P1/P2. Mỗi submit đọc state, gọi step, encode/lọc và ghi state + toàn bộ batch vào queue trong cùng atomically; lệnh lỗi chỉ xếp phản hồi actor-only, không ghi state. Writer riêng lấy frame từ queue và gửi socket ngoài giao dịch. GAME_OVER nằm trước marker kết thúc; server chờ mọi writer đã được admission drain xong rồi đóng. MVar chỉ giữ registry/cleanup, không giữ bản sao GameState. Test gồm 250 cuộc đua có barrier, rollback lỗi/retry, FIFO và commit khi queue chưa được đọc.
+
+## Chạy và kiểm tra server C-02/C-03/C-04
 
 Khởi chạy server trong terminal thứ nhất (mặc định port 4000):
 
@@ -147,10 +207,63 @@ A5 H
 
 Tọa độ nằm trong A1..J10. Tàu không được vượt mép/chồng lên nhau, được chạm cạnh. Sai input sẽ báo lỗi và hỏi lại chính tàu đó. Đủ năm tàu thì hiện bàn 10×10: CV/BB/CR/SB/DD là ô tàu của mình, dấu chấm là ô trống. `SUA CV` (hoặc BB/CR/SB/DD) sửa một tàu rồi xem lại; ví dụ đổi CV thành `A6 V`. `GUI` xác nhận và gửi **một** PLACE đã kiểm tra; `HUY` hoặc EOF trước GUI hủy mà không kết nối/gửi gì.
 
-Client chỉ kết nối sau GUI; P1/P2 được gán theo thứ tự kết nối đó, không theo thứ tự mở terminal. Sau OK PLACE, giữ socket để nhận WAITING/START/TURN/INCOMING/GAME_OVER. Nhập tại terminal và chờ đối thủ sau OK không chịu timeout 10 giây; connect/handshake/đợi OK vẫn có deadline. Ctrl+C rời trận và đóng socket. Chế độ này chưa nhập nước bắn; task sau bổ sung chơi tương tác. Bản xem trước chỉ lấy fleet của mình, không yêu cầu dữ liệu bí mật của đối thủ.
+Client chỉ kết nối sau GUI; P1/P2 được gán theo thứ tự kết nối đó, không theo thứ tự mở terminal. Sau OK PLACE, giữ socket để nhận WAITING/START/TURN/INCOMING/GAME_OVER và chơi D-04 bên dưới. Nhập tại terminal và chờ đối thủ sau OK không chịu timeout 10 giây; connect/handshake/đợi OK vẫn có deadline. Ctrl+C rời trận và đóng socket. Bản xem trước chỉ lấy fleet của mình, không yêu cầu dữ liệu bí mật của đối thủ.
 
 ```sh
 stack test --ghc-options=-Werror --test-arguments="--match D-03"
+```
+
+## Bắn và theo dõi lượt D-04
+
+Dùng hai terminal `stack exec battleship-client -- --place 4000` như trên. Sau GUI, làm theo thông báo:
+
+| Thông báo/giai đoạn | Việc tiếp theo |
+|---|---|
+| Đang chờ đối thủ đặt tàu | Giữ kết nối, chưa bắn; Ctrl+C để rời trận |
+| Đến lượt bạn bắn | Nhập `A1` hoặc `FIRE A1`, rồi Enter; `QUIT` để rời trận |
+| Lỗi tọa độ/cú pháp/bắn lặp | Nhập lại; lỗi địa phương không gửi lệnh và không mất lượt |
+| Đã gửi phát bắn | Chờ server trả SHOT và TURN/GAME_OVER; không gửi phát thứ hai trước phản hồi |
+| Trượt / lượt đối thủ | Chờ; INCOMING mô tả nước bắn vào bàn mình |
+| Trúng / chìm | Đọc kết quả; chỉ nhập tiếp khi server thông báo đến lượt bạn |
+| Bạn thắng / bạn thua | Trận đã kết thúc, client đóng kết nối; khởi động server lại để chơi ván mới |
+
+Chấp nhận chữ thường/khoảng trắng: `fire j10` gửi `FIRE J10`; Backspace xóa ký tự nhập sai. Dòng ASCII quá 256 ký tự bị từ chối; client nhớ các ô đã bắn thành công để báo bắn lặp tại chỗ. Server vẫn quyết định luật/kết quả và kiểm tra tất cả lệnh. Khi đang nhập dở, thông báo kết thúc vẫn được đọc và hiển thị; không phải nhấn Enter mới biết đối thủ đã rời trận. EOF lúc được hỏi bắn gửi QUIT; lúc đang chờ, dùng Ctrl+C để rời trận.
+
+```sh
+stack test --ghc-options=-Werror --test-arguments="--match D-04"
+```
+
+## Chơi trọn trận và xem hai bàn D-05
+
+Mở ba terminal: một server và hai người chơi.
+
+```sh
+# Terminal server
+stack exec battleship-server -- 4000
+# Terminal người chơi thứ nhất
+stack exec battleship-client -- 4000
+# Terminal người chơi thứ hai
+stack exec battleship-client -- --play 4000
+```
+
+Mỗi người nhập năm tàu theo hướng dẫn (`A1 H`, ...), xem trước rồi chọn `GUI`. Khi được báo đến lượt, chỉ nhập tọa độ như `A6`; client tự tạo thông điệp giao thức. Không cần tự viết PLACE/FIRE hoặc mã P1/P2. `--place [PORT]` vẫn chơi đầy đủ như các ví dụ cũ; chạy client không tham số dùng cổng 4000.
+
+Sau xác nhận đặt tàu, client in hai bàn cạnh nhau và cập nhật sau mỗi phát bắn đã nhận từ server:
+
+| Ký hiệu | Ý nghĩa |
+|---|---|
+| CV/BB/CR/SB/DD | Ô tàu của mình chưa bị bắn |
+| `.` | Nước trên bàn mình |
+| `?` | Ô đối thủ chưa bắn, vẫn được giấu cả sau kết thúc |
+| `o` | Phát bắn trượt |
+| `X` | Phát bắn trúng |
+| `#` | Phát bắn làm chìm một tàu |
+| `*` | Phát bắn thắng trận |
+
+`#` chỉ đánh dấu ô của phát bắn làm chìm; các ô trúng trước đó giữ `X`. Client không suy đoán các ô còn lại của tàu đối thủ từ mã SUNK. Kết quả thắng/thua được in cuối cùng sau hai bàn cuối. Hướng dẫn nhập, sửa sai, chờ lượt và rời trận ở phần D-03/D-04 vẫn áp dụng.
+
+```sh
+stack test --ghc-options=-Werror --test-arguments="--match D-05"
 ```
 
 ## Client một lệnh D-02
@@ -164,11 +277,11 @@ stack exec battleship-client -- 4000 "PLACE CV=A1:H;BB=A2:H;CR=A3:H;SB=A4:H;DD=A
 stack exec battleship-client -- --help
 ```
 
-Có thể bỏ PORT để dùng 4000, ví dụ `stack exec battleship-client -- "QUIT"`. Chế độ một lệnh nhận WELCOME, gửi đúng một lệnh, hiển thị UTF-8 rồi đóng socket sau phản hồi, khiến session kết thúc. Dùng để kiểm tra nhanh; dùng `--place` ở trên để đặt tàu có hướng dẫn và giữ kết nối. Lệnh thiếu tham số/tọa độ sai bị từ chối trước khi kết nối. Chưa có vòng nhập nước bắn cho trọn ván tương tác.
+Có thể bỏ PORT để dùng 4000, ví dụ `stack exec battleship-client -- "QUIT"`. Chế độ một lệnh nhận WELCOME, gửi đúng một lệnh, hiển thị UTF-8 rồi đóng socket sau phản hồi, khiến session kết thúc. Dùng để kiểm tra nhanh; dùng `--place` ở trên để đặt tàu và chơi trọn ván theo hướng dẫn. Lệnh thiếu tham số/tọa độ sai bị từ chối trước khi kết nối.
 
 `package.yaml` là nguồn cấu hình package; file `.cabal` được Stack/Hpack sinh tự động. Giữ `stack.yaml.lock` trong Git để chia sẻ cùng snapshot.
 
-`Types` dùng `containers` cho `Map`/`Set`; C-02/D-02 dùng `network` cho TCP, `bytestring` cho framing/codec theo byte, `async` cho vòng đời worker và deadline. Hai Main dùng PortNumber từ `network`; ClientMain dùng `bytestring` để đưa lệnh CLI vào parser. Test suite dùng Hspec, `network`/`async` để kiểm tra TCP thật, `process` để khởi chạy executable và `directory`/`filepath` để đối chiếu cây nguồn S-01 trên Windows/Linux. `docs/protocol.md` là data file để test đọc đúng tài liệu qua module Cabal tự sinh `Paths_battleship_haskell`. `stm` sẽ được thêm khi Coordinator thực sự sử dụng; chưa cần thêm QuickCheck hoặc text.
+`Types` dùng `containers` cho `Map`/`Set`; C-02/D-02 dùng `network` cho TCP, `bytestring` cho framing/codec theo byte, `async` cho vòng đời worker và deadline. C-04 dùng `stm` cho TVar/TQueue/atomically trong library và test; D-04 dùng queue cho Response đọc từ mạng. D-04 khai báo `Win32` chỉ khi `os(windows)`, dùng binding console sẵn trong GHC để nhận sự kiện khi đang nhập dở; CPP bỏ import/cài đặt Win32 trên nền tảng khác. Hai Main dùng PortNumber từ `network`; ClientMain dùng `bytestring` để đưa lệnh CLI vào parser. Test suite dùng Hspec, `network`/`async` để kiểm tra TCP thật, `process` để khởi chạy executable và `directory`/`filepath` để đối chiếu cây nguồn S-01 trên Windows/Linux. `docs/protocol.md` là data file để test đọc đúng tài liệu qua module Cabal tự sinh `Paths_battleship_haskell`. Chưa cần thêm QuickCheck hoặc text.
 
 Thành viên A/B/D lấy nhánh nền đã chứa C-01 bằng `git fetch origin` và checkout/pull nhánh được nhóm thống nhất, rồi chạy hai lệnh trên trước khi thêm mã của mình.
 
@@ -192,4 +305,4 @@ Luật đầy đủ ở [docs/game_spec.md](docs/game_spec.md). Sơ đồ hoạt
 | D | `Protocol.hs`, `Client.hs`, `ClientMain.hs`, test giao thức và tích hợp |
 | R | `docs/`, báo cáo, minh chứng kiểm thử và demo |
 
-Trước khi tích hợp nghiệp vụ tiếp theo, cả nhóm review và ghi xác nhận S-01 v2 tại [docs/shared_contract.md](docs/shared_contract.md), gồm các cập nhật đến D-03. Phân công chi tiết gồm cả Main, test và YAML nằm ở đó. Board/Types, Rules, Coordinator/server, codec và nhập đặt tàu đã có cài đặt; nhập nước bắn, STM/queue writer và góc nhìn tiếp tục theo task tương ứng.
+Trước khi tích hợp nghiệp vụ tiếp theo, cả nhóm review và ghi xác nhận S-01 v2 tại [docs/shared_contract.md](docs/shared_contract.md), gồm các cập nhật đến B-03/C-04. Phân công chi tiết gồm cả Main, test và YAML nằm ở đó. Board/Types, Rules/View, Coordinator/server STM, codec và client đặt tàu/bắn/render diễn biến trận đã có cài đặt; đối chiếu hồ sơ S-03 và các task sửa Đợt 9 trước khi chốt nghiệm thu nhóm.

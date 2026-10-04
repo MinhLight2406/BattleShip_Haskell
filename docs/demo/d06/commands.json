@@ -1,0 +1,33 @@
+{
+  "Demo": {
+    "Winner": "P2",
+    "Port": 49754,
+    "ExitCodes": {
+      "P2": 0,
+      "Server": 0,
+      "P1": 0
+    },
+    "Runtime": "Three real PTY consoles; input based on observed output; clean snapshot checkout"
+  },
+  "Build": {
+    "Command": "stack build",
+    "ExitCode": 0
+  },
+  "Targeted": {
+    "Command": "stack test --ghc-options=-Werror --test-arguments=\"--match D-06\"",
+    "Environment": "clean snapshot checkout",
+    "Seconds": 0.624,
+    "Examples": 4,
+    "Failures": 0,
+    "ExitCode": 0
+  },
+  "Test": {
+    "Command": "stack test",
+    "Examples": 815,
+    "Seconds": 74.6259,
+    "ExitCode": 0,
+    "Failures": 0
+  },
+  "PostRunClean": true,
+  "SourceFilesUnchanged": 57
+}

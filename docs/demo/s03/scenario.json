@@ -1,0 +1,22 @@
+{
+  "purpose": "Planned inputs and expected results; not a captured TCP transcript",
+  "player1FleetInput": ["J10 H", "J1 V", "I7 V", "A1 H", "A3 V", "H6 H", "GUI"],
+  "player2FleetInput": ["E10 H", "A7 V", "B1 V", "D4 H", "I1 V", "GUI"],
+  "turnBlocks": [
+    {"player": "P1", "input": ["K1", "J10"], "expected": ["local invalid coordinate, no shot", "Miss -> P2"]},
+    {"player": "P2", "input": ["J10"], "expected": ["Miss -> P1"]},
+    {"player": "P1", "input": ["B1", "B1", "J9"], "expected": ["Hit -> P1", "local repeated shot, no shot", "Miss -> P2"]},
+    {"player": "P2", "input": ["J1", "H10"], "expected": ["Hit -> P2", "Miss -> P1"]},
+    {"player": "P1", "input": ["I1", "J8"], "expected": ["Hit -> P1", "Miss -> P2"]},
+    {"player": "P2", "input": ["A1", "H9"], "expected": ["Hit -> P2", "Miss -> P1"]},
+    {"player": "P1", "input": ["E10", "F10", "G10", "H10", "I10", "A7", "A8", "A9", "A10", "B2", "B3", "D4", "E4", "F4", "I2"], "expected": ["17 total enemy cells hit, four Sunk events, last I2 Win -> P1"]}
+  ],
+  "expectedFinal": {
+    "winner": "P1",
+    "player1Shots": 20,
+    "player1Miss": 3,
+    "player2Shots": 5,
+    "player2Miss": 3,
+    "player2UnshotEnemyFleetCells": 15
+  }
+}

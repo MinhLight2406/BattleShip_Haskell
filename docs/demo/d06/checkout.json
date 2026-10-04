@@ -1,0 +1,10 @@
+{
+  "UTC": "2026-10-04T20:46:34.6252849Z",
+  "Snapshot": "68418d6d00368ce5f182f4a1e11289ffcdf03311",
+  "NoBuildArtifacts": true,
+  "Files": 57,
+  "Clean": true,
+  "BundleSHA256": "86BD210ABE54FE4C4B284D8CD8EA22315DCAB54972C36EFF7CE04C5C8A4530BD",
+  "BaseHEAD": "4eea8b544a4da77995d451a137dd98b8f0a574c3",
+  "Checkout": "C:\\Users\\nhatm\\Downloads\\Laa\\Project\\BattleShip_Haskell\\.stack-work\\d06-validation-20261005\\checkout"
+}

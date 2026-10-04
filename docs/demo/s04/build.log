@@ -1,0 +1,29 @@
+battleship-haskell-0.1.0.0: unregistering (local file changes: README.md battleship-haskell.cabal
+docs\d06_demo.md docs\s04_feature_freeze.md docs\test_evidence...)
+battleship-haskell> configure (lib + exe)
+Configuring battleship-haskell-0.1.0.0...
+battleship-haskell> build (lib + exe) with ghc-9.10.3
+Preprocessing library for battleship-haskell-0.1.0.0...
+Building library for battleship-haskell-0.1.0.0...
+[1 of 9] Compiling Battleship.Internal.Fleet
+[2 of 9] Compiling Battleship.Types
+[3 of 9] Compiling Battleship.Protocol
+[4 of 9] Compiling Battleship.Coordinator
+[5 of 9] Compiling Battleship.Board
+[6 of 9] Compiling Battleship.Rules
+[7 of 9] Compiling Battleship.Server
+[8 of 9] Compiling Battleship.Client
+[9 of 9] Compiling Battleship.View
+Preprocessing executable 'battleship-server' for battleship-haskell-0.1.0.0...
+Building executable 'battleship-server' for battleship-haskell-0.1.0.0...
+[1 of 1] Compiling Main
+[2 of 2] Linking C:\\Users\\nhatm\\Downloads\\Laa\\Project\\BattleShip_Haskell\\.stack-work\\dist\\1a191874\\build\\battleship-server\\battleship-server.exe [Objects changed]
+Preprocessing executable 'battleship-client' for battleship-haskell-0.1.0.0...
+Building executable 'battleship-client' for battleship-haskell-0.1.0.0...
+[1 of 1] Compiling Main
+[2 of 2] Linking C:\\Users\\nhatm\\Downloads\\Laa\\Project\\BattleShip_Haskell\\.stack-work\\dist\\1a191874\\build\\battleship-client\\battleship-client.exe [Objects changed]
+battleship-haskell> copy/register
+Installing library in C:\Users\nhatm\Downloads\Laa\Project\BattleShip_Haskell\.stack-work\install\f817aa4e\lib\x86_64-windows-ghc-9.10.3-b42a\battleship-haskell-0.1.0.0-Kn4CpLDqOcFHy5v83JG85L
+Installing executable battleship-server in C:\Users\nhatm\Downloads\Laa\Project\BattleShip_Haskell\.stack-work\install\f817aa4e\bin
+Installing executable battleship-client in C:\Users\nhatm\Downloads\Laa\Project\BattleShip_Haskell\.stack-work\install\f817aa4e\bin
+Registering library for battleship-haskell-0.1.0.0...
