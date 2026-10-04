@@ -62,6 +62,8 @@ executables:
     other-modules: []
     dependencies:
       - battleship-haskell
+      - network
+      - bytestring
     ghc-options:
       - -Wall
       - -threaded

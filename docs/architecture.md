@@ -1,6 +1,6 @@
 # Kiến trúc điều phối Battleship
 
-Phạm vi: một server, hai client terminal, một trận. Server giữ trạng thái duy nhất; các module `Board`, `Rules` và `View` là hàm thuần. Types A-01, Board A-02, khung step B-01 và transport C-02 đã có cài đặt; luồng điều phối nghiệp vụ, kết quả bắn và góc nhìn được triển khai ở các task tiếp theo. Sơ đồ STM dưới đây là kiến trúc đích, chưa phải cài đặt C-02.
+Phạm vi: một server, hai client terminal, một trận. Server giữ trạng thái duy nhất; các module `Board`, `Rules` và `View` là hàm thuần. Types A-01, Board A-02, khung step B-01, transport C-02 và codec/client một lệnh D-02 đã có cài đặt; luồng điều phối nghiệp vụ, kết quả bắn và góc nhìn được triển khai ở các task tiếp theo. Sơ đồ STM dưới đây là kiến trúc đích, chưa phải cài đặt C-02.
 
 ## Transport C-02 hiện tại
 
@@ -8,7 +8,13 @@ ServerMain đọc port rồi gọi `Server.runServer`; bind IPv4 loopback `127.0
 
 MVar bảo vệ hai danh tính/socket và cờ ended; welcome, lỗi và batch game-over được gửi dưới cùng khóa để không xen byte hoặc gửi kết thúc trước welcome. QUIT/EOF/lỗi socket/dòng quá dài chỉ tạo một batch GAME_OVER OPPONENT_LEFT, đánh dấu ended rồi đánh thức supervisor. Supervisor hủy acceptor/readers, bracket đóng các socket và listener; khi supervisor bị cancel cũng cleanup mà không tự gán người thắng mới.
 
-Framer giữ tối đa 258 byte (256 payload + CR + LF), xử lý frame hoàn chỉnh theo thứ tự, chấp nhận CRLF và bỏ tail thiếu LF ở EOF. C-02 chỉ xử lý QUIT; PLACE/FIRE và payload khác nhận mẫu ERROR INVALID_COMMAND, không gọi step hay tạo OK/SHOT. Writer dùng timeout 2 giây; đây là khóa write đơn giản cho demo hai người, chưa có các queue riêng hoặc STM GameState. Khi Protocol/Coordinator được triển khai, thay handleFrame mẫu và đưa write ra queue theo sơ đồ đích.
+Reader dùng `Protocol.feedFrames`, giữ buffer tối đa 256 byte hoặc 257 nếu cuối là CR chờ LF; mỗi recv lấy tối đa phần còn lại của frame 258 byte. Xử lý frame hoàn chỉnh theo thứ tự, chấp nhận CRLF và bỏ tail thiếu LF ở EOF. C-02 chỉ xử lý QUIT; PLACE/FIRE và payload khác nhận mẫu ERROR INVALID_COMMAND, không gọi step hay tạo OK/SHOT. Writer dùng timeout 2 giây; đây là khóa write đơn giản cho demo hai người, chưa có các queue riêng hoặc STM GameState. Khi Coordinator được triển khai, thay handleFrame mẫu bằng Protocol.parseCommand/Rules.step và đưa write ra queue theo sơ đồ đích.
+
+## Codec và client D-02 hiện tại
+
+Protocol là module thuần: parse payload thành Command/Response, encode thành frame LF, dùng Either để trả lỗi tường minh. Command/Coord dùng Types chung. Response khác Event vì ShotResolved tạo hai thông điệp có hai người nhận; WireError chỉ giữ dữ liệu xuất hiện trong grammar. `encodeEvent` nhận phase sau step để thêm WAITING đúng lúc; Coordinator tương lai lọc socket ngắt, giữ thứ tự và gọi encodeResponse cho lỗi người gửi. Không có serializer GameState hoặc fleet đối thủ.
+
+ClientMain đọc CLI và chuyển cho Client.runClient. Client dùng bracket quản lý socket, chờ WELCOME v1, gửi một lệnh đã encode, dùng framer/parser đọc phản hồi và chuyển Response cho callback hiển thị tiếng Việt. Kết thúc trên OK/SHOT tương ứng, ERROR hoặc GAME_OVER; có deadline 10 giây cho khung một lệnh, chưa phải client tương tác chờ lượt lâu. Windows dùng shutdown Both/close để đánh thức foreign IO và stdout/stderr UTF-8 để tránh lỗi in tiếng Việt. Codec được test bằng transcript và golden vectors; client được test với C-02 và peer có kịch bản, chưa nối trận thật theo sơ đồ sau.
 
 ```mermaid
 flowchart LR

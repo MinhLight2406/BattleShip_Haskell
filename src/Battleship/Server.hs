@@ -2,6 +2,7 @@
 module Battleship.Server (runServer) where
 
 import Battleship.Types (PlayerId (P1, P2), otherPlayer)
+import Battleship.Protocol (feedFrames, maxLineBytes)
 import Control.Concurrent (threadDelay)
 import Control.Concurrent.Async (link, race_, wait, withAsync)
 import Control.Concurrent.MVar
@@ -96,24 +97,17 @@ clientLeft lobby finished actor = modifyMVar_ lobby $ \state ->
     void (tryPutMVar finished ())
     pure state { ended = True }
 
--- A bounded stream framer, not a command parser. Read at most 258 bytes:
--- 256 payload + optional CR + LF. Consume complete frames before EOF, and
--- discard an unfinished tail. Nothing signals an overlong frame immediately.
+-- Reuse D-02 framing; C-02 keeps its sample command responses until Coordinator.
 readFrames :: Socket -> BS.ByteString -> (Maybe BS.ByteString -> IO Bool) -> IO ()
-readFrames connection buffer handle = case BS.elemIndex 10 buffer of
-  Just index -> do
-    let raw = BS.take index buffer
-        payload = if not (BS.null raw) && BS.last raw == 13 then BS.init raw else raw
-    if BS.length payload > 256 then void (handle Nothing)
-    else do
+readFrames connection pending handle = do
+  chunk <- recv connection (maxLineBytes + 2 - BS.length pending)
+  when (not (BS.null chunk)) $ consume (feedFrames pending chunk)
+  where
+    consume (payload : rest, next) = do
       keepReading <- handle (Just payload)
-      when keepReading $ readFrames connection (BS.drop (index + 1) buffer) handle
-  Nothing
-    | BS.length buffer > 256 && not (BS.length buffer == 257 && BS.last buffer == 13) ->
-        void (handle Nothing)
-    | otherwise -> do
-        chunk <- recv connection (258 - BS.length buffer)
-        when (not (BS.null chunk)) $ readFrames connection (buffer <> chunk) handle
+      when keepReading $ consume (rest, next)
+    consume ([], Left _) = void (handle Nothing)
+    consume ([], Right next) = readFrames connection next handle
 
 -- A peer that stops reading must not hold the lobby lock/shutdown forever.
 -- Only expected socket IO failures are absorbed; cancellation still propagates.

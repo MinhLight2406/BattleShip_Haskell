@@ -202,3 +202,41 @@ Các lỗi phát hiện và sửa trong vòng kiểm thử C-02:
 Network/bracket bám Chap11; MVar bám Chap5; withAsync/link/race/timeout bám Chap7. Send có watchdog/deadline 2 giây để giải phóng socket khi peer không đọc. Đây không phải benchmark hoặc kiểm thử tải/backpressure; các ca trên kiểm chứng lifecycle/framing của demo localhost hai người. Source tham khảo API chính thức: [network](https://hackage.haskell.org/package/network-3.2.9.0), [async](https://hackage.haskell.org/package/async/docs/Control-Concurrent-Async.html).
 
 **Giới hạn C-02:** server chỉ xử lý QUIT và transport, mọi payload khác trong giới hạn nhận mẫu ERROR INVALID_COMMAND. Chưa nối parser/encoder Protocol, Coordinator/STM, Rules.step hoặc viewFor; không phát OK PLACE/START/TURN/SHOT giả. R-01/Types/wire v1 không đổi; transcript đặt tàu/bắn D-01 vẫn là mục tiêu task tích hợp sau. README có hướng dẫn chạy server và hai terminal TCP PowerShell cùng terminal thứ ba.
+
+## D-02 — 2026-10-04
+
+Nhánh `Minh-Parser`, tách từ `Minh-Update_Server` tại `141a219690ecec94cb9cb2a6c6b7809896dafc7c`. Windows, Stack 3.11.1, LTS 24.59, GHC 9.10.3. S-01 tiếp tục chờ bốn xác nhận; người dùng yêu cầu thực hiện D-02, không ghi xác nhận thay thành viên.
+
+```text
+stack build
+  Thành công: library, battleship-server, battleship-client.
+
+stack test
+  450 examples, 0 failures
+
+stack test --ghc-options=-Werror
+  450 examples, 0 failures
+
+stack test --ghc-options=-Werror --test-arguments="--match D-02"
+  177 examples, 0 failures
+```
+
+| Nhóm D-02 | Số test | Phạm vi |
+|---|---:|---|
+| ProtocolSpec D-01/D-02 | 145 | Production parse/encode với grammar và golden vectors D-01; toàn bộ 100 tọa độ; lệnh thiếu/thừa tham số, ASCII/tọa độ/chiều sai; 120 hoán vị fleet; giữ entry trùng/thiếu; raw Coord cực trị; mọi Response/WireError/outcome/reason; count 0..256; định tuyến và thứ tự batch Event; LF/CRLF/chia/gộp/biên 256–257 byte; không mất frame hợp lệ trước lỗi; đọc và encode/parse các block transcript từ tài liệu |
+| ClientSpec | 22 | TCP thật với C-02: P1/P2, QUIT, PLACE/FIRE mẫu, SERVER_FULL, validate trước kết nối, callback lỗi/cleanup. Peer có kịch bản: handshake phân mảnh, một lệnh LF, PLACE chuẩn, async TURN/INCOMING trước SHOT, GAME_OVER, phiên bản/handshake sai, phản hồi sai/quá dài/non-ASCII, SHOT sai tọa độ, EOF và tail thiếu LF; hiển thị tiếng Việt |
+| IntegrationSpec D-02 | 10 | Tám CLI sai bị từ chối trước kết nối; executable gửi QUIT/FIRE vào C-02 thật, đọc tiếng Việt UTF-8 đúng, stderr rỗng, exit 0 và session đóng |
+
+ProtocolSpec đã bỏ grammar/encoder tham chiếu riêng trong test: các adapter chỉ chuyển String/ByteString, gọi API production và đọc fixture. Golden payload độc lập cùng transcript giúp bắt lỗi mà chỉ round-trip có thể bỏ sót. Tổng suite tăng từ 386 lên 450 test; các ca C-02 và S-01 vẫn đạt sau khi Server dùng framer chung và bổ sung chủ sở hữu ClientSpec. Hai smoke test C-01 nay dùng --help của cả hai executable.
+
+Các vấn đề xử lý trong D-02:
+
+- Protocol/Client trước đó chỉ là khung; chưa có codec production hoặc executable nói chuyện TCP. Đã cài đặt codec thuần và client một lệnh, Main chỉ xử lý CLI/hiển thị.
+- Test grammar tham chiếu chỉ kiểm chứng đặc tả, có thể xanh dù production chưa cài. Đã chuyển sang API production, thêm golden encoding, round-trip và TCP/executable tests.
+- Event nội bộ không khớp một-một với wire. Response/WireError riêng giữ đúng token/tham số; ShotResolved tạo SHOT/INCOMING, không dựng tọa độ giả cho lỗi không chứa tọa độ, không echo debug string.
+- TCP có thể phân mảnh/gộp frame. Dùng feedFrames chung với buffer có giới hạn, giữ frame hoàn chỉnh trước lỗi và không parse phần thiếu LF ở EOF. C-02 giữ handler mẫu, không thêm luật bắn vào server/client.
+- Hai test executable ban đầu thất bại vì Windows locale không encode được ký tự tiếng Việt (hPutChar/cannot encode character). Đã đặt stdout/stderr client UTF-8 và đọc pipe test UTF-8; cả hai case giao tiếp đạt, không đổi code page toàn máy.
+
+Căn cứ slide: ADT/pattern matching và Either cho lỗi tường minh; Chap8 tách module codec thuần/IO client và Hspec describe/it/shouldBe; Chap11 dùng Network.Socket/bracket và xử lý TCP stream; Chap7 dùng async/deadline để quản lý I/O. Tái sử dụng network/bytestring/async đã có trong snapshot; ClientMain khai báo thêm network/bytestring ở component executable vì import trực tiếp, không thêm thư viện mới vào dependency set.
+
+**Giới hạn nghiệm thu:** transcript đặt tàu/bắn đã được codec encode/parse đúng, chưa được server thực thi thành trận thật. C-02 vẫn trả ERROR INVALID_COMMAND mẫu cho PLACE/FIRE; QUIT/slot/EOF hoạt động thật. Client gửi một lệnh rồi đóng, có deadline 10 giây cho connect/handshake/gửi/đọc, chưa có vòng nhập/render bàn hoặc chờ lượt lâu. Coordinator/STM, kết quả bắn và viewFor thuộc task tiếp theo; S-01 chưa khóa. README và mục 9 protocol.md ghi API/quy ước và cách chạy.

@@ -280,12 +280,39 @@ C3 kết nối khi hai slot đã được gán; C3 không nhận WELCOME và kh�
 S -> C3: ERROR SERVER_FULL
 ```
 
-## 8. Kiểm tra hợp đồng D-01
+## 8. Kiểm tra hợp đồng D-01 và codec D-02
 
-`test/ProtocolSpec.hs` dùng các hàm tham chiếu trong test để kiểm tra grammar/framing, tọa độ, ánh xạ mã lỗi A-01 và các block transcript ngay trong tài liệu này. Đây là unit/contract test cho đặc tả D-01, chưa chứng minh parser/encoder hoặc socket server/client thực tế; các module đó hiện còn là khung.
+`test/ProtocolSpec.hs` gọi API production trong `Battleship.Protocol` để kiểm tra grammar/framing, tọa độ, ánh xạ mã lỗi A-01, định tuyến Event và các block transcript ngay trong tài liệu này. Các golden vectors độc lập với encoder; round-trip kiểm tra thêm mọi loại phản hồi và lệnh hợp lệ. `ClientSpec` dùng TCP thật với C-02 và peer có kịch bản; `IntegrationSpec` chạy executable client để xác nhận giao tiếp và output tiếng Việt UTF-8.
 
 ```sh
 stack test --test-arguments="--match D-01"
+stack test --ghc-options=-Werror --test-arguments="--match D-02"
 ```
 
-Khi triển khai parser/encoder thực tế, tái sử dụng các ví dụ trên làm golden vectors và thêm round-trip test trên API production. Giữ các marker HTML để test tìm đúng block; thay đổi transcript/grammar phải cập nhật test và phiên bản nếu không tương thích.
+Giữ các marker HTML để test tìm đúng block; thay đổi transcript/grammar phải cập nhật test và phiên bản nếu không tương thích. Kiểm thử transcript chứng minh codec đúng, chưa chứng minh server chạy toàn bộ trận: C-02 vẫn dùng ERROR INVALID_COMMAND mẫu cho PLACE/FIRE, chờ Coordinator/Rules ở task tiếp theo.
+
+## 9. API production D-02
+
+`Battleship.Protocol` dùng `ByteString` nghiêm ngặt. Parser nhận payload **không có LF/CRLF**; encoder trả frame hoàn chỉnh **có LF**. Reader TCP phải gọi `feedFrames` trước parser, không đưa nguyên một chunk `recv` vào parser.
+
+```haskell
+parseCommand :: ByteString -> Either ProtocolError Command
+encodeCommand :: Command -> Either ProtocolError ByteString
+parseResponse :: ByteString -> Either ProtocolError Response
+encodeResponse :: Response -> Either ProtocolError ByteString
+feedFrames :: ByteString -> ByteString
+           -> ([ByteString], Either ProtocolError ByteString)
+wireError :: GameError -> WireError
+routeEvent :: Phase -> Event -> [(PlayerId, Response)]
+encodeEvent :: Phase -> Event -> Either ProtocolError [(PlayerId, ByteString)]
+```
+
+- `ProtocolError` phân biệt quá dài, sai cấu trúc, tọa độ lệnh sai và phiên bản không hỗ trợ. Kiểm tra độ dài trước grammar; chỉ nhận ASCII có thể in. `parseCoord`/`encodeCoord` dùng A1..J10, không có terminator.
+- `feedFrames pending chunk` trả các payload hoàn chỉnh theo thứ tự và buffer còn lại hoặc lỗi. Nếu frame sau quá dài, các frame trước vẫn được trả để xử lý trước lỗi. Buffer giữ tối đa 256 byte, hoặc 257 khi byte cuối là CR chờ LF. EOF không tạo frame cho phần thiếu LF.
+- Parser PLACE giữ nguyên danh sách/thứ tự/trùng ID; Board/Rules chịu trách nhiệm count, chiều dài, vượt biên và chồng lấn. Encoder sắp theo CV/BB/CR/SB/DD, giữ các entry trùng/thiếu; PLACE rỗng không có biểu diễn wire hợp lệ. Vì có chuẩn hóa thứ tự, round-trip PLACE so với danh sách đã sắp xếp.
+- `Response` mô tả thông điệp trên wire, khác `Event` nội bộ: một ShotResolved tạo SHOT và INCOMING. `WireError` chỉ chứa tham số thực sự truyền, không dựng Coord giả cho lỗi không gửi tọa độ và không echo debug string của GameError. Không encode GameState/Fleet đối thủ.
+- `routeEvent` nhận **phase mới sau step** để chỉ thêm WAITING khi còn Placing. Broadcast liệt kê hai người nhận logic; Coordinator phải lọc socket đã ngắt và giữ thứ tự Event từ step. Encoder từ chối tọa độ raw ngoài bàn hoặc START P2.
+
+`Battleship.Client.runClient :: HostName -> PortNumber -> Command -> (Response -> IO ()) -> IO ()` kiểm tra lệnh trước khi kết nối, chờ WELCOME v1 rồi gửi một frame. ERROR SERVER_FULL trước WELCOME được hiển thị mà không gửi lệnh. Callback nhận các response hợp lệ; kết thúc trên OK PLACE/SHOT tương ứng lệnh, ERROR hoặc GAME_OVER. Các frame hoàn chỉnh đã nhận cùng chunk được kiểm tra/hiển thị tiếp; client không chờ thêm frame sau phản hồi kết thúc một lệnh. EOF trước phản hồi, sai handshake, SHOT khác tọa độ và dữ liệu sai là lỗi; bracket đóng socket ở mọi đường thoát.
+
+Client có deadline 10 giây cho connect/handshake/gửi/đọc; watchdog đóng socket để đánh thức I/O Windows. Đây là khung một lệnh, chưa dùng cho chờ đối thủ trong trận tương tác lâu. CLI dùng localhost, port mặc định 4000, hiển thị tiếng Việt UTF-8; không gửi văn bản tiếng Việt qua TCP.

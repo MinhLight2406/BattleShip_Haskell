@@ -1,6 +1,7 @@
 module Main (main) where
 
 import qualified BoardSpec
+import qualified ClientSpec
 import qualified CoordinatorSpec
 import qualified IntegrationSpec
 import qualified ProtocolSpec
@@ -21,4 +22,5 @@ main = hspec $ do
   SharedContractSpec.spec
   CoordinatorSpec.spec
   ServerSpec.spec
+  ClientSpec.spec
   IntegrationSpec.spec
