@@ -1,20 +1,74 @@
 module IntegrationSpec (spec) where
 
-import System.Exit (ExitCode (ExitSuccess))
-import System.Process (readProcessWithExitCode)
-import Test.Hspec (Expectation, Spec, describe, it, shouldBe)
+import Control.Monad (forM_)
+import Data.List (isPrefixOf, stripPrefix)
+import qualified Data.ByteString.Char8 as BSC
+import Network.Socket (PortNumber, withSocketsDo)
+import Network.Socket.ByteString (sendAll)
+import ServerSpec (await, expectClosed, expectLine, withClient, withServer)
+import System.Exit (ExitCode (ExitFailure, ExitSuccess))
+import System.IO (hGetContents, hGetLine)
+import System.Process
+  ( CreateProcess (std_err, std_out), StdStream (CreatePipe), proc,
+    readProcessWithExitCode, waitForProcess, withCreateProcess )
+import Test.Hspec (Expectation, Spec, describe, it, shouldBe, shouldSatisfy)
+import Text.Read (readMaybe)
 
 spec :: Spec
-spec = describe "C-01 executable smoke tests" $ do
-  it "server starts, prints its skeleton message, and exits successfully" $
-    checkExecutable "battleship-server" "Battleship server: skeleton ready."
+spec = do
+  describe "C-01 executable smoke tests" $ do
+    it "server --help starts and exits successfully" $
+      checkExecutable "battleship-server" ["--help"]
+        "Usage: battleship-server [PORT] (default 4000; 0 selects a free port)"
+    it "client starts, prints its skeleton message, and exits successfully" $
+      checkExecutable "battleship-client" [] "Battleship client: skeleton ready."
 
-  it "client starts, prints its skeleton message, and exits successfully" $
-    checkExecutable "battleship-client" "Battleship client: skeleton ready."
+  describe "C-02 server executable" $ do
+    forM_ [["-1"], ["65536"], ["abc"], ["4000", "4001"]] $ \arguments ->
+      it ("rejects invalid port arguments " ++ show arguments) $ do
+        (code, output, errors) <- await "invalid CLI arguments"
+          (readProcessWithExitCode "battleship-server" arguments "")
+        code `shouldBe` ExitFailure 1
+        output `shouldBe` ""
+        errors `shouldSatisfy` isPrefixOf "Usage: battleship-server"
 
-checkExecutable :: FilePath -> String -> Expectation
-checkExecutable executable expectedMessage = do
-  (exitCode, stdoutText, stderrText) <- readProcessWithExitCode executable [] ""
+    it "reports an occupied port and exits with failure" $
+      withServer $ \port _ -> do
+        (code, output, errors) <- await "occupied port"
+          (readProcessWithExitCode "battleship-server" [show port] "")
+        code `shouldBe` ExitFailure 1
+        output `shouldBe` ""
+        errors `shouldSatisfy` isPrefixOf "Battleship server: "
+
+    it "runs the built executable with two clients, rejects the third and exits after QUIT" $
+      withSocketsDo $ withCreateProcess
+        (proc "battleship-server" ["0"]) { std_out = CreatePipe, std_err = CreatePipe } $
+        \_ output errors process -> case (output, errors) of
+          (Just stdoutHandle, Just stderrHandle) -> do
+            announcement <- await "executable startup" (hGetLine stdoutHandle)
+            port <- case stripPrefix "Battleship server listening on 127.0.0.1:" announcement
+                         >>= readMaybe :: Maybe PortNumber of
+              Just actual | actual > 0 -> pure actual
+              _ -> ioError (userError "C-02 invalid startup announcement")
+            withClient port $ \first -> do
+              expectLine first "WELCOME 1 P1"
+              withClient port $ \second -> do
+                expectLine second "WELCOME 1 P2"
+                withClient port $ \third -> do
+                  expectLine third "ERROR SERVER_FULL"
+                  expectClosed third
+                sendAll first (BSC.pack "QUIT\n")
+                forM_ [first, second] $ \connection -> do
+                  expectLine connection "GAME_OVER P2 OPPONENT_LEFT"
+                  expectClosed connection
+            await "executable exit" (waitForProcess process) >>= (`shouldBe` ExitSuccess)
+            hGetContents stderrHandle >>= (`shouldBe` "")
+          _ -> ioError (userError "C-02 missing process pipes")
+
+checkExecutable :: FilePath -> [String] -> String -> Expectation
+checkExecutable executable arguments expectedMessage = do
+  (exitCode, stdoutText, stderrText) <- await "executable smoke test"
+    (readProcessWithExitCode executable arguments "")
   exitCode `shouldBe` ExitSuccess
   lines stdoutText `shouldBe` [expectedMessage]
   stderrText `shouldBe` ""

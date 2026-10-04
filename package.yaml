@@ -25,6 +25,9 @@ library:
   source-dirs: src
   dependencies:
     - containers
+    - network
+    - bytestring
+    - async
   exposed-modules:
     - Battleship.Board
     - Battleship.Client
@@ -46,6 +49,7 @@ executables:
     other-modules: []
     dependencies:
       - battleship-haskell
+      - network
     ghc-options:
       - -Wall
       - -threaded
@@ -81,6 +85,8 @@ tests:
       - bytestring
       - directory
       - filepath
+      - network >= 3.2.9 && < 3.3
+      - async
     ghc-options:
       - -Wall
       - -threaded

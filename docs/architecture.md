@@ -1,6 +1,14 @@
 # Kiến trúc điều phối Battleship
 
-Phạm vi: một server, hai client terminal, một trận. Server giữ trạng thái duy nhất; các module `Board`, `Rules` và `View` là hàm thuần. Types A-01, Board A-02 và khung step B-01 đã có cài đặt; luồng điều phối, kết quả bắn và góc nhìn được triển khai ở các task tiếp theo.
+Phạm vi: một server, hai client terminal, một trận. Server giữ trạng thái duy nhất; các module `Board`, `Rules` và `View` là hàm thuần. Types A-01, Board A-02, khung step B-01 và transport C-02 đã có cài đặt; luồng điều phối nghiệp vụ, kết quả bắn và góc nhìn được triển khai ở các task tiếp theo. Sơ đồ STM dưới đây là kiến trúc đích, chưa phải cài đặt C-02.
+
+## Transport C-02 hiện tại
+
+ServerMain đọc port rồi gọi `Server.runServer`; bind IPv4 loopback `127.0.0.1` và accept theo thứ tự P1/P2. Hai socket tồn tại trong bracket lồng nhau với worker reader có withAsync/link. Sau khi đủ hai slot, acceptor tiếp tục nhận để gửi `ERROR SERVER_FULL` và đóng ngay socket thứ ba. Một client không gửi dữ liệu không chặn việc nhận client tiếp theo.
+
+MVar bảo vệ hai danh tính/socket và cờ ended; welcome, lỗi và batch game-over được gửi dưới cùng khóa để không xen byte hoặc gửi kết thúc trước welcome. QUIT/EOF/lỗi socket/dòng quá dài chỉ tạo một batch GAME_OVER OPPONENT_LEFT, đánh dấu ended rồi đánh thức supervisor. Supervisor hủy acceptor/readers, bracket đóng các socket và listener; khi supervisor bị cancel cũng cleanup mà không tự gán người thắng mới.
+
+Framer giữ tối đa 258 byte (256 payload + CR + LF), xử lý frame hoàn chỉnh theo thứ tự, chấp nhận CRLF và bỏ tail thiếu LF ở EOF. C-02 chỉ xử lý QUIT; PLACE/FIRE và payload khác nhận mẫu ERROR INVALID_COMMAND, không gọi step hay tạo OK/SHOT. Writer dùng timeout 2 giây; đây là khóa write đơn giản cho demo hai người, chưa có các queue riêng hoặc STM GameState. Khi Protocol/Coordinator được triển khai, thay handleFrame mẫu và đưa write ra queue theo sơ đồ đích.
 
 ```mermaid
 flowchart LR

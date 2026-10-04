@@ -20,7 +20,7 @@ Các module sử dụng kiểu chung bằng `import Battleship.Types` hoặc imp
 
 S-01 v1 đã đối chiếu kỹ thuật tại commit `f73dc87e336ba01d4723f642582403b1f20e2504` nhưng chưa có đủ bốn xác nhận. Người dùng yêu cầu tiếp tục A-02 trên nhánh `Minh-Build_board`: v2 cập nhật việc ẩn constructor Fleet và cài đặt Board; đây là nội dung mới để A/B/C/D duyệt, không phải bằng chứng v1/v2 đã khóa. R-01 và wire v1 giữ nguyên.
 
-A-02 đã có `Board.placeFleet`, `shipCells`, `inBounds` thuần. B-01 có `Rules.step` với đủ nhánh Command/Phase, đặt tàu, bắt đầu trận, bỏ cuộc và kiểm tra lỗi trước FIRE. Kết quả bắn còn chờ task tiếp theo; View/Protocol/Coordinator/Server/Client vẫn là khung. Chưa có `viewFor`, parser/encoder production hoặc trận TCP thật. Không tạo hàm giả dùng `undefined`/`error` để làm như đã có cài đặt. B-01 tiếp tục theo yêu cầu người dùng trên nhánh `Minh-Build_Rule`; chữ ký/kiểu chung và wire v1 giữ nguyên, S-01 vẫn chờ bốn xác nhận.
+A-02 đã có `Board.placeFleet`, `shipCells`, `inBounds` thuần. B-01 có `Rules.step` với đủ nhánh Command/Phase, đặt tàu, bắt đầu trận, bỏ cuộc và kiểm tra lỗi trước FIRE. C-02 có TCP server nhận hai slot trên localhost, từ chối người thứ ba và cleanup; chưa nối vào Rules. Kết quả bắn còn chờ task tiếp theo; View/Protocol/Coordinator/Client vẫn là khung. Chưa có `viewFor`, codec production hoặc trận chơi được. Không tạo hàm giả dùng `undefined`/`error` để làm như đã có cài đặt. B-01/C-02 tiếp tục theo yêu cầu người dùng trên các nhánh `Minh-Build_Rule`/`Minh-Update_Server`; kiểu chung và wire v1 giữ nguyên, S-01 vẫn chờ bốn xác nhận.
 
 ## 2. API miền dùng chung
 
@@ -168,7 +168,15 @@ Transcript chuẩn để C/D nghiệm thu là mục 7.1 của [protocol.md](prot
 | battleship-server | app/ServerMain.hs | Main; main :: IO () | C |
 | battleship-client | app/ClientMain.hs | Main; main :: IO () | D |
 
-Hai file đều tên module Main vì nằm trong hai component Cabal khác nhau; `other-modules: []` tránh Hpack đưa Main còn lại vào nhầm executable. Cả hai phụ thuộc cùng library `battleship-haskell`, trong đó Types chỉ được biên dịch như một module chung. Main hiện in thông báo khung và thoát; smoke test kiểm tra đúng hành vi đó. Khi triển khai tiếp, Main gọi lớp IO Server/Client; luật thuần thuộc Board/Rules/View, không viết vào Main. Chữ ký IO cho Server/Client được chốt ở task triển khai tương ứng, S-01 không đặt trước tham số cấu hình chưa có.
+Hai file đều tên module Main vì nằm trong hai component Cabal khác nhau; `other-modules: []` tránh Hpack đưa Main còn lại vào nhầm executable. Cả hai phụ thuộc cùng library `battleship-haskell`, trong đó Types chỉ được biên dịch như một module chung. ServerMain C-02 đọc port (mặc định 4000), gọi Server, in địa chỉ sẵn sàng; client vẫn in thông báo khung và thoát. Smoke test server chuyển sang `--help`; test executable kiểm chứng vòng đời TCP thực tế. Luật thuần thuộc Board/Rules/View, không viết vào Main.
+
+### Phạm vi transport C-02
+
+`Battleship.Server.runServer :: PortNumber -> (PortNumber -> IO ()) -> IO ()` bind `127.0.0.1`; callback nhận port thực tế sau listen, port 0 dành cho thử nghiệm không tranh port cố định. `PortNumber` thuộc `network`, không tạo kiểu miền trùng với Types. Hai kết nối nhận WELCOME theo thứ tự accept; kết nối thứ ba nhận ERROR SERVER_FULL rồi bị đóng, không tạo worker hay thay đổi hai slot.
+
+Server C-02 tách dòng TCP với LF/CRLF và giới hạn 256 byte, dùng phản hồi mẫu ERROR INVALID_COMMAND cho mọi payload khác QUIT. PLACE/FIRE chưa đi qua parser/Rules: đây là demo transport được task cho phép, không phải server thực thi đầy đủ transcript 7.1. QUIT/EOF/lỗi socket/LINE_TOO_LONG kết thúc một session, gửi GAME_OVER OPPONENT_LEFT cho các socket còn gửi được rồi đóng và dừng. Không thêm mã wire hoặc đổi luật R-01.
+
+MVar bảo vệ registry hai socket và cờ kết thúc, tuần tự hóa các write vào socket đã nhận. Bracket/withAsync quản lý listener, hai socket và hai reader; acceptor lỗi sẽ truyền lên supervisor. Send có timeout 2 giây để shutdown không chờ peer vô hạn. Đây chưa phải TVar GameState, transaction STM hoặc queue writer theo kiến trúc đích; Coordinator/Protocol sẽ tiếp quản nghiệp vụ ở task tương ứng.
 
 ## 4. Chủ sở hữu file
 
@@ -192,6 +200,7 @@ test/BoardSpec.hs A
 test/RulesSpec.hs B
 test/ViewSpec.hs B
 test/CoordinatorSpec.hs C
+test/ServerSpec.hs C
 test/IntegrationSpec.hs C
 test/ProtocolSpec.hs D
 test/SharedContractSpec.hs R
@@ -217,9 +226,10 @@ stack test --test-arguments="--match S-01"
 - ProtocolSpec: kiểu A-01 trong grammar tham chiếu và transcript D-01, framing byte, lỗi, định tuyến.
 - RulesSpec B-01: chữ ký step thực tế, đủ Command/Phase cho hai actor/turn/winner/reason, Board thật, bắt đầu P1 một lần, rollback hợp đồng Left, readiness/sai lượt/tọa độ/bắn lặp, Quit/EOF lặp và điểm FIRE tạm thời.
 - SharedContractSpec: API nguồn khớp bản chụp, chỉ Types định nghĩa Coord/Command, Fleet abstract và chỉ Board/Types truy cập representation private, danh sách chủ sở hữu đủ/không trùng, hai điểm vào Main có main :: IO (). Test đọc src/app/test trong repository; chạy test binary riêng cần đặt working directory ở gốc repo.
-- IntegrationSpec: hai executable được build từ package khởi chạy và thoát thành công. Đây là smoke test khung, không phải tích hợp TCP thật.
+- ServerSpec C-02: TCP thật qua server library; slot/third client, QUIT/EOF, race kết nối/bỏ cuộc, framing byte và cleanup khi cancel/lỗi startup, dừng rồi bind lại cùng port.
+- IntegrationSpec: smoke test server --help/client khung, CLI sai/bind lỗi, server executable thật với hai client và người thứ ba; xác nhận phản hồi, EOF và exit code.
 
-Căn cứ các slide đã cung cấp: ADT/pattern matching để chia Command/Event/GameError; lập trình module để dùng chung kiểu và phân công; Hspec describe/it/shouldBe để kiểm tra; Networking để tách TCP stream thành dòng. STM, thread, supervision và coordination nằm ở hợp đồng kiến trúc C, được cài đặt/kiểm chứng ở task sau. Xem [architecture.md](architecture.md) và [test_evidence.md](test_evidence.md).
+Căn cứ các slide đã cung cấp: ADT/pattern matching để chia Command/Event/GameError; lập trình module để dùng chung kiểu và phân công; Hspec describe/it/shouldBe để kiểm tra; Networking để tách TCP stream thành dòng. C-02 dùng Network.Socket/bracket (Chap11), MVar đồng bộ (Chap5), withAsync/link/race/timeout (Chap7). STM và coordination nghiệp vụ vẫn thuộc các task C tiếp theo. Xem [architecture.md](architecture.md) và [test_evidence.md](test_evidence.md).
 
 ## 6. Xác nhận và hiệu lực khóa
 

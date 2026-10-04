@@ -164,3 +164,41 @@ Rules pattern-match từng Command và từng Phase, không có undefined/error 
 **Giới hạn có chủ đích của B-01:** khung xử lý PLACE/bắt đầu/QUIT và các lỗi trước FIRE. Nhánh FIRE qua mọi kiểm tra trả `Left (InvalidCommand "B-01: shot resolution is not implemented")`; chưa tạo Miss/Hit/Sunk/Win hoặc phát ShotResolved, chưa có chuyển lượt sau một phát bắn. Test lịch sử có Outcome Win chỉ là fixture để kiểm tra bắn lặp, không chứng minh thắng trận. Task luật tiếp theo thay nhánh Left tạm thời này và cập nhật test tương ứng.
 
 Kiểu/chữ ký chung, luật R-01 và wire v1 giữ nguyên. Các transcript bắn D-01 là hợp đồng đích, chưa được thực thi trong B-01. Tài liệu hiện tại ghi rõ trạng thái triển khai thay vì coi game đã chơi được.
+
+## C-02 — 2026-10-04
+
+Nhánh `Minh-Update_Server`, tách từ `Minh-Build_Rule` tại `4685f93dcc581b7b6e139fe8c2c25200deac5fa0`. Windows, Stack 3.11.1, LTS 24.59, GHC 9.10.3; snapshot chọn network 3.2.9.0 và async. S-01 tiếp tục chờ bốn xác nhận; người dùng yêu cầu thực hiện C-02, không ghi xác nhận thay thành viên.
+
+```text
+stack build
+  Thành công: library, battleship-server, battleship-client.
+
+stack test
+  386 examples, 0 failures
+
+stack test --ghc-options=-Werror
+  386 examples, 0 failures
+
+stack test --ghc-options=-Werror --test-arguments="--match C-02"
+  32 examples, 0 failures
+```
+
+| Nhóm | Số test | Phạm vi |
+|---|---:|---|
+| ServerSpec | 26 | Server library với TCP thật: welcome đúng thứ tự/ba kết nối đồng thời, third client bị từ chối lặp, hai socket vẫn dùng được; QUIT/EOF cho P1/P2 và trước P2; đóng socket bất thường; hai QUIT đồng thời; phản hồi mẫu/bí mật; LF/CRLF/chia/gộp frame/tail EOF; payload 256/257 byte; cancel với 0/1/2 client; startup callback lỗi; port bị chiếm |
+| IntegrationSpec C-02 | 6 | Bốn trường hợp CLI sai; executable bind port bị chiếm; chạy executable port 0, nhận P1/P2, từ chối người thứ ba, GAME_OVER/EOF đúng và exit 0 |
+| IntegrationSpec C-01 | 2 | Server --help và client khung khởi chạy/thoát đúng; thay smoke server cũ vốn đòi chương trình luôn thoát ngay |
+
+Test dùng port 0 do OS cấp, không dựa vào sleep để chờ server khởi động: callback sau listen hoặc dòng startup executable xác định readiness. Probe dòng chưa có LF dùng recvBufNoWait sau khoảng chờ ngắn, tránh chặn recv trên Windows. Các socket/test worker dùng bracket/withAsync; thao tác đọc có deadline và watchdog đóng socket, không chỉ dùng timeout với foreign call có thể không interrupt được. Ca cleanup kiểm tra connect bị từ chối và callback readiness của server mới trên cùng port.
+
+Các lỗi phát hiện và sửa trong vòng kiểm thử C-02:
+
+- Cancel worker trước khi đóng listener có thể treo ở accept Windows. Cleanup đóng listener trước khi cancel/join.
+- Đóng client khi reader đang chờ có thể gây reset và mất GAME_OVER; chỉ shutdown mà chưa close lại có thể khiến worker chưa thoát. Cleanup dùng shutdown Both rồi close, sau đó hủy/chờ worker. Test yêu cầu cả hai nhận đúng một GAME_OVER, EOF và server kết thúc.
+- SO_REUSEADDR trên Windows cho phép listener trùng port. Không bật tùy chọn đó trên Windows; Unix giữ reuse để hỗ trợ restart sau TIME_WAIT. Ca bind trùng phải thất bại ở cả library/executable.
+- Smoke test C-01 đòi server in khung rồi thoát không còn đúng khi server lắng nghe thật; chuyển sang --help và thêm nghiệm thu vòng đời executable qua TCP.
+- Kiểm tra header Main cũ đòi token `main` ngay sau `where`, vô tình cấm import. S-01 vẫn kiểm tra module Main và chữ ký main :: IO (), đồng thời cho phép import Server/CLI cần thiết.
+
+Network/bracket bám Chap11; MVar bám Chap5; withAsync/link/race/timeout bám Chap7. Send có watchdog/deadline 2 giây để giải phóng socket khi peer không đọc. Đây không phải benchmark hoặc kiểm thử tải/backpressure; các ca trên kiểm chứng lifecycle/framing của demo localhost hai người. Source tham khảo API chính thức: [network](https://hackage.haskell.org/package/network-3.2.9.0), [async](https://hackage.haskell.org/package/async/docs/Control-Concurrent-Async.html).
+
+**Giới hạn C-02:** server chỉ xử lý QUIT và transport, mọi payload khác trong giới hạn nhận mẫu ERROR INVALID_COMMAND. Chưa nối parser/encoder Protocol, Coordinator/STM, Rules.step hoặc viewFor; không phát OK PLACE/START/TURN/SHOT giả. R-01/Types/wire v1 không đổi; transcript đặt tàu/bắn D-01 vẫn là mục tiêu task tích hợp sau. README có hướng dẫn chạy server và hai terminal TCP PowerShell cùng terminal thứ ba.

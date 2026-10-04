@@ -2,7 +2,7 @@
 
 Dự án Battleship cho hai người chơi, dự kiến chạy bằng hai client terminal kết nối đến một server TCP. Server giữ trạng thái trận đấu; luật chơi được triển khai bằng các hàm thuần Haskell.
 
-**Trạng thái hiện tại:** đã có khung C-01, kiểu A-01, giao thức D-01, Board A-02 và khung Rules B-01 (`step`). Step xử lý đặt tàu/bắt đầu trận/bỏ cuộc, kiểm tra lỗi trước khi bắn; tính kết quả Miss/Hit/Sunk/Win còn chờ task luật tiếp theo. Chưa có parser/encoder production, TCP hay `viewFor`.
+**Trạng thái hiện tại:** đã có khung C-01, kiểu A-01, giao thức D-01, Board A-02, khung Rules B-01 (`step`) và server TCP C-02 nhận hai client trên localhost. Step xử lý đặt tàu/bắt đầu trận/bỏ cuộc, kiểm tra lỗi trước khi bắn; tính kết quả Miss/Hit/Sunk/Win còn chờ task luật tiếp theo. Server dùng phản hồi mẫu, chưa nối Protocol/Coordinator/Rules để chơi trận thật; client vẫn là khung, chưa có codec production hoặc `viewFor`.
 
 **S-01:** bản hợp đồng chung v2 cập nhật A-02 ở [docs/shared_contract.md](docs/shared_contract.md). Chưa khóa mốc vì còn chờ xác nhận A/B/C/D; việc ẩn constructor Fleet, chủ sở hữu file và quy trình thay đổi được ghi tại đó.
 
@@ -17,7 +17,7 @@ stack build
 stack test
 ```
 
-`stack build` biên dịch thư viện và hai executable. `stack test` chạy A-01 (`TypesSpec`), A-02 (`BoardSpec`), B-01 (`RulesSpec`), D-01 (`ProtocolSpec`), S-01 (`SharedContractSpec`) và hai smoke test C-01; tất cả phải đạt, không có failure. Smoke test kiểm tra server/client khởi chạy, in thông báo khung và thoát thành công. Windows Application Control chặn executable sẽ khiến smoke test thất bại.
+`stack build` biên dịch thư viện và hai executable. `stack test` chạy A-01 (`TypesSpec`), A-02 (`BoardSpec`), B-01 (`RulesSpec`), D-01 (`ProtocolSpec`), S-01 (`SharedContractSpec`), C-02 (`ServerSpec`/`IntegrationSpec`) và hai smoke test C-01; tất cả phải đạt, không có failure. Smoke test dùng server `--help` và client khung; test C-02 khởi chạy cả server library và executable, kết nối TCP thật trên port do OS cấp. Windows Application Control chặn executable sẽ khiến smoke test thất bại.
 
 Chạy riêng hợp đồng giao thức:
 
@@ -61,16 +61,44 @@ shipCells (ShipPlacement Carrier (Coord 9 10) Horizontal) -- Left (ShipOutOfBoun
 
 `Fleet(..)` và record update `fleet { fleetShips = ... }` không còn là API công khai. Tạo fixture/game fleet bằng `placeFleet`; đọc các ô qua `fleetShips fleet`. Module `Battleship.Internal.Fleet` chỉ dành cho Board/Types và không được expose cho executable/client.
 
-Có thể kiểm tra hai điểm vào:
+## Chạy và kiểm tra server C-02
+
+Khởi chạy server trong terminal thứ nhất (mặc định port 4000):
 
 ```sh
 stack exec battleship-server
-stack exec battleship-client
+stack exec battleship-server -- 4001
+stack exec battleship-server -- --help
 ```
 
-Hai chương trình hiện chỉ in thông báo khung đã sẵn sàng. `package.yaml` là nguồn cấu hình package; file `.cabal` được Stack/Hpack sinh tự động. Giữ `stack.yaml.lock` trong Git để chia sẻ cùng snapshot.
+Chọn một lệnh khởi chạy. Server in `Battleship server listening on 127.0.0.1:4000` rồi tiếp tục lắng nghe. Port `0` cho phép OS chọn port trống; dòng startup ghi port thực tế. Port sai hoặc bind thất bại được báo ở stderr và thoát với exit code khác 0.
 
-`Types` dùng `containers` cho `Map`/`Set`; test suite dùng Hspec, `process` để khởi chạy executable, `bytestring` để kiểm tra framing byte và `directory`/`filepath` để đối chiếu cây nguồn S-01 trên Windows/Linux. `docs/protocol.md` là data file để test đọc đúng tài liệu qua module Cabal tự sinh `Paths_battleship_haskell`. Thêm `text`, `stm`, `async`, `network` và QuickCheck ở task thực sự sử dụng chúng, vào đúng component cần thiết.
+Mở hai terminal PowerShell khác và chạy đoạn sau ở mỗi terminal (sửa port nếu cần):
+
+```powershell
+$tcpDemo = [System.Net.Sockets.TcpClient]::new()
+try {
+    $tcpDemo.Connect('127.0.0.1', 4000)
+    $tcpReader = [System.IO.StreamReader]::new($tcpDemo.GetStream())
+    while ($null -ne ($tcpLine = $tcpReader.ReadLine())) { $tcpLine }
+} finally {
+    $tcpDemo.Dispose()
+}
+```
+
+Terminal kết nối trước nhận `WELCOME 1 P1`, terminal sau nhận `WELCOME 1 P2`; cả hai giữ kết nối dù chưa gửi lệnh. Chạy lại đoạn đó trong terminal thứ ba: chỉ nhận `ERROR SERVER_FULL` rồi EOF. Đóng một terminal client để ngắt kết nối; người còn lại nhận `GAME_OVER <người còn lại> OPPONENT_LEFT`, server đóng session và dừng. Muốn thử trận mới, khởi chạy server lại. Nhấn Ctrl+C ở terminal server để dừng và cleanup.
+
+C-02 chỉ nhận chính xác `QUIT` với LF/CRLF. Mọi dòng còn lại trong giới hạn, gồm PLACE/FIRE, trả mẫu `ERROR INVALID_COMMAND`; chưa parse tọa độ, xác nhận đội tàu hay tạo SHOT. Dòng quá dài nhận `ERROR LINE_TOO_LONG` rồi kết thúc session theo D-01. Không tái sử dụng slot hay nhận người thay thế.
+
+Chạy các kiểm thử tự động tương ứng:
+
+```sh
+stack test --ghc-options=-Werror --test-arguments="--match C-02"
+```
+
+`stack exec battleship-client` vẫn chỉ in thông báo khung; demo trên dùng TCP client PowerShell để kiểm tra riêng C-02. `package.yaml` là nguồn cấu hình package; file `.cabal` được Stack/Hpack sinh tự động. Giữ `stack.yaml.lock` trong Git để chia sẻ cùng snapshot.
+
+`Types` dùng `containers` cho `Map`/`Set`; C-02 dùng `network` cho TCP, `bytestring` cho framing theo byte, `async` cho vòng đời worker. ServerMain dùng kiểu PortNumber từ `network`. Test suite dùng Hspec, `network`/`async` để kiểm tra TCP thật, `process` để khởi chạy executable và `directory`/`filepath` để đối chiếu cây nguồn S-01 trên Windows/Linux. `docs/protocol.md` là data file để test đọc đúng tài liệu qua module Cabal tự sinh `Paths_battleship_haskell`. `stm` sẽ được thêm khi Coordinator thực sự sử dụng; chưa cần thêm QuickCheck hoặc text.
 
 Thành viên A/B/D lấy nhánh nền đã chứa C-01 bằng `git fetch origin` và checkout/pull nhánh được nhóm thống nhất, rồi chạy hai lệnh trên trước khi thêm mã của mình.
 
@@ -94,4 +122,4 @@ Luật đầy đủ ở [docs/game_spec.md](docs/game_spec.md). Sơ đồ hoạt
 | D | `Protocol.hs`, `Client.hs`, `ClientMain.hs`, test giao thức và tích hợp |
 | R | `docs/`, báo cáo, minh chứng kiểm thử và demo |
 
-Trước khi tích hợp nghiệp vụ tiếp theo, cả nhóm review và ghi xác nhận S-01 v2 tại [docs/shared_contract.md](docs/shared_contract.md), gồm A-01/C-01/D-01 và cập nhật A-02/B-01. Phân công chi tiết gồm cả Main, test và YAML nằm ở đó. Board/Types và khung step đã có cài đặt; logic kết quả bắn và các module nghiệp vụ còn lại tiếp tục do từng thành viên triển khai.
+Trước khi tích hợp nghiệp vụ tiếp theo, cả nhóm review và ghi xác nhận S-01 v2 tại [docs/shared_contract.md](docs/shared_contract.md), gồm A-01/C-01/D-01 và cập nhật A-02/B-01/C-02. Phân công chi tiết gồm cả Main, test và YAML nằm ở đó. Board/Types, khung step và transport hai client đã có cài đặt; logic kết quả bắn và các module nghiệp vụ còn lại tiếp tục do từng thành viên triển khai.

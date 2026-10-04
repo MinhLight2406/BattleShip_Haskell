@@ -64,7 +64,7 @@ spec = describe "S-01 shared contract" $ do
       let entryPoints = ["app/ServerMain.hs", "app/ClientMain.hs"]
       forM_ entryPoints $ \path -> do
         let tokens = haskellTokens (sourceFor path sources)
-        take 7 tokens `shouldBe` ["module", "Main", "(", "main", ")", "where", "main"]
+        take 6 tokens `shouldBe` ["module", "Main", "(", "main", ")", "where"]
         tokens `shouldSatisfy` isInfixOf ["main", "::", "IO", "(", ")"]
 
 -- Repository check, not a Haskell compiler. GHC and existing TypesSpec remain
