@@ -13,6 +13,9 @@ extra-source-files:
   - README.md
   - docs/*.md
 
+data-files:
+  - docs/protocol.md
+
 language: Haskell2010
 
 dependencies:
@@ -63,6 +66,8 @@ tests:
   battleship-test:
     main: Spec.hs
     source-dirs: test
+    generated-other-modules:
+      - Paths_battleship_haskell
     build-tools:
       - battleship-haskell:battleship-server
       - battleship-haskell:battleship-client
@@ -71,6 +76,7 @@ tests:
       - hspec
       - process
       - containers
+      - bytestring
     ghc-options:
       - -Wall
       - -threaded

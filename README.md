@@ -2,7 +2,7 @@
 
 Dự án Battleship cho hai người chơi, dự kiến chạy bằng hai client terminal kết nối đến một server TCP. Server giữ trạng thái trận đấu; luật chơi được triển khai bằng các hàm thuần Haskell.
 
-**Trạng thái hiện tại:** đã có khung C-01 và kiểu/hợp đồng hàm A-01 trong `Types`. Test suite gồm unit test kiểu/helper và hai smoke test server/client; chưa triển khai luật chơi, TCP hay `viewFor`.
+**Trạng thái hiện tại:** đã có khung C-01, kiểu/hợp đồng hàm A-01 trong `Types` và đặc tả giao thức D-01. Test suite gồm unit test kiểu/helper, kiểm tra grammar/framing/transcript trong tài liệu và hai smoke test server/client; chưa triển khai luật chơi, parser/encoder production, TCP hay `viewFor`.
 
 ## Build và test
 
@@ -15,7 +15,13 @@ stack build
 stack test
 ```
 
-`stack build` biên dịch thư viện và hai executable. `stack test` chạy unit test A-01 (`TypesSpec`) và hai smoke test C-01; tất cả phải đạt, không có failure. Smoke test kiểm tra server/client khởi chạy, in thông báo khung và thoát thành công. Windows Application Control chặn executable sẽ khiến smoke test thất bại.
+`stack build` biên dịch thư viện và hai executable. `stack test` chạy test A-01 (`TypesSpec`), hợp đồng D-01 (`ProtocolSpec`) và hai smoke test C-01; tất cả phải đạt, không có failure. Smoke test kiểm tra server/client khởi chạy, in thông báo khung và thoát thành công. Windows Application Control chặn executable sẽ khiến smoke test thất bại.
+
+Chạy riêng hợp đồng giao thức:
+
+```sh
+stack test --test-arguments="--match D-01"
+```
 
 Có thể kiểm tra hai điểm vào:
 
@@ -26,7 +32,7 @@ stack exec battleship-client
 
 Hai chương trình hiện chỉ in thông báo khung đã sẵn sàng. `package.yaml` là nguồn cấu hình package; file `.cabal` được Stack/Hpack sinh tự động. Giữ `stack.yaml.lock` trong Git để chia sẻ cùng snapshot.
 
-`Types` dùng `containers` cho `Map`/`Set`; test suite dùng Hspec và `process` để khởi chạy executable. Thêm `text`, `bytestring`, `stm`, `async`, `network` và QuickCheck ở task thực sự sử dụng chúng, vào đúng component cần thiết.
+`Types` dùng `containers` cho `Map`/`Set`; test suite dùng Hspec, `process` để khởi chạy executable và `bytestring` để kiểm tra giới hạn/framing trên byte. `docs/protocol.md` là data file để test đọc đúng tài liệu qua module Cabal tự sinh `Paths_battleship_haskell`. Thêm `text`, `stm`, `async`, `network` và QuickCheck ở task thực sự sử dụng chúng, vào đúng component cần thiết.
 
 Thành viên A/B/D lấy nhánh nền đã chứa C-01 bằng `git fetch origin` và checkout/pull nhánh được nhóm thống nhất, rồi chạy hai lệnh trên trước khi thêm mã của mình.
 
@@ -38,7 +44,7 @@ Thành viên A/B/D lấy nhánh nền đã chứa C-01 bằng `git fetch origin`
 - Lệnh sai hoặc bắn lặp không làm đổi trạng thái và không mất lượt.
 - Người bắn trúng toàn bộ 17 ô tàu của đối phương thắng ngay.
 
-Luật đầy đủ ở [docs/game_spec.md](docs/game_spec.md). Sơ đồ hoạt động ở [docs/architecture.md](docs/architecture.md); thông điệp giao tiếp dự kiến ở [docs/protocol.md](docs/protocol.md).
+Luật đầy đủ ở [docs/game_spec.md](docs/game_spec.md). Sơ đồ hoạt động ở [docs/architecture.md](docs/architecture.md); giao thức v1 đã chốt ở [docs/protocol.md](docs/protocol.md).
 
 ## Phân công thư mục
 
@@ -50,4 +56,4 @@ Luật đầy đủ ở [docs/game_spec.md](docs/game_spec.md). Sơ đồ hoạt
 | D | `Protocol.hs`, `Client.hs`, `ClientMain.hs`, test giao thức và tích hợp |
 | R | `docs/`, báo cáo, minh chứng kiểm thử và demo |
 
-Trước khi viết mã nghiệp vụ, cả nhóm review hợp đồng A-01 tại [docs/architecture.md](docs/architecture.md), rồi chốt giao thức tại S-01. Các module ngoài `Types` còn là khung để từng thành viên triển khai.
+Trước khi viết mã nghiệp vụ, cả nhóm review hợp đồng A-01 tại [docs/architecture.md](docs/architecture.md) và triển khai theo D-01 tại [docs/protocol.md](docs/protocol.md). Các module ngoài `Types` còn là khung để từng thành viên triển khai.

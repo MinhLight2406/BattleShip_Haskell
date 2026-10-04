@@ -1,55 +1,289 @@
-# Hợp đồng giao tiếp client server
+# Giao thức Battleship v1 — D-01
 
-Đây là **bản đề xuất cho mốc S-01**. D phụ trách chốt cú pháp với A/B/C trước khi viết parser; mọi thay đổi sau S-01 phải được cả bốn người lập trình xác nhận.
+Đây là hợp đồng wire đã chốt cho một server, hai client, một trận theo R-01 và kiểu A-01. C/D triển khai theo grammar, thứ tự phản hồi và transcript dưới đây. Thay đổi không tương thích phải tăng phiên bản và cập nhật cả hai phía cùng test. Văn bản hiển thị tiếng Việt do client ánh xạ từ mã; wire không chứa câu thông báo tự do.
 
-## Ranh giới
+## 1. Kết nối và framing
 
-- Một kết nối TCP tương ứng một người chơi; server gán `P1` hoặc `P2`.
-- Mỗi thông điệp là một dòng UTF-8 kết thúc bằng newline. Giới hạn độ dài dòng để từ chối input bất thường.
-- Client gửi lệnh; server trả thông báo cho đúng người nhận. Không có trường `PlayerId` do client tự khai.
-- Parser kiểm tra cú pháp; `Rules.step` kiểm tra luật. Lỗi ở hai lớp đều không tiêu lượt.
+- Dùng TCP; host/port cấu hình ở hai phía, cùng giá trị khi chạy demo. Giao thức không phụ thuộc số port.
+- Server gán kết nối được nhận đầu tiên là P1, kết nối thứ hai là P2. Thông điệp đầu tiên cho mỗi slot là `WELCOME 1 P1` hoặc `WELCOME 1 P2`; client chờ WELCOME trước khi gửi lệnh. Không có handshake hay trường danh tính do client tự gửi.
+- Client gặp phiên bản khác 1 phải báo không tương thích và đóng kết nối. Khi cả hai slot đã được gán, kết nối thứ ba chỉ nhận `ERROR SERVER_FULL` rồi bị đóng; không làm thay đổi trận của P1/P2. Không tái sử dụng slot đã ngắt kết nối.
+- Mỗi frame chứa đúng một payload và kết thúc bằng LF (byte 0x0A). Encoder luôn phát LF. Receiver chấp nhận CRLF bằng cách bỏ đúng một CR (0x0D) ngay trước LF.
+- **MAX_LINE_BYTES = 256**, tính trên byte payload trước LF và trước CR cuối nếu có. Cả lệnh và phản hồi chịu cùng giới hạn. Wire dùng UTF-8 nhưng grammar v1 chỉ gồm ASCII in được (0x20..0x7E); vì thế không cần đo số ký tự Unicode.
+- Trong payload không có BOM, tab, NUL, CR, LF, chữ thường hoặc khoảng trắng đầu/cuối. Giữa token là đúng một space ASCII; không có space quanh `=`, `:`, `;`. Dòng rỗng là lệnh sai.
+- TCP là byte stream: một lần recv có thể chỉ chứa một phần frame hoặc nhiều frame. Giữ phần chưa có LF, tách hết frame hoàn chỉnh theo thứ tự; không coi một recv là một lệnh. Trong lúc đọc, chỉ giữ tối đa 256 byte payload cộng một CR cuối có thể thuộc CRLF. Nếu byte tiếp theo khiến vượt giới hạn, xử lý LINE_TOO_LONG ngay, không đợi LF và không tiếp tục gom dòng quá dài.
+- Với lệnh có LF nhưng sai grammar/ASCII, gửi `ERROR INVALID_COMMAND` (hoặc INVALID_COORDINATE theo mục 3), bỏ dòng đó và tiếp tục đọc dòng sau. Không gửi lệnh sai vào Rules.
+- Với dòng quá dài: gửi `ERROR LINE_TOO_LONG` nếu còn gửi được rồi đóng socket vi phạm. Nếu nó thuộc P1/P2 và trận chưa kết thúc, việc đóng được xử lý riêng như bỏ cuộc; người còn lại nhận GAME_OVER OPPONENT_LEFT. Bộ đệm không được tăng vô hạn.
+- EOF/lỗi socket: xử lý các frame đã nhận đủ LF trước EOF; phần cuối thiếu LF bị bỏ, không phải lệnh. Sau đó xử lý Quit của slot đó nếu trận chưa kết thúc. EOF sau một phát bắn thắng không được đổi người thắng/lý do đã lưu.
+- Mỗi kết nối có một writer; queue của người nhận giữ thứ tự frame, không xen byte giữa hai thông điệp. Hai socket không có thứ tự thời gian chung. Coordinator tuần tự hóa/giao dịch hóa từng lệnh và tạo toàn bộ batch thông báo trước khi xử lý lệnh tiếp theo.
+- Client có tối đa một lệnh chưa được phản hồi. PLACE hoàn tất ở OK PLACE hoặc ERROR; FIRE ở SHOT hoặc ERROR; QUIT ở GAME_OVER/EOF. GAME_OVER hoặc EOF kết thúc mọi lệnh đang chờ; client không đợi OK/SHOT sau đó. Client vẫn phải nhận thông báo bất đồng bộ trong lúc chờ. V1 không có request ID và không tự gửi lại FIRE khi chưa biết kết quả.
 
-## Lệnh từ client
+## 2. Token và tọa độ
 
-| Lệnh logic | Nội dung | Chỉ hợp lệ khi |
+Grammar dưới đây mô tả payload, không gồm LF; chữ trong dấu nháy là literal, `|` là lựa chọn, `{ ... }` là lặp từ 0 lần, các thành phần liền nhau là nối byte. Trong các bảng, `<...>` là chỗ thay token, `[...]` chỉ phần tùy trường hợp; không gửi dấu ngoặc trên wire. Không có token tiếng Việt.
+
+```text
+player      = "P1" | "P2"
+ship        = "CV" | "BB" | "CR" | "SB" | "DD"
+orientation = "H" | "V"
+column      = "A" | "B" | "C" | "D" | "E" | "F" | "G" | "H" | "I" | "J"
+row         = "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9" | "10"
+coord       = column row
+placement   = ship "=" coord ":" orientation
+placements  = placement { ";" placement }
+digit       = "0" | nonzero-digit
+nonzero-digit = "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9"
+count       = "0" | nonzero-digit { digit }
+outcome     = "MISS" | "HIT" | "SUNK" SP ship | "WIN"
+reason      = "ALL_SHIPS_SUNK" | "OPPONENT_LEFT"
+SP          = byte 0x20
+```
+
+- `A1 = Coord 1 1`, `J10 = Coord 10 10`. Không nhận A01, A0, A11, K1, a1, số âm hoặc dấu +.
+- CV/BB/CR/SB/DD tương ứng Carrier/Battleship/Cruiser/Submarine/Destroyer và độ dài 5/4/3/3/2.
+- H tăng cột, V tăng hàng. Không có trường độ dài tự chọn.
+- count là số thập phân không dấu/không số 0 thừa, từ 0 đến 256; biểu diễn số placement thực tế của lỗi INVALID_FLEET_SIZE.
+
+## 3. Client → server
+
+| Payload | Command A-01 | Kết quả hợp lệ |
 |---|---|---|
-| `PlaceFleet` | Năm vị trí tàu gồm mã tàu, tọa độ đầu và hướng `H`/`V` | Người chơi chưa đặt tàu và trận đang chờ đặt |
-| `Fire Coord` | Một tọa độ `A1`–`J10` | Cả hai đã sẵn sàng, đúng lượt, tọa độ chưa bắn |
-| `Quit` | Yêu cầu rời trận | Kết nối còn hoạt động |
+| `PLACE <placements>` | PlaceFleet [ShipPlacement] | OK PLACE, sau đó WAITING hoặc START/TURN |
+| `FIRE <coord>` | Fire Coord | SHOT, INCOMING cho đối thủ, rồi TURN hoặc GAME_OVER |
+| `QUIT` | Quit | GAME_OVER với người còn lại thắng, rồi đóng socket |
 
-Ví dụ cú pháp dòng để nhóm xem xét: `FIRE B7` và `PLACE CV=A1:H;BB=A2:H;CR=A3:H;SB=A4:H;DD=A5:H`. Ví dụ `PLACE` đặt đủ năm tàu, không chồng nhau. Có thể thay cú pháp này tại S-01 nhưng không thay các quy tắc trong `game_spec.md`.
+Parser chấp nhận thứ tự tàu bất kỳ và giữ nguyên danh sách, kể cả khi thiếu/trùng tàu. Không chuyển thành Map trước khi kiểm tra. A-02/Rules kiểm tra đúng năm ID, vượt biên/chồng tàu và giai đoạn; chấp nhận cả đội tàu hoặc từ chối toàn bộ. Encoder client chuẩn phát theo thứ tự CV;BB;CR;SB;DD.
 
-## Thông báo từ server
+Lỗi parser được chọn theo thứ tự:
+1. Kiểm tra framing/byte limit trước.
+2. Payload không thuộc ASCII in được hoặc sai tên lệnh/số token: INVALID_COMMAND.
+3. PLACE phải có ít nhất một entry; entry phải có đúng một `=` và một `:`, ID/hướng hợp lệ. Duyệt entry trái sang phải, kiểm tra cấu trúc và ID, rồi tọa độ, rồi hướng. Lỗi cấu trúc/ID/hướng là INVALID_COMMAND; tọa độ sai là INVALID_COORDINATE.
+4. FIRE có đúng một token tọa độ nhưng token đó sai quy ước A1..J10: INVALID_COORDINATE.
 
-| Loại logic | Người nhận | Ý nghĩa |
-|---|---|---|
-| `Welcome PlayerId` | Client vừa kết nối | Danh tính do server gán |
-| `Waiting` | Người đặt xong trước | Chờ người còn lại đặt tàu |
-| `Start PlayerId` | Cả hai | Trận bắt đầu; P1 đi trước |
-| `ShotResult Coord Outcome` | Người bắn | Trượt, trúng, chìm hoặc thắng |
-| `IncomingShot Coord Outcome` | Người bị bắn | Ô nào trên bàn mình vừa bị bắn |
-| `Turn PlayerId` | Cả hai | Ai được bắn tiếp |
-| `Error GameError` | Chỉ người gửi lệnh sai | Lý do từ chối; trạng thái giữ nguyên |
-| `GameOver Winner Reason` | Cả hai nếu còn kết nối | Thắng do bắn hết tàu hoặc đối thủ bỏ cuộc |
+Ví dụ PLACE có bốn tàu đúng cú pháp vẫn parse được và bị luật từ chối bằng INVALID_FLEET_SIZE. Nhiều lỗi nghiệp vụ cùng lúc có thể được Rules chọn một lỗi; client phải xử lý tất cả mã ở mục 5, không phụ thuộc ưu tiên kiểm tra nghiệp vụ.
 
-Sau `Hit` hoặc `Sunk`, `Turn` vẫn là **người vừa bắn**. Sau `Miss`, `Turn` là **đối thủ**. Nếu `Win`, gửi `GameOver` và không phát thêm `Turn`.
+<!-- contract:commands -->
+```text
+PLACE CV=A1:H;BB=A2:H;CR=A3:H;SB=A4:H;DD=A5:H
+PLACE DD=A5:H;SB=A4:H;CR=A3:H;BB=A2:H;CV=A1:H
+FIRE A1
+FIRE J10
+QUIT
+```
 
-Server chỉ gửi sự kiện và góc nhìn riêng `viewFor`; không serialize nguyên `GameState` ra TCP. C và D cần chốt cách encode các thông báo trên trong S-01 và lưu một transcript mẫu để test hai phía.
+## 4. Server → client
 
-## Ánh xạ kiểu A-01
-
-Các `Event` trong `Types` là sự kiện nội bộ, cần định tuyến trước khi encode:
-
-| Event nội bộ | Ánh xạ thông báo logic |
+| Payload | Người nhận / ý nghĩa |
 |---|---|
-| `FleetAccepted player` | Gửi `Waiting` cho người đó nếu trạng thái mới còn `Placing` |
-| `GameStarted P1` | Gửi `Start P1` cho cả hai; thông báo lượt qua `TurnReady P1` |
-| `ShotResolved shooter coord outcome` | `ShotResult` cho shooter; `IncomingShot` cho người còn lại |
-| `TurnReady player` | Gửi `Turn player` cho cả hai, kể cả khi người bắn giữ lượt |
-| `GameEnded winner reason` | Gửi `GameOver winner reason` cho các kết nối còn hoạt động |
+| `WELCOME 1 <player>` | Slot mới: phiên bản và danh tính server gán |
+| `OK PLACE` | Chỉ người đặt: đã lưu toàn bộ đội tàu, không được đặt lại |
+| `WAITING OPPONENT` | Chỉ người vừa đặt xong nếu đối thủ chưa đặt, kể cả chưa kết nối |
+| `START P1` | Cả hai: hai đội tàu hợp lệ, trận bắt đầu đúng một lần |
+| `TURN <player>` | Cả hai: ai được bắn tiếp |
+| `SHOT <coord> <outcome>` | Chỉ người bắn: phản hồi FIRE thành công |
+| `INCOMING <coord> <outcome>` | Chỉ người bị bắn: cập nhật bàn của mình |
+| `GAME_OVER <player> <reason>` | Các socket còn gửi được: người thắng và lý do kết thúc |
+| `ERROR <code> [argument]` | Chỉ người gửi lệnh lỗi; transport error theo mục 1 |
 
-`Welcome` do Server tạo khi gán socket. `Error` do Coordinator tạo từ `Left GameError`, chỉ gửi cho người gây lỗi. Hai thông báo này không phải sự kiện thành công của `step`.
+SUNK bắt buộc kèm đúng một mã tàu; MISS/HIT/WIN không có mã tàu. START chỉ nhận P1. Không gửi nguyên Event bằng Show: ShotResolved phải được tách thành hai thông điệp cho hai người nhận.
 
-Khi bắt đầu, Rules trả các sự kiện `FleetAccepted`, `GameStarted P1`, `TurnReady P1` theo thứ tự. Phát bắn chưa thắng trả `ShotResolved` rồi `TurnReady`; phát bắn thắng trả `ShotResolved ... Win` rồi `GameEnded ... AllShipsSunk`, không có `TurnReady`. `Quit` và ngắt kết nối kết thúc với `OpponentLeft` khi trận chưa kết thúc.
+<!-- contract:responses -->
+```text
+WELCOME 1 P1
+WELCOME 1 P2
+OK PLACE
+WAITING OPPONENT
+START P1
+TURN P1
+TURN P2
+SHOT A6 HIT
+SHOT J10 MISS
+SHOT B10 SUNK DD
+SHOT B10 WIN
+INCOMING A6 HIT
+INCOMING J10 MISS
+INCOMING B10 SUNK DD
+INCOMING B10 WIN
+GAME_OVER P1 ALL_SHIPS_SUNK
+GAME_OVER P2 OPPONENT_LEFT
+ERROR INVALID_COMMAND
+ERROR INVALID_COORDINATE
+ERROR INVALID_FLEET_SIZE 4
+ERROR MISSING_SHIP DD
+ERROR DUPLICATE_SHIP CV
+ERROR SHIP_OUT_OF_BOUNDS CV
+ERROR SHIPS_OVERLAP A1
+ERROR FLEET_ALREADY_PLACED
+ERROR FLEETS_NOT_READY
+ERROR NOT_YOUR_TURN P1
+ERROR ALREADY_FIRED A6
+ERROR GAME_FINISHED
+ERROR LINE_TOO_LONG
+ERROR SERVER_FULL
+```
 
-Tên constructor `Carrier/Battleship/Cruiser/Submarine/Destroyer` tương ứng `CV/BB/CR/SB/DD`; `Horizontal/Vertical` tương ứng `H/V`. `Show` phục vụ debug nội bộ, không phải bộ encode giao thức và không dùng để gửi `GameState` cho client.
+## 5. Mã lỗi cố định
+
+| GameError / nguồn | Payload đầy đủ | Argument |
+|---|---|---|
+| InvalidCommand _ | `ERROR INVALID_COMMAND` | Không echo chuỗi lệnh thô |
+| InvalidCoordinate _ | `ERROR INVALID_COORDINATE` | Không echo tọa độ ngoài grammar |
+| InvalidFleetSize n | `ERROR INVALID_FLEET_SIZE <count>` | Số entry đã nhận |
+| MissingShip ship | `ERROR MISSING_SHIP <ship>` | ID thiếu |
+| DuplicateShip ship | `ERROR DUPLICATE_SHIP <ship>` | ID trùng |
+| ShipOutOfBounds ship _ | `ERROR SHIP_OUT_OF_BOUNDS <ship>` | Chỉ ID; không gửi tọa độ vượt biên |
+| ShipsOverlap coord | `ERROR SHIPS_OVERLAP <coord>` | Ô chồng trên đội tàu của người gửi |
+| FleetAlreadyPlaced | `ERROR FLEET_ALREADY_PLACED` | Không |
+| FleetsNotReady | `ERROR FLEETS_NOT_READY` | Không |
+| NotYourTurn player | `ERROR NOT_YOUR_TURN <player>` | Người đang có lượt |
+| AlreadyFired coord | `ERROR ALREADY_FIRED <coord>` | Ô người gửi đã bắn |
+| GameAlreadyFinished | `ERROR GAME_FINISHED` | Không |
+| Framer vượt giới hạn | `ERROR LINE_TOO_LONG` | Đóng socket vi phạm |
+| Listener đã có hai slot | `ERROR SERVER_FULL` | Đóng socket thứ ba |
+
+Hai mã transport cuối không thuộc GameError A-01. Client hiển thị câu tiếng Việt theo code/argument; không tách hoặc đoán ý nghĩa từ câu văn. ERROR nghiệp vụ/cú pháp không thay đổi trạng thái, không mất lượt và không broadcast cho đối thủ. Đóng socket do LINE_TOO_LONG là một sự kiện bỏ cuộc riêng sau lỗi transport.
+
+Client nhận phản hồi sai grammar, dài quá mức hoặc mã lạ phải báo lỗi giao thức và đóng kết nối; không tự suy diễn hay tiếp tục dùng trạng thái không đáng tin cậy.
+
+## 6. Thứ tự sự kiện, kết thúc và bí mật
+
+| Event A-01 | Định tuyến wire |
+|---|---|
+| FleetAccepted p | OK PLACE cho p; thêm WAITING OPPONENT nếu phase mới vẫn Placing |
+| GameStarted P1 | START P1 cho cả hai |
+| ShotResolved p coord outcome | SHOT cho p; INCOMING cho otherPlayer p |
+| TurnReady p | TURN p cho cả hai, kể cả khi lượt được giữ nguyên |
+| GameEnded winner reason | GAME_OVER cho các kết nối còn gửi được |
+
+Danh sách Event thành công của `step` có thứ tự: PLACE chưa đủ hai fleet trả `[FleetAccepted p]`; PLACE bắt đầu trận trả `[FleetAccepted p, GameStarted P1, TurnReady P1]`; FIRE chưa thắng trả `[ShotResolved p coord outcome, TurnReady nextPlayer]`; FIRE thắng trả `[ShotResolved p coord Win, GameEnded p AllShipsSunk]`; QUIT trước Finished trả `[GameEnded (otherPlayer p) OpponentLeft]`. WELCOME và ERROR do lớp kết nối/điều phối tạo, không nằm trong danh sách Event thành công.
+
+- PLACE đầu tiên: người đặt nhận OK PLACE rồi WAITING OPPONENT. Người đặt thứ hai: nhận OK PLACE trước START; cả hai nhận START P1 rồi TURN P1. Không phát WAITING cho người thứ hai khi phase mới đã Turn.
+- FIRE chưa thắng: người bắn nhận SHOT trước TURN; người bị bắn nhận INCOMING trước TURN. MISS chuyển sang đối thủ; HIT/SUNK giữ người bắn.
+- FIRE thắng: SHOT/INCOMING WIN trước GAME_OVER ALL_SHIPS_SUNK; không phát TURN sau đó.
+- QUIT/EOF/lỗi socket trước khi kết thúc: winner = otherPlayer người rời trận, reason = OPPONENT_LEFT. QUIT không có OK QUIT. Server có thể gửi GAME_OVER cả cho người chủ động QUIT nếu socket còn gửi được. Nếu P1 rời trước khi P2 kết nối, trận cũng kết thúc, winner logic là P2 và không nhận người thay thế.
+- Khi đã Finished, không đổi winner/reason hoặc phát GAME_OVER lần hai vì các EOF tiếp theo. Lệnh đã nhận nhưng được xét sau Finished trả ERROR GAME_FINISHED nếu socket còn mở. Sau khi đẩy hết thông báo kết thúc, server đóng hai socket và dừng trận; client không chờ phản hồi sau EOF.
+- V1 không có VIEW, reconnect hoặc truy vấn snapshot. Client giữ đội tàu đã được OK PLACE, outgoing/incoming shot history và phase từ các event để dựng bàn. PlayerView của A-01 vẫn là hợp đồng lọc dữ liệu phía server; không gửi Show GameState/Fleet đối thủ trên wire.
+- Chỉ vị trí đã bắn được gửi trong SHOT/INCOMING; chỉ ID tàu đã chìm được gửi trong SUNK. Lỗi đặt tàu chỉ trả cho người đặt. Không chuyển tiếp payload PLACE cho đối thủ.
+- Cần bảo toàn thứ tự theo từng người nhận, không cần hai client nhìn thấy broadcast cùng một thời điểm.
+
+## 7. Transcript nghiệm thu
+
+Các prefix `C1 -> S:`, `S -> C1:` là chú thích hướng truyền, không phải byte gửi. C1 mang P1, C2 mang P2; mỗi payload dưới đây thực sự có LF ở cuối. Không có chuỗi "[CONNECT]" trên wire.
+
+### 7.1. Kết nối → đặt tàu → phát bắn đầu tiên
+
+C1 kết nối trước; C2 kết nối sau khi C1 đã đặt. P1 đặt tàu ở hàng 1..5; P2 đặt tàu ở hàng 6..10. A6 nằm trên CV của P2 nên phát bắn đầu tiên là HIT và P1 giữ lượt.
+
+<!-- transcript:connect-first-shot -->
+```text
+S -> C1: WELCOME 1 P1
+C1 -> S: PLACE CV=A1:H;BB=A2:H;CR=A3:H;SB=A4:H;DD=A5:H
+S -> C1: OK PLACE
+S -> C1: WAITING OPPONENT
+S -> C2: WELCOME 1 P2
+C2 -> S: PLACE CV=A6:H;BB=A7:H;CR=A8:H;SB=A9:H;DD=A10:H
+S -> C2: OK PLACE
+S -> C1: START P1
+S -> C2: START P1
+S -> C1: TURN P1
+S -> C2: TURN P1
+C1 -> S: FIRE A6
+S -> C1: SHOT A6 HIT
+S -> C2: INCOMING A6 HIT
+S -> C1: TURN P1
+S -> C2: TURN P1
+```
+
+### 7.2. Lệnh lỗi không mất lượt
+
+Tiếp nối 7.1: P1 đang có lượt, A6 đã bắn. P2 sai lượt; P1 sai tọa độ, bắn lặp và sai mã lệnh rồi thử lại B6 hợp lệ. Mỗi lỗi chỉ phản hồi người gửi.
+
+<!-- transcript:errors-and-retry -->
+```text
+C2 -> S: FIRE J10
+S -> C2: ERROR NOT_YOUR_TURN P1
+C1 -> S: FIRE K1
+S -> C1: ERROR INVALID_COORDINATE
+C1 -> S: FIRE A6
+S -> C1: ERROR ALREADY_FIRED A6
+C1 -> S: fire B6
+S -> C1: ERROR INVALID_COMMAND
+C1 -> S: FIRE B6
+S -> C1: SHOT B6 HIT
+S -> C2: INCOMING B6 HIT
+S -> C1: TURN P1
+S -> C2: TURN P1
+```
+
+### 7.3. MISS đổi lượt
+
+Tiếp nối trạng thái P1 có lượt ở 7.1/7.2; J10 không có tàu P2.
+
+<!-- transcript:miss -->
+```text
+C1 -> S: FIRE J10
+S -> C1: SHOT J10 MISS
+S -> C2: INCOMING J10 MISS
+S -> C1: TURN P2
+S -> C2: TURN P2
+```
+
+### 7.4. SUNK vẫn giữ lượt
+
+Fixture riêng: P1 có lượt, DD của P2 ở A10/B10 đã bị trúng A10, chưa bắn B10, còn tàu khác chưa chìm.
+
+<!-- transcript:sunk -->
+```text
+C1 -> S: FIRE B10
+S -> C1: SHOT B10 SUNK DD
+S -> C2: INCOMING B10 SUNK DD
+S -> C1: TURN P1
+S -> C2: TURN P1
+```
+
+### 7.5. WIN không có lượt tiếp theo
+
+Fixture riêng: P1 có lượt, đã trúng 16 ô tàu P2, chỉ B10 còn lại.
+
+<!-- transcript:win -->
+```text
+C1 -> S: FIRE B10
+S -> C1: SHOT B10 WIN
+S -> C2: INCOMING B10 WIN
+S -> C1: GAME_OVER P1 ALL_SHIPS_SUNK
+S -> C2: GAME_OVER P1 ALL_SHIPS_SUNK
+```
+
+### 7.6. Chủ động rời trận, ngắt kết nối và kết nối thứ ba
+
+QUIT ở phase chưa kết thúc:
+
+<!-- transcript:quit -->
+```text
+C2 -> S: QUIT
+S -> C1: GAME_OVER P1 OPPONENT_LEFT
+S -> C2: GAME_OVER P1 OPPONENT_LEFT
+```
+
+Nếu C2 mất kết nối bất thường, chỉ còn thông điệp dưới đây cho C1:
+
+<!-- transcript:disconnect -->
+```text
+S -> C1: GAME_OVER P1 OPPONENT_LEFT
+```
+
+C3 kết nối khi hai slot đã được gán; C3 không nhận WELCOME và không được cấp PlayerId:
+
+<!-- transcript:server-full -->
+```text
+S -> C3: ERROR SERVER_FULL
+```
+
+## 8. Kiểm tra hợp đồng D-01
+
+`test/ProtocolSpec.hs` dùng các hàm tham chiếu trong test để kiểm tra grammar/framing, tọa độ, ánh xạ mã lỗi A-01 và các block transcript ngay trong tài liệu này. Đây là unit/contract test cho đặc tả D-01, chưa chứng minh parser/encoder hoặc socket server/client thực tế; các module đó hiện còn là khung.
+
+```sh
+stack test --test-arguments="--match D-01"
+```
+
+Khi triển khai parser/encoder thực tế, tái sử dụng các ví dụ trên làm golden vectors và thêm round-trip test trên API production. Giữ các marker HTML để test tìm đúng block; thay đổi transcript/grammar phải cập nhật test và phiên bản nếu không tương thích.

@@ -13,9 +13,9 @@ flowchart LR
     CO --> STEP["Rules.step<br/>hàm thuần"]
     STEP --> BOARD["Board / Types"]
     STEP -->|"trạng thái mới + Event"| CO
-    CO --> VIEW["View.viewFor<br/>lọc bí mật"]
-    VIEW --> Q1["TChan riêng P1"]
-    VIEW --> Q2["TChan riêng P2"]
+    CO --> ROUTE["Event → wire theo D-01<br/>định tuyến riêng, lọc bí mật"]
+    ROUTE --> Q1["TChan riêng P1"]
+    ROUTE --> Q2["TChan riêng P2"]
     Q1 --> W1["Writer P1"] --> P1
     Q2 --> W2["Writer P2"] --> P2
 ```
@@ -24,8 +24,10 @@ flowchart LR
 
 1. Reader nhận một dòng, `Protocol` phân tích thành `PlaceFleet`; server gắn `PlayerId` của socket.
 2. `Coordinator` đọc `GameState`, gọi `Rules.step` để kiểm tra đội tàu và tạo trạng thái mới.
-3. Nếu mới một người đặt xong, giai đoạn vẫn là `Placing`; gửi `Waiting` cho người đó.
-4. Khi người thứ hai đặt xong, giai đoạn chuyển thành `Turn P1`; gửi `Start P1` và góc nhìn riêng cho từng người.
+3. Nếu mới một người đặt xong, giai đoạn vẫn là `Placing`; gửi `OK PLACE` rồi `WAITING OPPONENT` cho người đó.
+4. Khi người thứ hai đặt xong, giai đoạn chuyển thành `Turn P1`; người đó nhận `OK PLACE`, cả hai nhận `START P1` rồi `TURN P1`.
+
+D-01 tại `docs/protocol.md` là hợp đồng wire v1: không gửi snapshot `PlayerView`. Client dựng bàn từ đội tàu của mình đã được xác nhận và các event được phép thấy. `View.viewFor` vẫn là hợp đồng hàm thuần phía server; không gửi nguyên `GameState` hay đội tàu đối thủ. Định tuyến `ShotResolved` thành `SHOT` cho người bắn và `INCOMING` cho người bị bắn; mỗi người nhận kết quả trước `TURN` hoặc `GAME_OVER`.
 
 ## Luồng bắn và giữ lượt
 
