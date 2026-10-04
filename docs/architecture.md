@@ -1,6 +1,6 @@
 # Kiến trúc điều phối Battleship
 
-Phạm vi: một server, hai client terminal, một trận. Server giữ trạng thái duy nhất; các module `Board`, `Rules` và `View` là hàm thuần. Types A-01, Board A-02, khung step B-01, transport C-02 và codec/client một lệnh D-02 đã có cài đặt; luồng điều phối nghiệp vụ, kết quả bắn và góc nhìn được triển khai ở các task tiếp theo. Sơ đồ STM dưới đây là kiến trúc đích, chưa phải cài đặt C-02.
+Phạm vi: một server, hai client terminal, một trận. Server giữ trạng thái duy nhất; các module `Board`, `Rules` và `View` là hàm thuần. Types A-01, Board A-02/A-03, Rules B-01/B-02, transport C-02 và codec/client một lệnh D-02 đã có cài đặt; luật có thể chạy trọn ván bằng chuỗi lệnh thuần. Luồng điều phối TCP/STM và góc nhìn được triển khai ở các task tiếp theo. Sơ đồ STM dưới đây là kiến trúc đích, chưa phải cài đặt C-02.
 
 ## Transport C-02 hiện tại
 
@@ -45,7 +45,9 @@ D-01 tại `docs/protocol.md` là hợp đồng wire v1: không gửi snapshot `
 
 ## Luồng bắn và giữ lượt
 
-Phần dưới là luồng đích theo R-01/D-01. B-01 hiện kiểm tra readiness → lượt → tọa độ → bắn lặp; FIRE qua hết kiểm tra trả Left InvalidCommand với lý do debug `B-01: shot resolution is not implemented`. Không ghi phát bắn hoặc đổi lượt ở nhánh này. PLACE/bắt đầu trận và QUIT đã có chuyển trạng thái/sự kiện thật qua hàm thuần step.
+B-02 đã cài luật thuần theo R-01/D-01: kiểm tra readiness → lượt → tọa độ → bắn lặp, tra ô trong fleet đối thủ để xác định Miss/Hit/Sunk/Win. Lịch sử lưu một lần ở playerShots của người bắn; `shotsReceived player state` đọc lịch sử người kia cho bàn của player. Thêm tọa độ mới vào tập ô đã bắn để kiểm tra tàu chìm/toàn bộ fleet; Win ưu tiên trước Sunk ở ô cuối cùng. Tàu chạm cạnh vẫn là các ShipId riêng, không gom theo vùng liên thông. Giữ các Outcome lịch sử, không sửa Hit cũ thành Sunk/Win.
+
+step chỉ đổi lịch sử người bắn và phase; giữ nguyên hai fleet và lịch sử bắn ra của đối thủ. Mỗi Right trả ShotResolved rồi TurnReady hoặc GameEnded. Lỗi trả Left, caller giữ toàn bộ state cũ. Test mô phỏng trọn ván cho cả hai người thắng, gồm đặt tàu và đổi lượt sau Miss. Phần STM/writer dưới đây vẫn là luồng đích, chưa nối server C-02 vào step.
 
 1. Client đang có lượt gửi `Fire Coord`.
 2. Trong một giao dịch STM, coordinator đọc trạng thái cũ, gọi `step`, ghi trạng thái mới và xếp thông báo vào kênh riêng. Socket writer gửi thông báo sau giao dịch.
@@ -83,12 +85,12 @@ viewFor :: PlayerId -> GameState -> PlayerView
 - `Coord` dùng cột/hàng bắt đầu từ 1; `A1 = Coord 1 1`, `J10 = Coord 10 10`. Giá trị ngoài bàn vẫn biểu diễn được để trả `InvalidCoordinate`; A-02/Rules phải kiểm tra trước khi dùng.
 - `ShipPlacement` gồm ID, điểm đầu, hướng; độ dài lấy từ `shipLength`, không nhận độ dài tự chọn. `FleetPlacement` là danh sách để không mất tàu trùng ID trước bước kiểm tra.
 - `Fleet` bọc `Map ShipId (Set Coord)`, được `Board.placeFleet` A-02 tạo sau khi kiểm tra đủ năm tàu, đúng độ dài/hình dạng, trong bàn, không chồng. Cho phép chạm cạnh/góc như R-01. Types chỉ xuất type Fleet và hàm đọc fleetShips; constructor/record update nằm trong module private Internal.Fleet. Rules và fixture phải tạo qua placeFleet, không import Internal.
-- `PlayerState` giữ `Maybe Fleet` và lịch sử bắn vào đối thủ `Map Coord Outcome`. `Nothing` nghĩa là chưa đặt tàu; chỉ `Right fleet` của `placeFleet` được gắn bằng `Just`. Các ô bị đối thủ bắn trên bàn mình lấy từ lịch sử của người kia, tránh lưu hai bản dữ liệu có thể lệch nhau.
+- `PlayerState` giữ `Maybe Fleet` và lịch sử bắn vào đối thủ `Map Coord Outcome`. `Nothing` nghĩa là chưa đặt tàu; chỉ `Right fleet` của `placeFleet` được gắn bằng `Just`. Các ô bị đối thủ bắn trên bàn mình lấy từ lịch sử của người kia qua `shotsReceived :: PlayerId -> GameState -> Map Coord Outcome`, tránh lưu hai bản dữ liệu có thể lệch nhau.
 - `GameState` luôn có `gamePlayer1`, `gamePlayer2`, `gamePhase`. `setPlayerState` chỉ thay một record, không kiểm tra luật/chuyển giai đoạn. `Turn` đòi hỏi cả hai đội tàu đã hợp lệ; `Finished winner AllShipsSunk` không có lượt tiếp theo. `Finished winner OpponentLeft` cũng có thể xảy ra khi đang đặt tàu.
 - `Left GameError` không trả trạng thái mới: C giữ nguyên toàn bộ trạng thái cũ, chỉ báo lỗi cho người gửi. `Right` trả trạng thái/sự kiện mới. Rules chọn thứ tự kiểm tra lỗi; A-01 chưa chốt ưu tiên nếu một lệnh mắc nhiều lỗi.
 - C truyền `PlayerId` của socket vào `step`; D không parse danh tính trong `Command`. C chuyển ngắt kết nối bất thường thành `Quit` của người đó. Sau khi kết thúc, Rules từ chối mọi lệnh bằng `GameAlreadyFinished`.
 - `PlayerView` có fleet của chính người nhận, lịch sử bắn ra/bắn vào, phase và readiness của đối thủ. Không có field fleet đối thủ. B phải kiểm tra `ownFleetView` lấy đúng người; A-01 chưa chứng minh cài đặt `viewFor` lọc bí mật đúng.
 
-Luật R-01 giữ nguyên: đủ hai đội tàu thì `Turn P1`; `Miss` đổi lượt, `Hit`/`Sunk` giữ lượt; `Win` kết thúc ngay. BoardSpec A-02 kiểm tra đặt tàu bằng hàm thuần; RulesSpec B-01 kiểm tra đặt tàu/bắt đầu/bỏ cuộc và các nhánh lỗi giữ state. Kết quả bắn/lọc bí mật vẫn chờ các task B tiếp theo. TypesSpec A-01 dùng fleet fixture tạo qua placeFleet.
+Luật R-01 giữ nguyên: đủ hai đội tàu thì `Turn P1`; `Miss` đổi lượt, `Hit`/`Sunk` giữ lượt; `Win` kết thúc ngay. BoardSpec A-02/A-03 kiểm tra đặt tàu; RulesSpec B-01/B-02 kiểm tra đặt tàu/bắt đầu/bỏ cuộc, mọi kết quả bắn và các nhánh lỗi giữ state. View.viewFor/lọc bí mật vẫn chờ task B tiếp theo. TypesSpec A-01 dùng fleet fixture tạo qua placeFleet.
 
 Trạng thái review chung tại [shared_contract.md](shared_contract.md), S-01 v2 cập nhật A-02: đã đối chiếu Types, Board, giao thức và hai Main; chưa có đủ xác nhận A/B/C/D để khóa mốc. Bảng chủ sở hữu tại S-01 gồm cả app/test/YAML và module private; bảng module ở đây chỉ là tóm tắt kiến trúc.

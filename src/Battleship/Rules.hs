@@ -1,11 +1,12 @@
--- | B-01: pure command/phase dispatch, placement and quit transitions.
--- Successful shot resolution (Miss/Hit/Sunk/Win) belongs to the next rules task.
+-- | B-01/B-02: pure placement, shots, turn changes and terminal transitions.
 module Battleship.Rules (step) where
 
 import qualified Battleship.Board as Board
 import Battleship.Types
 import qualified Data.Map.Strict as Map
 import Data.Maybe (isJust)
+import Data.List (find)
+import qualified Data.Set as Set
 
 -- | No state or successful events are returned on Left. The coordinator must
 -- keep the original state. Every Command explicitly handles every Phase.
@@ -33,9 +34,9 @@ step actor command state = case command of
       | actor /= current -> Left (NotYourTurn current)
       | not (Board.inBounds coordinate) -> Left (InvalidCoordinate coordinate)
       | Map.member coordinate (playerShots actorState) -> Left (AlreadyFired coordinate)
-      -- ponytail: B-01 validates FIRE only; replace this explicit Left with
-      -- shot resolution and ShotResolved/TurnReady/GameEnded in the next task.
-      | otherwise -> Left (InvalidCommand "B-01: shot resolution is not implemented")
+      | otherwise -> case playerFleet (playerStateFor (otherPlayer actor) state) of
+          Nothing -> Left FleetsNotReady
+          Just fleet -> shoot coordinate fleet
     Finished _ _ -> Left GameAlreadyFinished
 
   Quit -> case gamePhase state of
@@ -44,6 +45,16 @@ step actor command state = case command of
     Finished _ _ -> Left GameAlreadyFinished
   where
     actorState = playerStateFor actor state
+    shoot coordinate fleet =
+      let outcome = resolveShot coordinate fleet (playerShots actorState)
+          shooter = actorState { playerShots = Map.insert coordinate outcome (playerShots actorState) }
+          recorded = setPlayerState actor shooter state
+          (phase, nextEvent) = case outcome of
+            Miss -> (Turn (otherPlayer actor), TurnReady (otherPlayer actor))
+            Hit -> (Turn actor, TurnReady actor)
+            Sunk _ -> (Turn actor, TurnReady actor)
+            Win -> (Finished actor AllShipsSunk, GameEnded actor AllShipsSunk)
+      in Right (recorded { gamePhase = phase }, [ShotResolved actor coordinate outcome, nextEvent])
     finishQuit =
       let winner = otherPlayer actor
       in Right (state { gamePhase = Finished winner OpponentLeft },
@@ -52,3 +63,17 @@ step actor command state = case command of
 fleetsReady :: GameState -> Bool
 fleetsReady state = isJust (playerFleet (gamePlayer1 state))
                 && isJust (playerFleet (gamePlayer2 state))
+
+-- Geometry determines hits; history keys determine which cells have been shot.
+-- Win takes precedence over Sunk on the last cell of the last remaining ship.
+resolveShot :: Coord -> Fleet -> Map.Map Coord Outcome -> Outcome
+resolveShot coordinate fleet history =
+  case find (Set.member coordinate . snd) (Map.toList ships) of
+    Nothing -> Miss
+    Just (ship, cells)
+      | Set.unions (Map.elems ships) `Set.isSubsetOf` fired -> Win
+      | cells `Set.isSubsetOf` fired -> Sunk ship
+      | otherwise -> Hit
+  where
+    ships = fleetShips fleet
+    fired = Set.insert coordinate (Map.keysSet history)

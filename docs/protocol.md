@@ -289,7 +289,7 @@ stack test --test-arguments="--match D-01"
 stack test --ghc-options=-Werror --test-arguments="--match D-02"
 ```
 
-Giữ các marker HTML để test tìm đúng block; thay đổi transcript/grammar phải cập nhật test và phiên bản nếu không tương thích. Kiểm thử transcript chứng minh codec đúng, chưa chứng minh server chạy toàn bộ trận: C-02 vẫn dùng ERROR INVALID_COMMAND mẫu cho PLACE/FIRE, chờ Coordinator/Rules ở task tiếp theo.
+Giữ các marker HTML để test tìm đúng block; thay đổi transcript/grammar phải cập nhật test và phiên bản nếu không tương thích. Kiểm thử transcript chứng minh codec đúng, chưa chứng minh server chạy toàn bộ trận: Rules B-02 đã xử lý bắn bằng hàm thuần, nhưng C-02 vẫn dùng ERROR INVALID_COMMAND mẫu cho PLACE/FIRE, chờ Coordinator nối vào Rules.
 
 ## 9. API production D-02
 

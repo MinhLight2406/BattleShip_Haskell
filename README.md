@@ -2,7 +2,7 @@
 
 Dự án Battleship cho hai người chơi, dự kiến chạy bằng hai client terminal kết nối đến một server TCP. Server giữ trạng thái trận đấu; luật chơi được triển khai bằng các hàm thuần Haskell.
 
-**Trạng thái hiện tại:** đã có khung C-01, kiểu A-01, giao thức D-01, Board A-02/A-03, khung Rules B-01 (`step`), server TCP C-02 và parser/encoder cùng client gửi một lệnh D-02. A-03 kiểm chứng đội tàu đúng MVP và cấm đặt lại sau xác nhận qua Rules. Step xử lý đặt tàu/bắt đầu trận/bỏ cuộc, kiểm tra lỗi trước khi bắn; tính kết quả Miss/Hit/Sunk/Win còn chờ task luật tiếp theo. Server dùng framer chung nhưng vẫn trả phản hồi mẫu cho PLACE/FIRE; chưa nối Coordinator/Rules để chơi trận thật hoặc có `viewFor`.
+**Trạng thái hiện tại:** đã có khung C-01, kiểu A-01, giao thức D-01, Board A-02/A-03, Rules B-01/B-02 (`step`), server TCP C-02 và parser/encoder cùng client gửi một lệnh D-02. A-03 kiểm chứng đội tàu đúng MVP và cấm đặt lại sau xác nhận qua Rules. Step xử lý đặt tàu/bắt đầu trận/bỏ cuộc, Miss/Hit/Sunk/Win và chuyển lượt; có thể mô phỏng trọn ván bằng chuỗi lệnh thuần. Server dùng framer chung nhưng vẫn trả phản hồi mẫu cho PLACE/FIRE; chưa nối Coordinator/Rules để chơi trận TCP thật hoặc có `viewFor`.
 
 **S-01:** bản hợp đồng chung v2 cập nhật A-02 ở [docs/shared_contract.md](docs/shared_contract.md). Chưa khóa mốc vì còn chờ xác nhận A/B/C/D; việc ẩn constructor Fleet, chủ sở hữu file và quy trình thay đổi được ghi tại đó.
 
@@ -17,7 +17,7 @@ stack build
 stack test
 ```
 
-`stack build` biên dịch thư viện và hai executable. `stack test` chạy A-01 (`TypesSpec`), A-02/A-03 (`BoardSpec`), B-01 (`RulesSpec`), D-01/D-02 (`ProtocolSpec`/`ClientSpec`), S-01 (`SharedContractSpec`), C-02/D-02 (`IntegrationSpec`) và hai smoke test C-01; tất cả phải đạt, không có failure. Smoke test dùng `--help` của cả hai executable. Test TCP dùng port do OS cấp và kiểm tra cả library lẫn executable; ProtocolSpec gọi parser/encoder production với các transcript trong tài liệu. Windows Application Control chặn executable sẽ khiến smoke test thất bại.
+`stack build` biên dịch thư viện và hai executable. `stack test` chạy A-01 (`TypesSpec`), A-02/A-03 (`BoardSpec`), B-01/B-02 (`RulesSpec`), D-01/D-02 (`ProtocolSpec`/`ClientSpec`), S-01 (`SharedContractSpec`), C-02/D-02 (`IntegrationSpec`) và hai smoke test C-01; tất cả phải đạt, không có failure. Smoke test dùng `--help` của cả hai executable. Test TCP dùng port do OS cấp và kiểm tra cả library lẫn executable; ProtocolSpec gọi parser/encoder production với các transcript trong tài liệu. Windows Application Control chặn executable sẽ khiến smoke test thất bại.
 
 Chạy riêng hợp đồng giao thức:
 
@@ -49,13 +49,14 @@ stack test --ghc-options=-Werror --test-arguments="--match A-03"
 
 BoardSpec gồm test thuần cho đúng năm ID/17 ô, mép A1/J10, tàu dài 3 trùng ID, tàu chạm cạnh và không đặt lại qua Rules.step. Năm test biên dịch chạy GHC có sẵn trong môi trường Stack trên probe tạm: API public hợp lệ phải biên dịch, constructor/record update/coerce/import private phải bị từ chối đúng nguyên nhân. Probe chỉ dùng package đã build, được xóa sau test; không cần dependency mới.
 
-Chạy riêng khung luật B-01:
+Chạy riêng luật B-01/B-02:
 
 ```sh
 stack test --ghc-options=-Werror --test-arguments="--match B-01"
+stack test --ghc-options=-Werror --test-arguments="--match B-02"
 ```
 
-`step :: Step` có đủ nhánh Command/Phase. FIRE sai bị từ chối theo điều kiện; FIRE đã qua kiểm tra hiện trả `Left (InvalidCommand "B-01: shot resolution is not implemented")`, giữ nguyên state và không phát ShotResolved. Đây là điểm thay thế bằng logic bắn ở task tiếp theo, chưa phải game chơi được. Coordinator phải giữ state cũ khi Left; adapter trong RulesSpec kiểm tra hợp đồng này, chưa kiểm chứng Coordinator/STM thực tế.
+`step :: Step` có đủ nhánh Command/Phase. FIRE kiểm tra readiness → lượt → tọa độ → bắn lặp; sai trả Left và không tiêu lượt. FIRE hợp lệ ghi đúng một tọa độ/kết quả vào `playerShots` của người bắn; `shotsReceived opponent state` đọc chính lịch sử đó cho bàn đối thủ, không lưu bản sao thứ hai. Miss đổi lượt; Hit/Sunk giữ lượt; trúng toàn bộ ô tàu trả Win và Finished. Sự kiện là ShotResolved rồi TurnReady hoặc GameEnded, không có TURN sau WIN. Coordinator phải giữ state cũ khi Left; adapter trong RulesSpec kiểm tra hợp đồng này, chưa kiểm chứng Coordinator/STM thực tế.
 
 Thử hàm thuần bằng `stack ghci battleship-haskell:lib`:
 
@@ -69,6 +70,24 @@ shipCells (ShipPlacement Carrier (Coord 9 10) Horizontal) -- Left (ShipOutOfBoun
 ```
 
 `Fleet(..)` và record update `fleet { fleetShips = ... }` không còn là API công khai. Tạo fixture/game fleet bằng `placeFleet`; đọc các ô qua `fleetShips fleet`. Module `Battleship.Internal.Fleet` chỉ dành cho Board/Types và không được expose cho executable/client.
+
+Mô phỏng một ván thuần trong GHCi, từ đặt tàu đến P1 thắng (không cần server):
+
+```haskell
+import Battleship.Rules
+import Battleship.Types
+import Battleship.Board
+import Control.Monad (foldM)
+import qualified Data.Map.Strict as Map
+import qualified Data.Set as Set
+let p1 = [ShipPlacement ship (Coord 1 row) Horizontal | (ship, row) <- zip [Carrier, Battleship, Cruiser, Submarine, Destroyer] [1..5]]
+let p2 = [placement { placementStart = Coord 1 (coordRow (placementStart placement) + 5) } | placement <- p1]
+let play (state, batches) (player, command) = do { (next, events) <- step player command state; pure (next, batches ++ [events]) }
+let game = do { fleet <- placeFleet p2; foldM play (initialGameState, []) ([(P1, PlaceFleet p1), (P2, PlaceFleet p2)] ++ [(P1, Fire cell) | cell <- Set.toList (Set.unions (Map.elems (fleetShips fleet)))]) }
+fmap (gamePhase . fst) game -- Right (Finished P1 AllShipsSunk)
+fmap (Map.size . shotsReceived P2 . fst) game -- Right 17
+fmap (take 1 . reverse . snd) game -- batch cuối gồm ShotResolved ... Win, GameEnded P1 AllShipsSunk
+```
 
 ## Chạy và kiểm tra server C-02
 
@@ -144,4 +163,4 @@ Luật đầy đủ ở [docs/game_spec.md](docs/game_spec.md). Sơ đồ hoạt
 | D | `Protocol.hs`, `Client.hs`, `ClientMain.hs`, test giao thức và tích hợp |
 | R | `docs/`, báo cáo, minh chứng kiểm thử và demo |
 
-Trước khi tích hợp nghiệp vụ tiếp theo, cả nhóm review và ghi xác nhận S-01 v2 tại [docs/shared_contract.md](docs/shared_contract.md), gồm A-01/C-01/D-01 và cập nhật A-02/A-03/B-01/C-02/D-02. Phân công chi tiết gồm cả Main, test và YAML nằm ở đó. Board/Types, khung step, transport hai client và codec/client một lệnh đã có cài đặt; logic kết quả bắn và các module nghiệp vụ còn lại tiếp tục do từng thành viên triển khai.
+Trước khi tích hợp nghiệp vụ tiếp theo, cả nhóm review và ghi xác nhận S-01 v2 tại [docs/shared_contract.md](docs/shared_contract.md), gồm A-01/C-01/D-01 và cập nhật A-02/A-03/B-01/B-02/C-02/D-02. Phân công chi tiết gồm cả Main, test và YAML nằm ở đó. Board/Types, luật step, transport hai client và codec/client một lệnh đã có cài đặt; Coordinator/STM và các module nghiệp vụ còn lại tiếp tục do từng thành viên triển khai.

@@ -20,7 +20,7 @@ Các module sử dụng kiểu chung bằng `import Battleship.Types` hoặc imp
 
 S-01 v1 đã đối chiếu kỹ thuật tại commit `f73dc87e336ba01d4723f642582403b1f20e2504` nhưng chưa có đủ bốn xác nhận. Người dùng yêu cầu tiếp tục A-02 trên nhánh `Minh-Build_board`: v2 cập nhật việc ẩn constructor Fleet và cài đặt Board; đây là nội dung mới để A/B/C/D duyệt, không phải bằng chứng v1/v2 đã khóa. R-01 và wire v1 giữ nguyên.
 
-A-02 đã có `Board.placeFleet`, `shipCells`, `inBounds` thuần. B-01 có `Rules.step` với đủ nhánh Command/Phase, đặt tàu, bắt đầu trận, bỏ cuộc và kiểm tra lỗi trước FIRE. C-02 có TCP server nhận hai slot trên localhost, từ chối người thứ ba và cleanup; chưa nối vào Rules. D-02 có codec production và client TCP một lệnh; Server/Client dùng framer chung. Kết quả bắn còn chờ task tiếp theo; View/Coordinator vẫn là khung. Chưa có `viewFor` hoặc trận chơi được. Không tạo hàm giả dùng `undefined`/`error` để làm như đã có cài đặt. B-01/C-02/D-02 tiếp tục theo yêu cầu người dùng trên các nhánh `Minh-Build_Rule`/`Minh-Update_Server`/`Minh-Parser`; kiểu chung và wire v1 giữ nguyên, S-01 vẫn chờ bốn xác nhận.
+A-02/A-03 đã có `Board.placeFleet`, `shipCells`, `inBounds` thuần và nghiệm thu fleet đúng MVP. B-01/B-02 có `Rules.step` với đủ nhánh Command/Phase, đặt tàu, bắt đầu trận, bỏ cuộc, kiểm tra lỗi và mọi kết quả FIRE/chuyển lượt/thắng; có thể mô phỏng trọn ván bằng chuỗi lệnh thuần. C-02 có TCP server nhận hai slot trên localhost, từ chối người thứ ba và cleanup; chưa nối vào Rules. D-02 có codec production và client TCP một lệnh; Server/Client dùng framer chung. View/Coordinator vẫn là khung. Chưa có `viewFor` hoặc trận TCP chơi được. Không tạo hàm giả dùng `undefined`/`error` để làm như đã có cài đặt. Các task tiếp tục theo yêu cầu người dùng; B-02 trên nhánh `Minh-Chien_luoc` thêm helper đọc shotsReceived, giữ nguyên các khai báo kiểu/chữ ký miền và wire v1. S-01 vẫn chờ bốn xác nhận.
 
 ## 2. API miền dùng chung
 
@@ -129,23 +129,25 @@ step :: PlayerId -> Command -> GameState
 viewFor :: PlayerId -> GameState -> PlayerView
 ```
 
-Helper hiện có: `boardSize :: Int`, `shipLength :: ShipId -> Int`, `otherPlayer :: PlayerId -> PlayerId`, `initialGameState :: GameState`, `playerStateFor :: PlayerId -> GameState -> PlayerState`, `setPlayerState :: PlayerId -> PlayerState -> GameState -> GameState`.
+Helper hiện có: `boardSize :: Int`, `shipLength :: ShipId -> Int`, `otherPlayer :: PlayerId -> PlayerId`, `initialGameState :: GameState`, `playerStateFor :: PlayerId -> GameState -> PlayerState`, `shotsReceived :: PlayerId -> GameState -> Map Coord Outcome`, `setPlayerState :: PlayerId -> PlayerState -> GameState -> GameState`.
+
+`shotsReceived player state = playerShots (playerStateFor (otherPlayer player) state)` là hàm đọc thêm ở B-02, không phải field lưu thứ hai. Mỗi FIRE thành công chỉ thêm một entry vào playerShots của actor; cùng entry xuất hiện trong shotsReceived của đối thủ. Không sửa layout PlayerState/GameState hoặc các chữ ký Step/PlaceFleetFn/ViewFor. Helper này thuộc nội dung API để nhóm duyệt cùng S-01 còn chờ xác nhận.
 
 API Board A-02: `inBounds :: Coord -> Bool`, `shipCells :: ShipPlacement -> Either GameError (Set Coord)`, `placeFleet :: PlaceFleetFn`. Độ dài lấy từ ID tàu, không nhận độ dài tùy chọn. Đặt đúng năm ID duy nhất bảo đảm đủ cả năm loại: thiếu entry trả InvalidFleetSize, năm entry nhưng lặp ID trả DuplicateShip; không cần nhánh MissingShip riêng. Thứ tự lỗi: kiểm tra count trước, rồi từng placement trái sang phải: trùng ID → điểm đầu → vượt biên → chồng. Điểm đầu ngoài bàn trả InvalidCoordinate; phần thân vượt bàn trả ShipOutOfBounds kèm ô ngoài đầu tiên. Nếu nhiều ô chồng, trả ô nhỏ nhất theo Ord Coord. Tàu chạm cạnh/góc được phép; chỉ Right mới có Fleet, không trả fleet từng phần.
 
 A-03 trên nhánh `Minh-Dat_tau` giữ API và các guard đã có trong A-02/B-01, bổ sung nghiệm thu trong BoardSpec. Fleet phải có đúng Carrier/Battleship/Cruiser/Submarine/Destroyer, không chỉ đúng tổng chiều dài: lặp Cruiser thay Submarine vẫn đủ 17 ô nhưng bị từ chối. Board kiểm tra hình học độc lập với trạng thái; Rules.step kiểm tra FleetAlreadyPlaced trước Board và không cho thay fleet đã xác nhận khi chờ/đang chơi. Finished trả GameAlreadyFinished. Test kiểm tra cả P1/P2, request hợp lệ khác/sai, sửa request trước xác nhận và giữ đội tàu đầu tiên khi người thứ hai đặt. Năm probe GHC kiểm chứng public constructor/read access hợp lệ và chặn constructor thô, record update, coerce từ Map rỗng, import module private. Không thay khai báo kiểu, wire v1 hoặc quyền tạo Fleet.
 
-Khung B-01 xuất `step :: Step` từ Rules, dùng Board thật và không import Internal. Ma trận hiện có:
+Rules B-01/B-02 xuất `step :: Step`, dùng Board thật và không import Internal. Ma trận hiện có:
 
 | Phase | PlaceFleet | Fire | Quit |
 |---|---|---|---|
 | Placing | Đã đặt → FleetAlreadyPlaced; chưa đặt → Board kiểm tra và lưu toàn bộ fleet; đủ hai người → Turn P1 | FleetsNotReady | Finished (otherPlayer actor) OpponentLeft |
-| Turn current | Thiếu một fleet → FleetsNotReady; đủ → FleetAlreadyPlaced | Kiểm tra readiness, actor/current, tọa độ, bắn lặp; qua hết → Left tạm thời | Finished (otherPlayer actor) OpponentLeft |
+| Turn current | Thiếu một fleet → FleetsNotReady; đủ → FleetAlreadyPlaced | Kiểm tra readiness, actor/current, tọa độ, bắn lặp; qua hết → ghi shot, Miss/Hit/Sunk/Win và phase mới | Finished (otherPlayer actor) OpponentLeft |
 | Finished winner reason | GameAlreadyFinished | GameAlreadyFinished | GameAlreadyFinished, giữ winner/reason |
 
 PLACE thành công phát `[FleetAccepted actor]`; lần đặt bắt đầu trận phát `[FleetAccepted actor, GameStarted P1, TurnReady P1]`. QUIT phát duy nhất `[GameEnded winner OpponentLeft]`, giữ nguyên hai fleet/lịch sử. Lỗi trả Left, không có state mới hoặc Event thành công; caller phải giữ toàn bộ state cũ. RulesSpec dùng adapter riêng để kiểm tra hợp đồng caller, chưa kiểm thử implementation Coordinator/STM.
 
-Nhánh FIRE qua hết kiểm tra B-01 trả `Left (InvalidCommand "B-01: shot resolution is not implemented")`. Đây là lỗi tạm thời của khung, không có kết quả bắn giả; task tiếp theo thay nhánh này bằng ShotResolved/TurnReady/GameEnded đúng R-01. Chuỗi lý do chỉ phục vụ debug nội bộ; wire không thêm mã mới và không echo chuỗi đó. Transcript bắn trong D-01 là mục tiêu triển khai sau, B-01 chưa chạy được phần FIRE thành công.
+B-02 thay nhánh FIRE tạm thời bằng kết quả thật. Không thuộc tàu đối thủ → Miss; thuộc tàu và sau phát bắn tất cả ô fleet đã được bắn → Win; nếu chỉ toàn bộ ô tàu đó đã được bắn → Sunk ship; còn lại → Hit. Kiểm tra tập tọa độ, không dùng tổng số shot hoặc vùng liên thông của các tàu chạm nhau. Ghi tọa độ/outcome mới vào lịch sử actor một lần, không sửa outcome cũ hay hai fleet. Miss đổi Turn sang đối thủ; Hit/Sunk giữ Turn actor; Win chuyển Finished actor AllShipsSunk. Event đúng thứ tự `[ShotResolved actor coord outcome, TurnReady next]` hoặc `[ShotResolved actor coord Win, GameEnded actor AllShipsSunk]`, không có Sunk/TurnReady thêm sau Win. FIRE lặp/sai vẫn Left theo ưu tiên B-01, không tiêu lượt. Transcript đặt tàu/bắn đã có luật thuần và codec tương ứng, nhưng C-02 chưa gọi step để thực thi qua TCP.
 
 ## 3. Ghép kiểu với giao thức và hai Main
 
@@ -234,7 +236,7 @@ stack test --test-arguments="--match S-01"
 - TypesSpec: kiểu/alias, helper, hằng số R-01, hai trạng thái riêng.
 - BoardSpec A-02/A-03: hình học/fleet đúng MVP, mép/chạm cạnh/lặp ID dài 3, toàn bộ 3125 tổ hợp năm ID, đặt lại bị Rules từ chối và các probe GHC bảo vệ API Fleet.
 - ProtocolSpec D-01/D-02: gọi API production với golden vectors/transcript D-01, framing byte, lỗi, định tuyến và round-trip; giữ Coord/Command của Types.
-- RulesSpec B-01: chữ ký step thực tế, đủ Command/Phase cho hai actor/turn/winner/reason, Board thật, bắt đầu P1 một lần, rollback hợp đồng Left, readiness/sai lượt/tọa độ/bắn lặp, Quit/EOF lặp và điểm FIRE tạm thời.
+- RulesSpec B-01/B-02: chữ ký step thực tế, đủ Command/Phase cho hai actor/turn/winner/reason, Board thật, bắt đầu P1 một lần, rollback hợp đồng Left, readiness/sai lượt/tọa độ/bắn lặp, Quit/EOF lặp; mọi kết quả bắn, lịch sử/shot nhận, tàu chạm cạnh/ngang/dọc, mọi thứ tự bắn từng tàu và ván thuần cho cả hai winner.
 - SharedContractSpec: API nguồn khớp bản chụp, chỉ Types định nghĩa Coord/Command, Fleet abstract và chỉ Board/Types truy cập representation private, danh sách chủ sở hữu đủ/không trùng, hai điểm vào Main có main :: IO (). Test đọc src/app/test trong repository; chạy test binary riêng cần đặt working directory ở gốc repo.
 - ServerSpec C-02: TCP thật qua server library; slot/third client, QUIT/EOF, race kết nối/bỏ cuộc, framing byte và cleanup khi cancel/lỗi startup, dừng rồi bind lại cùng port.
 - ClientSpec D-02: client library với C-02/peer có kịch bản; handshake, một lệnh, phân mảnh, lỗi/EOF, cleanup, hiển thị tiếng Việt.

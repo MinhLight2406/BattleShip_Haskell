@@ -4,7 +4,7 @@ import Battleship.Server (runServer)
 import Control.Concurrent (threadDelay)
 import Control.Concurrent.Async (Async, cancel, mapConcurrently, race, wait, withAsync)
 import Control.Concurrent.MVar (newEmptyMVar, putMVar, readMVar)
-import Control.Exception (IOException, bracket, bracketOnError, try)
+import Control.Exception (IOException, bracket, bracketOnError, catch, try)
 import Control.Monad (forM_, void)
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Char8 as BSC
@@ -69,17 +69,19 @@ spec = describe "C-02 TCP server" $ do
       expectEnd [first] "P1"
       await "server exit after disconnect" (wait server)
 
-  it "serializes simultaneous QUITs into one consistent final broadcast" $
+  it "serializes simultaneous QUITs into one consistent final broadcast" $ forM_ [1 :: Int .. 50] $ \_ ->
     withServer $ \port server -> withPair port $ \first second -> do
       -- Either send may race the other client's successful session shutdown.
       void $ mapConcurrently (\connection -> try (sendText connection "QUIT\n")
         :: IO (Either IOException ())) [first, second]
-      response <- readLine first
+      response <- readLine first `catch` quitReadFailure "P1 GAME_OVER"
       response `shouldSatisfy` (`elem` map BSC.pack
         ["GAME_OVER P1 OPPONENT_LEFT", "GAME_OVER P2 OPPONENT_LEFT"])
-      readLine second >>= (`shouldBe` response)
-      mapM_ expectClosed [first, second]
+      (readLine second `catch` quitReadFailure "P2 GAME_OVER") >>= (`shouldBe` response)
+      expectClosed first `catch` quitReadFailure "P1 EOF"
+      expectClosed second `catch` quitReadFailure "P2 EOF"
       await "server exit after simultaneous QUITs" (wait server)
+
 
   it "uses sample errors for PLACE/FIRE and never forwards private payloads" $
     withServer $ \port server -> withPair port $ \first second -> do
@@ -174,6 +176,9 @@ spec = describe "C-02 TCP server" $ do
       result <- await "occupied port failure" (try (runServer port (const (pure ()))))
         :: IO (Either IOException ())
       result `shouldSatisfy` either (const True) (const False)
+
+quitReadFailure :: String -> IOException -> IO a
+quitReadFailure stage exception = ioError (userError ("C-02 simultaneous QUIT " ++ stage ++ ": " ++ show exception))
 
 withServer :: (PortNumber -> Async () -> IO a) -> IO a
 withServer action = withSocketsDo $ do

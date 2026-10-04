@@ -3,14 +3,21 @@ module RulesSpec (spec) where
 import qualified Battleship.Board as Board
 import Battleship.Rules (step)
 import Battleship.Types
-import Control.Monad (forM_)
+import Control.Monad (foldM, forM_)
 import qualified Data.Map.Strict as Map
+import qualified Data.Set as Set
+import Data.List (permutations)
 import Data.Proxy (Proxy (..))
 import Data.Typeable (typeRep)
 import Test.Hspec (Spec, describe, expectationFailure, it, shouldBe)
 
 spec :: Spec
-spec = describe "B-01 step contract" $ do
+spec = do
+  b01Spec
+  b02Spec
+
+b01Spec :: Spec
+b01Spec = describe "B-01 step contract" $ do
   it "implements the published Step signature" $
     typeRep (proxyOf step) `shouldBe` typeRep (Proxy :: Proxy Step)
 
@@ -36,8 +43,9 @@ spec = describe "B-01 step contract" $ do
           checkRejection actor (PlaceFleet (placementsFor actor)) state FleetAlreadyPlaced
 
         it (show actor ++ " handles FIRE in Turn " ++ show current ++ " explicitly") $
-          checkRejection actor (Fire (Coord 10 10)) state
-            (if actor == current then pendingFire else NotYourTurn current)
+          if actor == current
+            then checkShot actor (Coord 10 10) Miss state
+            else checkRejection actor (Fire (Coord 10 10)) state (NotYourTurn current)
 
         it (show actor ++ " can Quit in Turn " ++ show current) $
           checkQuit actor state
@@ -111,8 +119,8 @@ spec = describe "B-01 step contract" $ do
       it (show actor ++ " rejects FIRE during placement even with an invalid coordinate") $
         checkRejection actor (Fire (Coord 0 0)) (waitingFor actor) FleetsNotReady
 
-      it (show actor ++ " leaves an otherwise valid FIRE explicitly pending without recording a result") $
-        checkRejection actor (Fire (Coord 10 9)) active pendingFire
+      it (show actor ++ " resolves an otherwise valid FIRE as Miss and records it") $
+        checkShot actor (Coord 10 9) Miss active
 
     forM_ [P1, P2] $ \current ->
       forM_ [P1, P2] $ \actor ->
@@ -142,13 +150,174 @@ spec = describe "B-01 step contract" $ do
 
     it "a sequence of errors keeps all fields, emits no success events and still allows Quit" $ do
       let commands = [(P2, Fire (Coord 10 10)), (P1, Fire (Coord 0 1)),
-                      (P1, Fire (Coord 1 6)), (P1, PlaceFleet []), (P1, Fire (Coord 10 9))]
+                      (P1, Fire (Coord 1 6)), (P1, PlaceFleet []), (P1, Fire (Coord 1 6))]
           (after, events) = foldl (\(state, previous) (actor, command) ->
             let (next, emitted) = applyAsCaller actor command state
             in (next, previous ++ emitted)) (withHistories, []) commands
       after `shouldBe` withHistories
       events `shouldBe` []
       checkQuit P2 after
+
+b02Spec :: Spec
+b02Spec = describe "B-02 shot resolution and pure games" $ do
+  forM_ [P1, P2] $ \actor -> do
+    let active = readyState { gamePhase = Turn actor }
+        target = expectedShipCells (otherPlayer actor)
+        occupied = concatMap snd target
+        carrierStart = Coord 1 (if actor == P1 then 6 else 1)
+
+    it (show actor ++ " records Miss once and gives the opponent the turn") $
+      checkShot actor (Coord 10 9) Miss (withHistories { gamePhase = Turn actor })
+
+    it (show actor ++ " hits the opponent's fleet and keeps the turn") $
+      checkShot actor carrierStart Hit active
+
+    it (show actor ++ " resolves all 100 first-shot coordinates against the opponent's board") $
+      forM_ [Coord column row | column <- [1 .. 10], row <- [1 .. 10]] $ \coordinate ->
+        checkShot actor coordinate (if coordinate `elem` occupied then Hit else Miss) active
+
+    forM_ target $ \(ship, cells) -> do
+      it (show actor ++ " sinks " ++ show ship ++ " in every cell order without changing old Hit outcomes") $
+        forM_ (permutations cells) $ \order -> do
+          sunk <- foldM (\state (index, coordinate) -> do
+            let expected = if index == length cells then Sunk ship else Hit
+            checkShot actor coordinate expected state
+            case step actor (Fire coordinate) state of
+              Right (next, _) -> pure next
+              Left fault -> expectationFailure (show fault) >> pure state)
+            active (zip [1 ..] order)
+          forM_ order $ \coordinate ->
+            checkRejection actor (Fire coordinate) sunk (AlreadyFired coordinate)
+
+      it (show actor ++ " wins with any last cell of " ++ show ship ++ ", with no extra Sunk or TURN") $
+        forM_ cells $ \lastCell -> do
+          let prior = Map.insert (Coord 10 10) Miss (Map.fromList [(cell, Hit) | cell <- occupied, cell /= lastCell])
+              before = setPlayerState actor ((playerStateFor actor active) { playerShots = prior }) active
+          checkShot actor lastCell Win before
+          case step actor (Fire lastCell) before of
+            Left fault -> expectationFailure (show fault)
+            Right (finished, _) -> forM_ [P1, P2] $ \sender ->
+              forM_ [Fire lastCell, Fire (Coord 0 0), PlaceFleet [], Quit] $ \command ->
+                checkRejection sender command finished GameAlreadyFinished
+
+    it (show actor ++ " does not win merely by recording 17 shots including water misses") $ do
+      let water = take 16 [Coord column row | column <- [1 .. 10], row <- [1 .. 10],
+                                             Coord column row `notElem` occupied]
+          player = (playerStateFor actor active) { playerShots = Map.fromList [(cell, Miss) | cell <- water] }
+      checkShot actor carrierStart Hit (setPlayerState actor player active)
+
+    it (show actor ++ " sinks all ship IDs in a vertical fleet, including touching length-three ships") $
+      case Board.placeFleet verticalPlacements of
+        Left fault -> expectationFailure (show fault)
+        Right fleet -> do
+          let opponent = otherPlayer actor
+              vertical = setPlayerState opponent ((playerStateFor opponent active) { playerFleet = Just fleet }) active
+          forM_ (zip [1 ..] shipSizes) $ \(column, (ship, size)) -> do
+            let prior = Map.fromList [(Coord column row, Hit) | row <- [1 .. size - 1]]
+                before = setPlayerState actor ((playerStateFor actor vertical) { playerShots = prior }) vertical
+            checkShot actor (Coord column size) (Sunk ship) before
+
+    it (show actor ++ " rejects wrong-turn/outside/repeated shots without consuming its retained Hit turn") $ do
+      let state = setPlayerState actor ((playerStateFor actor active) {
+                    playerShots = Map.singleton carrierStart Hit }) active
+      checkRejection (otherPlayer actor) (Fire carrierStart) state (NotYourTurn actor)
+      checkRejection actor (Fire (Coord 0 1)) state (InvalidCoordinate (Coord 0 1))
+      checkRejection actor (Fire carrierStart) state (AlreadyFired carrierStart)
+      checkRejection actor (PlaceFleet []) state FleetAlreadyPlaced
+      checkShot actor (Coord 2 (coordRow carrierStart)) Hit state
+
+    it (show actor ++ " cannot repeat an actual Miss after the opponent returns the turn") $ do
+      case step actor (Fire (Coord 10 9)) active of
+        Left fault -> expectationFailure (show fault)
+        Right (afterMiss, _) -> do
+          checkRejection actor (Fire (Coord 10 9)) afterMiss (NotYourTurn (otherPlayer actor))
+          case step (otherPlayer actor) (Fire (Coord 10 9)) afterMiss of
+            Left fault -> expectationFailure (show fault)
+            Right (returned, _) -> do
+              checkRejection actor (Fire (Coord 10 9)) returned (AlreadyFired (Coord 10 9))
+              checkShot actor carrierStart Hit returned
+
+  it "allows both players to shoot the same coordinate on separate boards and exposes shotsReceived correctly" $
+    case step P1 (Fire (Coord 10 10)) readyState >>= \(afterFirst, _) -> step P2 (Fire (Coord 10 10)) afterFirst of
+      Left fault -> expectationFailure (show fault)
+      Right (afterBoth, _) -> do
+        shotsReceived P1 afterBoth `shouldBe` Map.singleton (Coord 10 10) Miss
+        shotsReceived P2 afterBoth `shouldBe` Map.singleton (Coord 10 10) Miss
+        gamePhase afterBoth `shouldBe` Turn P1
+        shotsReceived P1 initialGameState `shouldBe` Map.empty
+        shotsReceived P2 initialGameState `shouldBe` Map.empty
+
+  forM_ [P1, P2] $ \winner ->
+    it ("simulates a complete pure game from empty state until " ++ show winner ++ " wins") $ do
+      let first = otherPlayer winner
+          placements = [(first, PlaceFleet (placementsFor first)), (winner, PlaceFleet (placementsFor winner))]
+          opening = if winner == P1 then [(P1, Fire (Coord 10 10)), (P2, Fire (Coord 10 10))]
+                    else [(P1, Fire (Coord 10 10))]
+          target = expectedShipCells (otherPlayer winner)
+          attacks = [(cell, if ship == Destroyer && index == length cells then Win
+                           else if index == length cells then Sunk ship else Hit) |
+                     (ship, cells) <- target, (index, cell) <- zip [1 ..] cells]
+          commands = placements ++ opening ++ [(winner, Fire cell) | (cell, _) <- attacks]
+          expectedOpening = if winner == P1
+            then [[ShotResolved P1 (Coord 10 10) Miss, TurnReady P2],
+                  [ShotResolved P2 (Coord 10 10) Miss, TurnReady P1]]
+            else [[ShotResolved P1 (Coord 10 10) Miss, TurnReady P2]]
+          expectedShots = [[ShotResolved winner cell outcome,
+                            if outcome == Win then GameEnded winner AllShipsSunk else TurnReady winner] |
+                           (cell, outcome) <- attacks]
+      case simulate commands of
+        Left fault -> expectationFailure (show fault)
+        Right (finished, batches) -> do
+          gamePhase finished `shouldBe` Finished winner AllShipsSunk
+          batches `shouldBe` [[FleetAccepted first], [FleetAccepted winner, GameStarted P1, TurnReady P1]]
+                            ++ expectedOpening ++ expectedShots
+          playerFleet (gamePlayer1 finished) `shouldBe` Just (fleetFor P1)
+          playerFleet (gamePlayer2 finished) `shouldBe` Just (fleetFor P2)
+          let expectedWinnerShots = Map.fromList attacks
+                `Map.union` (if winner == P1 then Map.singleton (Coord 10 10) Miss else Map.empty)
+          playerShots (playerStateFor winner finished) `shouldBe` expectedWinnerShots
+          shotsReceived (otherPlayer winner) finished `shouldBe` expectedWinnerShots
+          shotsReceived winner finished `shouldBe` Map.singleton (Coord 10 10) Miss
+          Set.size (Map.keysSet expectedWinnerShots `Set.intersection`
+                    Set.fromList (concatMap snd target)) `shouldBe` 17
+          checkRejection winner (Fire (Coord 10 9)) finished GameAlreadyFinished
+          checkRejection (otherPlayer winner) Quit finished GameAlreadyFinished
+
+-- Expected geometry is independent of Board.shipCells and Types.shipLength.
+shipSizes :: [(ShipId, Int)]
+shipSizes = [(Carrier, 5), (Battleship, 4), (Cruiser, 3), (Submarine, 3), (Destroyer, 2)]
+
+expectedShipCells :: PlayerId -> [(ShipId, [Coord])]
+expectedShipCells player =
+  [(ship, [Coord column row | column <- [1 .. size]]) |
+   ((ship, size), row) <- zip shipSizes [if player == P1 then 1 else 6 ..]]
+
+verticalPlacements :: FleetPlacement
+verticalPlacements = [ShipPlacement ship (Coord column 1) Vertical | (column, (ship, _)) <- zip [1 ..] shipSizes]
+
+checkShot :: PlayerId -> Coord -> Outcome -> GameState -> IO ()
+checkShot actor coordinate outcome original = do
+  let oldPlayer = playerStateFor actor original
+      history = Map.insert coordinate outcome (playerShots oldPlayer)
+      recorded = setPlayerState actor (oldPlayer { playerShots = history }) original
+      expectedPhase = case outcome of
+        Miss -> Turn (otherPlayer actor)
+        Win -> Finished actor AllShipsSunk
+        _ -> Turn actor
+      nextEvent = case outcome of
+        Miss -> TurnReady (otherPlayer actor)
+        Win -> GameEnded actor AllShipsSunk
+        _ -> TurnReady actor
+  step actor (Fire coordinate) original `shouldBe`
+    Right (recorded { gamePhase = expectedPhase }, [ShotResolved actor coordinate outcome, nextEvent])
+  shotsReceived (otherPlayer actor) recorded `shouldBe` history
+  shotsReceived actor recorded `shouldBe` shotsReceived actor original
+  Map.size history `shouldBe` Map.size (playerShots oldPlayer) + 1
+
+simulate :: [(PlayerId, Command)] -> Either GameError (GameState, [[Event]])
+simulate = foldM (\(state, batches) (actor, command) -> do
+  (next, events) <- step actor command state
+  pure (next, batches ++ [events])) (initialGameState, [])
 
 -- This adapter expresses the coordinator contract; it is not a test of STM or
 -- the future Coordinator implementation. On Left it retains the full old state.
@@ -167,9 +336,6 @@ checkQuit actor original = step actor Quit original `shouldBe`
 
 proxyOf :: a -> Proxy a
 proxyOf _ = Proxy
-
-pendingFire :: GameError
-pendingFire = InvalidCommand "B-01: shot resolution is not implemented"
 
 placementsFor :: PlayerId -> FleetPlacement
 placementsFor player =

@@ -274,3 +274,45 @@ Rà soát trước A-03 cho thấy A-02 đã kiểm tra đủ năm ID, chiều d
 Giữ placeFleet thuần với chữ ký đã thống nhất: nó kiểm tra một request và không có GameState để biết ai đã đặt. Quy tắc không đặt lại được kiểm tra qua Rules.step trước khi gọi Board; test caller giữ state cũ khi Left, chưa kiểm chứng Coordinator/STM thực tế. Board bổ sung Haddock về đúng ID/độ dài, chạm cạnh và ranh giới xác nhận; README/hợp đồng chung bổ sung hướng dẫn nghiệm thu. Không đổi Types, constructor export, luật R-01, wire v1 hoặc dependency.
 
 Căn cứ slide: ADT cho hai ShipId dài 3 riêng biệt; hàm thuần/Either và quy nạp trên danh sách cho kiểm tra toàn bộ fleet; module/constructor ẩn để giữ bất biến; Hspec describe/it/shouldBe cho unit test (Chap8). A-03 đạt tiêu chí ở API miền public với giá trị được tạo theo kiểu an toàn; tích hợp PLACE vào TCP server, kết quả bắn và viewFor vẫn thuộc các task sau. C-02 tiếp tục dùng phản hồi mẫu PLACE/FIRE.
+
+## B-02 — 2026-10-04
+
+Nhánh `Minh-Chien_luoc`, tách từ `Minh-Dat_tau` tại `1626f90c863fa495f32fe849887a5db02266db3c`. Windows, Stack 3.11.1, LTS 24.59, GHC 9.10.3. Người dùng yêu cầu tiếp tục B-02; S-01 vẫn chờ bốn xác nhận.
+
+```text
+stack build
+  Thành công: library, battleship-server, battleship-client.
+
+stack test
+  Lượt nghiệm thu cuối: 513 examples, 0 failures
+
+stack test --ghc-options=-Werror
+  Lượt nghiệm thu cuối: 513 examples, 0 failures
+
+stack test --ghc-options=-Werror --test-arguments="--match B-02"
+  37 examples, 0 failures
+```
+
+RulesSpec giữ 114 test B-01 (thay assertion FIRE tạm thời bằng kết quả thật) và thêm 37 test B-02. Tổng suite tăng từ 476 lên 513. Tất cả test luật gọi step production bằng giá trị thuần, không cần socket hoặc IO server; helper test chỉ kiểm tra assertion và mô phỏng caller giữ state cũ khi Left.
+
+| Nhóm mới B-02 | Số test | Phạm vi |
+|---|---:|---|
+| Miss/Hit/100 ô | 6 | Cả hai actor, target là fleet đối thủ; mỗi tọa độ trong 100 ô trên bàn được xét như phát bắn đầu; Miss đổi lượt, Hit giữ lượt; full-state equality kiểm tra một entry mới và giữ nguyên fleet/lịch sử khác |
+| Chìm từng tàu | 10 | Mỗi ShipId × P1/P2, tất cả hoán vị thứ tự bắn: 120/24/6/6/2 thứ tự cho CV/BB/CR/SB/DD; các ô đầu Hit, ô cuối Sunk ship; giữ Hit lịch sử, không tiêu lượt, mọi ô đã bắn đều bị từ chối khi thử lại; CR/SB chạm cạnh vẫn là hai tàu riêng |
+| Thắng/ưu tiên terminal | 10 | Mỗi loại tàu có thể là tàu cuối; cả hai actor, thử mọi ô làm ô cuối trong 17 ô tàu, có thêm Miss trong lịch sử; Win ưu tiên Sunk, chỉ ShotResolved Win rồi GameEnded, không TURN; mọi lệnh sau Finished giữ winner/reason và bị từ chối |
+| Biên lịch sử/hướng/lỗi | 8 | Đủ 17 shot nhưng gồm nhiều Miss chưa thắng; fleet dọc và các ShipId dài 3; sai lượt/tọa độ/bắn lặp/đặt lại không tiêu lượt sau Hit; bắn lặp một Miss thật sau khi đối thủ trả lượt |
+| Hai bàn/shot nhận | 1 | Hai người được bắn cùng tọa độ trên hai bàn riêng; shotsReceived đúng chiều và rỗng ban đầu |
+| Ván thuần từ trạng thái rỗng | 2 | P1 thắng và P2 thắng: hai PLACE theo thứ tự khác nhau, START P1 một lần, Miss đổi lượt rồi 17 ô tàu bị trúng; batch/outcome/thứ tự event, hai fleet, toàn bộ lịch sử và Finished đúng |
+
+Đã chạy trực tiếp đoạn GHCi mô phỏng trong README (trích chính block Haskell, không viết lại script). Kết quả: `Right (Finished P1 AllShipsSunk)`, `Right 17`, batch cuối `[ShotResolved P1 (Coord 5 6) Win, GameEnded P1 AllShipsSunk]`. Thứ tự ô từ Set cho phép Carrier là tàu cuối, không mặc định Destroyer phải quyết định thắng.
+
+Các thay đổi chính:
+
+- Bỏ Left InvalidCommand tạm thời ở FIRE hợp lệ; xác định membership theo fleet đối thủ, kiểm tra các tập ô tàu đã bắn để tính Sunk/Win, không đếm tổng shot hoặc vùng liên thông.
+- Giữ ưu tiên lỗi B-01: readiness → lượt → tọa độ → lặp. Chỉ Right ghi một tọa độ và Outcome, giữ nguyên hai fleet/lịch sử đối thủ; Miss đổi lượt, Hit/Sunk giữ lượt theo R-01; Win chuyển Finished và không có TurnReady.
+- Thêm `shotsReceived :: PlayerId -> GameState -> Map Coord Outcome` vào Types: lấy playerShots của người kia, phù hợp hợp đồng đã dùng lịch sử bắn ra làm dữ liệu gốc. Đây là accessor, không thêm field lưu hai bản; shot nhận của đối thủ tăng một entry khi actor bắn. Khai báo PlayerState/GameState, alias Step và wire v1 giữ nguyên; helper mới được ghi vào hợp đồng chung để review.
+- Cập nhật test B-01 vốn đòi nhánh FIRE chưa triển khai, tài liệu trạng thái/API và ví dụ mô phỏng. Không thêm dependency, không đưa luật vào Main hoặc TCP server mẫu.
+
+**Lần lỗi TCP được ghi nhận:** lượt stack test đầu tiên có 513 example và một lỗi ngoài test luật: C-02 `serializes simultaneous QUITs into one consistent final broadcast`, Network.Socket.recvBuf InvalidArgument trên Windows. Chạy riêng 50 lần không tái hiện; bổ sung test này lặp 50 session trong cùng process và gắn thông tin P1/P2, GAME_OVER/EOF cho IOException. Lượt khoanh vùng và hai lượt full-suite nghiệm thu cuối đều đạt. Test vẫn yêu cầu hai GAME_OVER giống nhau và EOF, không nuốt lỗi recv hoặc coi IOException là EOF. Chưa xác định được nguyên nhân gốc của lần lỗi hiếm, không ghi rằng transport đã được sửa; giữ minh chứng để điều tra nếu tái hiện. Server production không thay đổi ở B-02. Quy ước EOF/lỗi của API được đối chiếu [Microsoft recv](https://learn.microsoft.com/en-us/windows/win32/api/winsock2/nf-winsock2-recv).
+
+Căn cứ slide: hàm thuần/state bất biến, ADT/pattern matching và Either cho kết quả/lỗi; Map/Set với phép kiểm tra tập con để xác định chìm/thắng; foldM để nối chuỗi lệnh thuần; Hspec describe/it/shouldBe theo Chap8. B-02 đạt tiêu chí mô phỏng ván thuần. Coordinator/STM, viewFor và tích hợp PLACE/FIRE vào server C-02 vẫn thuộc task sau; server tiếp tục trả phản hồi mẫu cho PLACE/FIRE. S-01 chưa khóa.

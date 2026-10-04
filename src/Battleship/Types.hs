@@ -26,6 +26,7 @@ module Battleship.Types
   , otherPlayer
   , initialGameState
   , playerStateFor
+  , shotsReceived
   , setPlayerState
   ) where
 
@@ -188,6 +189,11 @@ initialGameState = GameState emptyPlayer emptyPlayer Placing
 playerStateFor :: PlayerId -> GameState -> PlayerState
 playerStateFor P1 = gamePlayer1
 playerStateFor P2 = gamePlayer2
+
+-- | Incoming shots on this player's board are the opponent's outgoing shots.
+-- One stored history per shooter avoids two copies diverging after a command.
+shotsReceived :: PlayerId -> GameState -> Map Coord Outcome
+shotsReceived player = playerShots . playerStateFor (otherPlayer player)
 
 -- | Pure record update; preserves the other player and the game's phase.
 setPlayerState :: PlayerId -> PlayerState -> GameState -> GameState
