@@ -20,7 +20,7 @@ Các module sử dụng kiểu chung bằng `import Battleship.Types` hoặc imp
 
 S-01 v1 đã đối chiếu kỹ thuật tại commit `f73dc87e336ba01d4723f642582403b1f20e2504` nhưng chưa có đủ bốn xác nhận. Người dùng yêu cầu tiếp tục A-02 trên nhánh `Minh-Build_board`: v2 cập nhật việc ẩn constructor Fleet và cài đặt Board; đây là nội dung mới để A/B/C/D duyệt, không phải bằng chứng v1/v2 đã khóa. R-01 và wire v1 giữ nguyên.
 
-A-02/A-03 đã có Board thuần và fleet đúng MVP; B-01/B-02 có Rules.step cho toàn bộ Command/Phase và kết quả bắn. C-02/C-03 nhận hai slot TCP, từ chối người thứ ba và gọi Rules thật qua Coordinator; MVar giữ state/định tuyến, có test transcript TCP và stub. D-02 có codec/client một lệnh; Server/Client dùng framer chung. View còn là khung; client chưa tương tác/render bàn và chưa có STM/queue writer. C-03 trên nhánh `Minh-Ghep_server_voi_luat` giữ nguyên kiểu/chữ ký miền và wire v1. S-01 vẫn chờ bốn xác nhận.
+A-02/A-03 có Board thuần/fleet đúng MVP; B-01/B-02 có Rules.step cho mọi Command/Phase và kết quả bắn. C-02/C-03 nối hai slot TCP vào lõi thật qua Coordinator/MVar. D-02 có codec/client một lệnh; D-03 thêm nhập/sửa/xem trước fleet của mình, GUI gửi PLACE và giữ kết nối. Server/Client dùng framer chung. Chưa có nhập FIRE/render diễn biến trận, viewFor hoặc STM/queue writer. Nhánh `Luong_nhap_gui_dat_tau` giữ nguyên kiểu/chữ ký miền và wire v1. S-01 vẫn chờ bốn xác nhận.
 
 ## 2. API miền dùng chung
 
@@ -172,7 +172,7 @@ Transcript chuẩn để C/D nghiệm thu là mục 7.1 của [protocol.md](prot
 | battleship-server | app/ServerMain.hs | Main; main :: IO () | C |
 | battleship-client | app/ClientMain.hs | Main; main :: IO () | D |
 
-Hai file đều tên module Main vì nằm trong hai component Cabal khác nhau; `other-modules: []` tránh Hpack đưa Main còn lại vào nhầm executable. Cả hai phụ thuộc cùng library `battleship-haskell`, trong đó Types chỉ được biên dịch như một module chung. ServerMain C-02 đọc port (mặc định 4000), gọi Server, in địa chỉ sẵn sàng; ClientMain D-02 đọc `[PORT] "COMMAND"`, dùng Protocol và Client, in tiếng Việt UTF-8. Smoke test dùng `--help` của cả hai; test executable kiểm chứng vòng đời TCP thực tế. Luật thuần thuộc Board/Rules/View, không viết vào Main.
+Hai file đều tên module Main vì nằm trong hai component Cabal khác nhau; `other-modules: []` tránh Hpack đưa Main còn lại vào nhầm executable. Cả hai phụ thuộc cùng library `battleship-haskell`, trong đó Types chỉ được biên dịch như một module chung. ServerMain đọc port (mặc định 4000), gọi Server, in địa chỉ sẵn sàng; ClientMain hỗ trợ mặc định/`--place [PORT]` cho nhập đặt tàu D-03, `[PORT] "COMMAND"` cho một lệnh D-02. Main chọn CLI/port và UTF-8, luồng nhập/preview/check nằm trong Client. Smoke test dùng --help; executable test kiểm chứng TCP và stdin. Luật thuần thuộc Board/Rules/View.
 
 ### Phạm vi transport C-02/C-03
 
@@ -189,6 +189,8 @@ Coordinator API thuần: `coordinate :: Step -> PlayerId -> ByteString -> GameSt
 `Protocol.parseCommand` dùng Command/Coord từ Types; `parseResponse` dùng Response/WireError riêng cho các token wire, không định nghĩa lại kiểu miền. Parser nhận ByteString payload không có terminator, encoder trả frame LF và Either ProtocolError. Server/Client dùng `feedFrames pending chunk` để xử lý LF/CRLF và giới hạn byte. `wireError` loại bỏ tham số debug không được truyền; `encodeEvent phaseMới event` trả danh sách người nhận/frame, dùng SHOT/INCOMING và WAITING đúng hợp đồng. Chữ ký và quy ước đầy đủ tại mục 9 của protocol.md.
 
 `Client.runClient :: HostName -> PortNumber -> Command -> (Response -> IO ()) -> IO ()` nhận WELCOME, gửi một lệnh, callback hiển thị phản hồi, rồi đóng socket khi nhận OK PLACE/SHOT phù hợp, ERROR hoặc GAME_OVER. Có deadline 10 giây và cleanup; chưa có vòng nhập tương tác/render bàn nên không dùng client này để chơi trọn ván. Test D-02 nhận lỗi Rules thật qua server tích hợp; CoordinatorSpec giữ hai kết nối để kiểm chứng nhiều lệnh/TCP.
+
+D-03 thêm `runPlacementClient :: HostName -> PortNumber -> Handle -> Handle -> IO ()`, `promptFleet :: Handle -> Handle -> IO (Maybe FleetPlacement)`, `parsePlacementInput :: ShipId -> String -> Either String ShipPlacement` và `renderFleet :: Fleet -> String`. Dựng/sửa draft offline, Board.shipCells/placeFleet dùng chung với server; HUY/EOF trả Nothing và không gửi, GUI trả request đầy đủ. Preview chỉ nhận Fleet của mình. Kết nối sau GUI, gửi một PLACE canonical; OK chuyển sang giữ socket nhận event, không chịu deadline chờ đối thủ. Supervisor đóng socket trước khi join reader khi cancel. Không thêm dependency/Command/Event mới; nhập nước bắn thuộc task tiếp theo.
 
 ## 4. Chủ sở hữu file
 
@@ -243,6 +245,7 @@ stack test --test-arguments="--match S-01"
 - ServerSpec C-02: TCP thật qua server library; slot/third client, QUIT/EOF, race kết nối/bỏ cuộc, framing byte và cleanup khi cancel/lỗi startup, dừng rồi bind lại cùng port.
 - CoordinatorSpec C-03: unit test ranh giới parse/step/state/encode và TCP thật với stub/lõi thật; transcript, rollback, concurrent PLACE/FIRE, lỗi nội bộ, Sunk/Win và EOF giữ winner.
 - ClientSpec D-02: client library với C-02/peer có kịch bản; handshake, một lệnh, phân mảnh, lỗi/EOF, cleanup, hiển thị tiếng Việt.
+- ClientSpec D-03: parser địa phương, golden preview, handle nhập/sửa/hủy/EOF; một PLACE, giữ kết nối sau OK/quá 10 giây, cancel, lỗi wire và server thật. IntegrationSpec D-03 kiểm tra CLI mặc định/port và stdin sửa/preview/GUI đến START/INCOMING/GAME_OVER.
 - IntegrationSpec: hai smoke test --help, CLI sai/bind lỗi, server executable thật với hai client và người thứ ba; client executable gửi QUIT/FIRE vào C-02, xác nhận tiếng Việt UTF-8 và exit code.
 
 Căn cứ slide: ADT/pattern matching/Either cho kiểu và lỗi; hàm thuần và module để tách Coordinator khỏi socket; Hspec describe/it/shouldBe (Chap8); Network.Socket/bracket và TCP stream (Chap11); MVar giữ state/thứ tự cập nhật (Chap5), async/timeout quản lý worker/deadline (Chap7). C-03 đã điều phối nghiệp vụ; STM/queue writer thuộc task tiếp theo. Xem [architecture.md](architecture.md) và [test_evidence.md](test_evidence.md).

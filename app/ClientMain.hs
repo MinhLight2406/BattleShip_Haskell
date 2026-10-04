@@ -1,6 +1,6 @@
 module Main (main) where
 
-import Battleship.Client (ClientError (..), renderProtocolError, renderResponse, runClient)
+import Battleship.Client (ClientError (..), renderProtocolError, renderResponse, runClient, runPlacementClient)
 import Battleship.Protocol (parseCommand)
 import Control.Exception (IOException, catches, Handler (Handler))
 import qualified Data.ByteString.Char8 as BSC
@@ -8,21 +8,32 @@ import Data.Char (ord)
 import Network.Socket (PortNumber)
 import System.Environment (getArgs)
 import System.Exit (exitFailure)
-import System.IO (BufferMode (LineBuffering), hPutStrLn, hSetBuffering, hSetEncoding, stderr, stdout, utf8)
+import System.IO (BufferMode (LineBuffering), hPutStrLn, hSetBuffering, hSetEncoding, stderr, stdin, stdout, utf8)
 import Text.Read (readMaybe)
 
 main :: IO ()
 main = do
   hSetEncoding stdout utf8
   hSetEncoding stderr utf8
+  hSetEncoding stdin utf8
+  hSetBuffering stdout LineBuffering
   arguments <- getArgs
   case arguments of
     ["--help"] -> putStrLn usage
+    [] -> place 4000
+    ["--place"] -> place 4000
+    ["--place", port] -> case readMaybe port :: Maybe Integer of
+      Just number | number >= 1 && number <= 65535 -> place (fromInteger number)
+      _ -> failWith usage
     [command] -> start 4000 command
     [port, command] -> case readMaybe port :: Maybe Integer of
       Just number | number >= 1 && number <= 65535 -> start (fromInteger number) command
       _ -> failWith usage
     _ -> failWith usage
+
+place :: PortNumber -> IO ()
+place port = runPlacementClient "127.0.0.1" port stdin stdout
+  `catches` [Handler reportClientError, Handler reportIOException]
 
 start :: PortNumber -> String -> IO ()
 start port commandLine
@@ -44,7 +55,7 @@ reportIOException :: IOException -> IO ()
 reportIOException exception = failWith ("Lỗi kết nối: " ++ show exception)
 
 usage :: String
-usage = "Usage: battleship-client [PORT] \"COMMAND\" (default 4000; example: \"FIRE A1\")"
+usage = "Usage: battleship-client --place [PORT] | [PORT] \"COMMAND\" (default 4000; no arguments: guided placement)"
 
 failWith :: String -> IO a
 failWith message = hPutStrLn stderr message >> exitFailure

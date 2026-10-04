@@ -1,6 +1,6 @@
 # Kiến trúc điều phối Battleship
 
-Phạm vi: một server, hai client terminal, một trận. Types, Board, Rules, transport C-02, codec/client D-02 và Coordinator C-03 đã có cài đặt. C-03 nối TCP vào lõi thật; MVar giữ trạng thái duy nhất. View còn là khung; client chưa tương tác/render bàn. Sơ đồ STM dưới đây là kiến trúc đích, chưa phải cài đặt C-03.
+Phạm vi: một server, hai client terminal, một trận. Types, Board, Rules, transport/Coordinator C-02/C-03, codec D-02 và client nhập đặt tàu D-03 đã có cài đặt. MVar giữ trạng thái duy nhất. View còn là khung; client đã xem trước fleet của mình, chưa nhập bắn/render diễn biến trận. Sơ đồ STM dưới đây là kiến trúc đích, chưa phải cài đặt hiện tại.
 
 ## Transport C-02 và điều phối C-03 hiện tại
 
@@ -19,6 +19,12 @@ Giới hạn hiện tại: write nằm trong MVar, mỗi send có deadline/watch
 Protocol là module thuần: parse payload thành Command/Response, encode thành frame LF, dùng Either để trả lỗi tường minh. Command/Coord dùng Types chung. Response khác Event vì ShotResolved tạo hai thông điệp có hai người nhận; WireError chỉ giữ dữ liệu xuất hiện trong grammar. `encodeEvent` nhận phase sau step để thêm WAITING đúng lúc; Server lọc người nhận theo registry và gửi frame Coordinator tạo. Không có serializer GameState hoặc fleet đối thủ.
 
 ClientMain đọc CLI và chuyển cho Client.runClient. Client dùng bracket quản lý socket, chờ WELCOME v1, gửi một lệnh đã encode, dùng framer/parser đọc phản hồi và chuyển Response cho callback tiếng Việt. Kết thúc trên OK/SHOT tương ứng, ERROR hoặc GAME_OVER; có deadline 10 giây, chưa phải client tương tác chờ lượt lâu. Windows dùng shutdown Both/close để đánh thức foreign IO và stdout/stderr UTF-8. Client được test với server đã tích hợp và peer có kịch bản.
+
+### Nhập đặt tàu D-03
+
+ClientMain mặc định/`--place [PORT]` gọi runPlacementClient với stdin/stdout UTF-8; Main chỉ chọn chế độ/port và báo lỗi. promptFleet dựng draft offline theo năm ShipId, parsePlacementInput chuẩn hóa cú pháp địa phương `A1 H`, dùng parseCoord/Board.shipCells để kiểm tra. Chồng lấn xét các tập ô đã kiểm tra; Board.placeFleet kiểm tra trọn fleet lần cuối. renderFleet chỉ nhận Fleet của người chơi, in 10×10; SUA thay một tàu, giữ bốn tàu còn lại, GUI mới trả request hoàn chỉnh. HUY/EOF không kết nối.
+
+Sau GUI: dùng cùng helper socket/framer/codec với D-02, nhận WELCOME rồi gửi một PLACE canonical. Deadline 10 giây chỉ bao phủ connect/handshake/ACK. OK PLACE chuyển sang reader giữ kết nối, xử lý WAITING/START/TURN/INCOMING/GAME_OVER, không tự gửi lại PLACE và không truy vấn fleet đối thủ. Reader chạy dưới withAsync; supervisor đóng socket trước khi join khi cancel để tránh kẹt recv Windows. Chờ đối thủ không có deadline của khung một lệnh. Nhập FIRE thuộc bước tiếp theo; không sao chép luật vào Client hoặc Main.
 
 ## Kiến trúc STM đích
 

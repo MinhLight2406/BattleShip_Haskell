@@ -352,3 +352,38 @@ CoordinatorSpec bổ sung 40 test: 31 unit test thuần và 9 test TCP thật. T
 Giới hạn: write vẫn trong MVar, peer chậm có thể trì hoãn người kia đến deadline send 2 giây; STM/TVar và queue writer riêng chưa triển khai. Client D-02 một lệnh vẫn đóng sau phản hồi, chưa phải client chơi tương tác. viewFor và bốn xác nhận S-01 còn thiếu. Lỗi recv Windows hiếm ghi tại B-02 không tái hiện trong các lượt full-suite C-03, chưa xác định nguyên nhân gốc nên không coi C-03 là minh chứng đã chữa lỗi đó.
 
 Căn cứ slide: hàm thuần/ADT/pattern matching/Either cho Coordinator; dùng chung module/kiểu và Hspec describe/it/shouldBe (Chap8); MVar để đồng bộ state (Chap5); async/bracket/timeout quản lý worker và truyền lỗi (Chap7); TCP stream/Network.Socket (Chap11). C-03 đạt tiêu chí một lệnh client tới Step và phản hồi quay về server, được kiểm chứng cả stub lẫn lõi thật.
+
+## D-03 — 2026-10-05
+
+Nhánh `Luong_nhap_gui_dat_tau`, tách từ `Minh-Ghep_server_voi_luat` tại `f21c81602042324bdccdac61bbd8df98bef878ac`. Windows, Stack 3.11.1, LTS 24.59, GHC 9.10.3. S-01 vẫn chờ bốn xác nhận thật.
+
+```text
+stack build --ghc-options=-Werror
+  Thành công: library, battleship-server, battleship-client.
+
+stack test --ghc-options=-Werror --test-arguments="--match D-03"
+  66 examples, 0 failures
+
+stack test --ghc-options=-Werror
+  618 examples, 0 failures
+
+stack test
+  Lượt nghiệm thu cuối: 618 examples, 0 failures
+```
+
+Thêm 66 test D-03: 59 ClientSpec và 7 IntegrationSpec. Suite tăng từ 553 lên 618 vì test CLI không đối số vốn đòi lỗi đã chuyển thành nghiệm thu mở hướng dẫn/hủy ở D-03; không bỏ nghiệm thu hành vi CLI đó. Các test D-02 còn lại giữ nguyên ý nghĩa, hai chế độ cùng dùng helper socket/framer/codec.
+
+| Nhóm D-03 | Số test | Phạm vi |
+|---|---:|---|
+| Parser/preview thuần | 31 | Cú pháp A1 H/V, chữ thường/tab/space, thiếu/thừa tham số, hướng sai/tọa độ sai/Unicode không được ép thành ASCII; cả năm ShipId ở mép J10 theo H/V; vượt mép; golden toàn bộ 100 ô của fleet riêng |
+| Terminal qua handle UTF-8 | 14 | Hướng dẫn đủ năm tàu và H/V; sửa cú pháp/hình học/chồng lấn; thay một tàu giữ bốn tàu còn lại và xem lại; sửa nhiều lần; lựa chọn GUI/SUA sai; HUY/EOF tại nhập/review/edit; hủy không kết nối |
+| TCP | 14 | Một PLACE canonical sau WELCOME; phân mảnh CRLF/OK; giữ socket sau OK và chờ hơn 10 giây; cancel reader idle đóng socket; SERVER_FULL không gửi; ERROR/GAME_OVER khi chờ OK; handshake sai, ACK lặp, SHOT không được yêu cầu, malformed/overlong, EOF thiếu ACK; P2 đặt với server thật, nhận INCOMING rồi GAME_OVER |
+| Executable | 7 | Mặc định có hướng dẫn, HUY trước connect; EOF sau đủ fleet nhưng chưa GUI không gửi; bốn port/argument sai; stdin của người mới gồm vượt biên/chồng tàu/SUA/GUI, preview UTF-8 và PLACE vào server thật đến START/INCOMING/GAME_OVER |
+
+Flow: promptFleet dựng draft offline theo năm ShipId; parsePlacementInput dùng Protocol.parseCoord và Board.shipCells, kiểm tra giao tập ô với các tàu khác; Board.placeFleet kiểm tra fleet hoàn chỉnh trước preview/GUI. SUA chỉ thay tàu được chọn sau input hợp lệ; HUY/EOF trả Nothing. renderFleet chỉ nhận Fleet của chính người chơi, không cần GameState hoặc dữ liệu đối thủ. GUI mới kết nối, nhận danh tính rồi encode/send một PlaceFleet theo wire v1.
+
+Sau OK PLACE, client giữ kết nối nhận WAITING/START/TURN/INCOMING/GAME_OVER. Deadline 10 giây chỉ áp dụng connect/handshake/ACK, không cho nhập offline hoặc chờ đối thủ sau OK. Reader lâu dài nằm dưới withAsync; supervisor đóng socket trước khi join lúc cancel để đánh thức recv Windows. Main chỉ xử lý CLI/port/UTF-8/lỗi; không chứa luật hoặc luồng nhập. Chế độ `[PORT] "COMMAND"` D-02 vẫn đóng sau một phản hồi.
+
+**Lỗi transport cũ tái hiện:** lượt full-suite đầu có 618 examples, 1 failure ở C-02 simultaneous QUIT (50 session): `C-02 simultaneous QUIT P1 GAME_OVER: Network.Socket.recvBuf: invalid argument (Invalid argument)`, seed 1271559836. Đây là triệu chứng đã ghi ở B-02; Server/Coordinator/ServerSpec không thay đổi trong D-03. Chạy riêng `--match simultaneous` đạt 3/3 (gồm 50 session QUIT); hai lượt full-suite cuối đạt 618/618. Đã đọc nguồn network 3.2.9.0 tại cache và đối chiếu [Microsoft recv](https://learn.microsoft.com/en-us/windows/win32/api/winsock2/nf-winsock2-recv), nhưng chưa xác định nguyên nhân gốc. Không sửa production bằng suy đoán, không bỏ test, không nuốt lỗi recv/coi exception là EOF hoặc ghi rằng lỗi này đã được chữa. Kết quả cuối xanh không bảo đảm triệu chứng hiếm sẽ không lặp lại.
+
+Căn cứ slide: ADT/pattern matching với Maybe/Either cho input/hủy/lỗi; hàm thuần, Map/Set và module dùng lại Board/Protocol; Hspec describe/it/shouldBe (Chap8); Network.Socket/bracket và framing TCP (Chap11); async/deadline/cleanup (Chap7). Không thêm dependency, kiểu miền, lệnh wire hoặc logic thắng thua. Giới hạn D-03: chưa nhập FIRE/render diễn biến hai bàn; Ctrl+C rời trận, không có reconnect hoặc sửa fleet đã OK trên server. D-03 đạt yêu cầu nhập đủ năm tàu theo hướng dẫn terminal, xem trước/sửa và gửi PLACE hợp lệ.

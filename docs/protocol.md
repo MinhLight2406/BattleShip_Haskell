@@ -320,3 +320,11 @@ encodeEvent :: Phase -> Event -> Either ProtocolError [(PlayerId, ByteString)]
 `Battleship.Client.runClient :: HostName -> PortNumber -> Command -> (Response -> IO ()) -> IO ()` kiểm tra lệnh trước khi kết nối, chờ WELCOME v1 rồi gửi một frame. ERROR SERVER_FULL trước WELCOME được hiển thị mà không gửi lệnh. Callback nhận các response hợp lệ; kết thúc trên OK PLACE/SHOT tương ứng lệnh, ERROR hoặc GAME_OVER. Các frame hoàn chỉnh đã nhận cùng chunk được kiểm tra/hiển thị tiếp; client không chờ thêm frame sau phản hồi kết thúc một lệnh. EOF trước phản hồi, sai handshake, SHOT khác tọa độ và dữ liệu sai là lỗi; bracket đóng socket ở mọi đường thoát.
 
 Client có deadline 10 giây cho connect/handshake/gửi/đọc; watchdog đóng socket để đánh thức I/O Windows. Đây là khung một lệnh, chưa dùng cho chờ đối thủ trong trận tương tác lâu. CLI dùng localhost, port mặc định 4000, hiển thị tiếng Việt UTF-8; không gửi văn bản tiếng Việt qua TCP.
+
+## 10. Client đặt tàu D-03 — wire vẫn v1
+
+`Client.runPlacementClient :: HostName -> PortNumber -> Handle -> Handle -> IO ()` dùng promptFleet nhập/sửa/xem trước offline; chỉ sau GUI mới kết nối. `parsePlacementInput :: ShipId -> String -> Either String ShipPlacement` nhận cú pháp thân thiện A1 H/V, kiểm tra qua API Board public; `renderFleet :: Fleet -> String` chỉ in fleet của mình. Không gửi câu tiếng Việt, GUI/SUA/HUY hoặc preview lên TCP.
+
+Sau WELCOME, gửi đúng một PLACE đã được Board.placeFleet kiểm tra và Protocol.encodeCommand encode. OK PLACE hoàn tất request nhưng không đóng socket: client tiếp tục nhận các thông báo bất đồng bộ cho đến GAME_OVER, Ctrl+C hoặc lỗi/EOF. Connect/handshake/chờ OK có deadline 10 giây; thời gian nhập và chờ đối thủ sau OK không bị giới hạn đó. SERVER_FULL trước WELCOME không gửi PLACE. ERROR/GAME_OVER trong lúc chờ OK kết thúc request; malformed/ACK lặp/SHOT khi chưa gửi FIRE bị từ chối. D-02 runClient vẫn là API một lệnh rồi đóng.
+
+ClientMain hỗ trợ mặc định hoặc `--place [PORT]` cho D-03, `[PORT] "COMMAND"` cho D-02. D-03 chưa nhập FIRE; không cần đổi grammar, mã lỗi, kiểu miền hoặc version. ClientSpec/IntegrationSpec kiểm tra tương tác qua handle UTF-8, TCP thật/scripted peer và executable với stdin pipe.

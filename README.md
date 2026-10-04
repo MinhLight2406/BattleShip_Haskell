@@ -2,7 +2,7 @@
 
 Dự án Battleship cho hai người chơi, dự kiến chạy bằng hai client terminal kết nối đến một server TCP. Server giữ trạng thái trận đấu; luật chơi được triển khai bằng các hàm thuần Haskell.
 
-**Trạng thái hiện tại:** đã có C-01, A-01, D-01, Board A-02/A-03, Rules B-01/B-02, server C-02, codec/client một lệnh D-02 và Coordinator C-03. Server thực thi PLACE/FIRE/QUIT qua Rules thật: đặt tàu, bắt đầu trận, Miss/Hit/Sunk/Win, chuyển lượt và bỏ cuộc. Một MVar bảo vệ trạng thái và thứ tự phản hồi của hai client. Test TCP kiểm chứng transcript từ kết nối đến phát bắn đầu và các kết quả kết thúc. `viewFor`, client tương tác/render bàn và STM/queue writer chưa triển khai.
+**Trạng thái hiện tại:** đã có C-01, A-01, D-01, Board A-02/A-03, Rules B-01/B-02, server C-02, codec/client D-02, Coordinator C-03 và nhập đặt tàu D-03. Server thực thi PLACE/FIRE/QUIT qua Rules thật; MVar bảo vệ trạng thái và phản hồi. Client hướng dẫn nhập/sửa năm tàu, xem trước bàn của mình, xác nhận rồi gửi PLACE và giữ kết nối nhận thông báo. `viewFor`, nhập nước bắn/render diễn biến hai bàn và STM/queue writer chưa triển khai.
 
 **S-01:** bản hợp đồng chung v2 cập nhật A-02 ở [docs/shared_contract.md](docs/shared_contract.md). Chưa khóa mốc vì còn chờ xác nhận A/B/C/D; việc ẩn constructor Fleet, chủ sở hữu file và quy trình thay đổi được ghi tại đó.
 
@@ -125,7 +125,35 @@ stack test --ghc-options=-Werror --test-arguments="--match C-02"
 stack test --ghc-options=-Werror --test-arguments="--match C-03"
 ```
 
-## Chạy client D-02
+## Đặt tàu theo hướng dẫn D-03
+
+Khởi chạy server, rồi mở hai terminal client. Dùng port đang hiển thị ở server:
+
+```sh
+stack exec battleship-client -- --place 4000
+```
+
+Không truyền đối số (`stack exec battleship-client`) cũng mở hướng dẫn, dùng port 4000. Nhập từng tàu theo prompt CV/BB/CR/SB/DD, độ dài cố định 5/4/3/3/2. Chỉ nhập tọa độ đầu và hướng: H ngang sang phải, V dọc xuống dưới. Client cho nhập chữ thường/khoảng trắng linh hoạt; wire vẫn theo v1.
+
+Ví dụ đội tàu hợp lệ; nhập lần lượt mỗi dòng khi terminal hỏi:
+
+```text
+A1 H
+A2 H
+A3 H
+A4 H
+A5 H
+```
+
+Tọa độ nằm trong A1..J10. Tàu không được vượt mép/chồng lên nhau, được chạm cạnh. Sai input sẽ báo lỗi và hỏi lại chính tàu đó. Đủ năm tàu thì hiện bàn 10×10: CV/BB/CR/SB/DD là ô tàu của mình, dấu chấm là ô trống. `SUA CV` (hoặc BB/CR/SB/DD) sửa một tàu rồi xem lại; ví dụ đổi CV thành `A6 V`. `GUI` xác nhận và gửi **một** PLACE đã kiểm tra; `HUY` hoặc EOF trước GUI hủy mà không kết nối/gửi gì.
+
+Client chỉ kết nối sau GUI; P1/P2 được gán theo thứ tự kết nối đó, không theo thứ tự mở terminal. Sau OK PLACE, giữ socket để nhận WAITING/START/TURN/INCOMING/GAME_OVER. Nhập tại terminal và chờ đối thủ sau OK không chịu timeout 10 giây; connect/handshake/đợi OK vẫn có deadline. Ctrl+C rời trận và đóng socket. Chế độ này chưa nhập nước bắn; task sau bổ sung chơi tương tác. Bản xem trước chỉ lấy fleet của mình, không yêu cầu dữ liệu bí mật của đối thủ.
+
+```sh
+stack test --ghc-options=-Werror --test-arguments="--match D-03"
+```
+
+## Client một lệnh D-02
 
 Trong terminal khác khi server đang chạy, chọn một lệnh:
 
@@ -136,7 +164,7 @@ stack exec battleship-client -- 4000 "PLACE CV=A1:H;BB=A2:H;CR=A3:H;SB=A4:H;DD=A
 stack exec battleship-client -- --help
 ```
 
-Có thể bỏ PORT để dùng 4000, ví dụ `stack exec battleship-client -- "QUIT"`. Client nhận WELCOME, gửi đúng một lệnh rồi đọc phản hồi và hiển thị tiếng Việt bằng UTF-8. QUIT nhận GAME_OVER; PLACE hợp lệ nhận OK, FIRE trước khi đủ hai fleet báo chưa sẵn sàng. Lệnh thiếu tham số/tọa độ sai bị từ chối ngay ở client. Client đóng kết nối sau phản hồi khiến session kết thúc; khởi chạy lại server trước khi thử lệnh tiếp theo. Client chưa có vòng nhập nhiều lệnh/render bàn nên chưa dùng để chơi trọn ván tương tác; CoordinatorSpec giữ hai kết nối để nghiệm thu TCP.
+Có thể bỏ PORT để dùng 4000, ví dụ `stack exec battleship-client -- "QUIT"`. Chế độ một lệnh nhận WELCOME, gửi đúng một lệnh, hiển thị UTF-8 rồi đóng socket sau phản hồi, khiến session kết thúc. Dùng để kiểm tra nhanh; dùng `--place` ở trên để đặt tàu có hướng dẫn và giữ kết nối. Lệnh thiếu tham số/tọa độ sai bị từ chối trước khi kết nối. Chưa có vòng nhập nước bắn cho trọn ván tương tác.
 
 `package.yaml` là nguồn cấu hình package; file `.cabal` được Stack/Hpack sinh tự động. Giữ `stack.yaml.lock` trong Git để chia sẻ cùng snapshot.
 
@@ -164,4 +192,4 @@ Luật đầy đủ ở [docs/game_spec.md](docs/game_spec.md). Sơ đồ hoạt
 | D | `Protocol.hs`, `Client.hs`, `ClientMain.hs`, test giao thức và tích hợp |
 | R | `docs/`, báo cáo, minh chứng kiểm thử và demo |
 
-Trước khi tích hợp nghiệp vụ tiếp theo, cả nhóm review và ghi xác nhận S-01 v2 tại [docs/shared_contract.md](docs/shared_contract.md), gồm các cập nhật đến C-03. Phân công chi tiết gồm cả Main, test và YAML nằm ở đó. Board/Types, Rules, Coordinator/server và codec/client một lệnh đã có cài đặt; STM/queue writer và góc nhìn tiếp tục theo task tương ứng.
+Trước khi tích hợp nghiệp vụ tiếp theo, cả nhóm review và ghi xác nhận S-01 v2 tại [docs/shared_contract.md](docs/shared_contract.md), gồm các cập nhật đến D-03. Phân công chi tiết gồm cả Main, test và YAML nằm ở đó. Board/Types, Rules, Coordinator/server, codec và nhập đặt tàu đã có cài đặt; nhập nước bắn, STM/queue writer và góc nhìn tiếp tục theo task tương ứng.
