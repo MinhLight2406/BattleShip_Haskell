@@ -2,7 +2,7 @@
 
 Dự án Battleship cho hai người chơi, dự kiến chạy bằng hai client terminal kết nối đến một server TCP. Server giữ trạng thái trận đấu; luật chơi được triển khai bằng các hàm thuần Haskell.
 
-**Trạng thái hiện tại:** đã có khung C-01, kiểu A-01, giao thức D-01, Board A-02, khung Rules B-01 (`step`), server TCP C-02 và parser/encoder cùng client gửi một lệnh D-02. Step xử lý đặt tàu/bắt đầu trận/bỏ cuộc, kiểm tra lỗi trước khi bắn; tính kết quả Miss/Hit/Sunk/Win còn chờ task luật tiếp theo. Server dùng framer chung nhưng vẫn trả phản hồi mẫu cho PLACE/FIRE; chưa nối Coordinator/Rules để chơi trận thật hoặc có `viewFor`.
+**Trạng thái hiện tại:** đã có khung C-01, kiểu A-01, giao thức D-01, Board A-02/A-03, khung Rules B-01 (`step`), server TCP C-02 và parser/encoder cùng client gửi một lệnh D-02. A-03 kiểm chứng đội tàu đúng MVP và cấm đặt lại sau xác nhận qua Rules. Step xử lý đặt tàu/bắt đầu trận/bỏ cuộc, kiểm tra lỗi trước khi bắn; tính kết quả Miss/Hit/Sunk/Win còn chờ task luật tiếp theo. Server dùng framer chung nhưng vẫn trả phản hồi mẫu cho PLACE/FIRE; chưa nối Coordinator/Rules để chơi trận thật hoặc có `viewFor`.
 
 **S-01:** bản hợp đồng chung v2 cập nhật A-02 ở [docs/shared_contract.md](docs/shared_contract.md). Chưa khóa mốc vì còn chờ xác nhận A/B/C/D; việc ẩn constructor Fleet, chủ sở hữu file và quy trình thay đổi được ghi tại đó.
 
@@ -17,7 +17,7 @@ stack build
 stack test
 ```
 
-`stack build` biên dịch thư viện và hai executable. `stack test` chạy A-01 (`TypesSpec`), A-02 (`BoardSpec`), B-01 (`RulesSpec`), D-01/D-02 (`ProtocolSpec`/`ClientSpec`), S-01 (`SharedContractSpec`), C-02/D-02 (`IntegrationSpec`) và hai smoke test C-01; tất cả phải đạt, không có failure. Smoke test dùng `--help` của cả hai executable. Test TCP dùng port do OS cấp và kiểm tra cả library lẫn executable; ProtocolSpec gọi parser/encoder production với các transcript trong tài liệu. Windows Application Control chặn executable sẽ khiến smoke test thất bại.
+`stack build` biên dịch thư viện và hai executable. `stack test` chạy A-01 (`TypesSpec`), A-02/A-03 (`BoardSpec`), B-01 (`RulesSpec`), D-01/D-02 (`ProtocolSpec`/`ClientSpec`), S-01 (`SharedContractSpec`), C-02/D-02 (`IntegrationSpec`) và hai smoke test C-01; tất cả phải đạt, không có failure. Smoke test dùng `--help` của cả hai executable. Test TCP dùng port do OS cấp và kiểm tra cả library lẫn executable; ProtocolSpec gọi parser/encoder production với các transcript trong tài liệu. Windows Application Control chặn executable sẽ khiến smoke test thất bại.
 
 Chạy riêng hợp đồng giao thức:
 
@@ -40,6 +40,14 @@ Chạy riêng A-02:
 ```sh
 stack test --test-arguments="--match A-02"
 ```
+
+Chạy riêng nghiệm thu đặt tàu A-03:
+
+```sh
+stack test --ghc-options=-Werror --test-arguments="--match A-03"
+```
+
+BoardSpec gồm test thuần cho đúng năm ID/17 ô, mép A1/J10, tàu dài 3 trùng ID, tàu chạm cạnh và không đặt lại qua Rules.step. Năm test biên dịch chạy GHC có sẵn trong môi trường Stack trên probe tạm: API public hợp lệ phải biên dịch, constructor/record update/coerce/import private phải bị từ chối đúng nguyên nhân. Probe chỉ dùng package đã build, được xóa sau test; không cần dependency mới.
 
 Chạy riêng khung luật B-01:
 
@@ -136,4 +144,4 @@ Luật đầy đủ ở [docs/game_spec.md](docs/game_spec.md). Sơ đồ hoạt
 | D | `Protocol.hs`, `Client.hs`, `ClientMain.hs`, test giao thức và tích hợp |
 | R | `docs/`, báo cáo, minh chứng kiểm thử và demo |
 
-Trước khi tích hợp nghiệp vụ tiếp theo, cả nhóm review và ghi xác nhận S-01 v2 tại [docs/shared_contract.md](docs/shared_contract.md), gồm A-01/C-01/D-01 và cập nhật A-02/B-01/C-02/D-02. Phân công chi tiết gồm cả Main, test và YAML nằm ở đó. Board/Types, khung step, transport hai client và codec/client một lệnh đã có cài đặt; logic kết quả bắn và các module nghiệp vụ còn lại tiếp tục do từng thành viên triển khai.
+Trước khi tích hợp nghiệp vụ tiếp theo, cả nhóm review và ghi xác nhận S-01 v2 tại [docs/shared_contract.md](docs/shared_contract.md), gồm A-01/C-01/D-01 và cập nhật A-02/A-03/B-01/C-02/D-02. Phân công chi tiết gồm cả Main, test và YAML nằm ở đó. Board/Types, khung step, transport hai client và codec/client một lệnh đã có cài đặt; logic kết quả bắn và các module nghiệp vụ còn lại tiếp tục do từng thành viên triển khai.

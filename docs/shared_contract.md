@@ -133,6 +133,8 @@ Helper hiện có: `boardSize :: Int`, `shipLength :: ShipId -> Int`, `otherPlay
 
 API Board A-02: `inBounds :: Coord -> Bool`, `shipCells :: ShipPlacement -> Either GameError (Set Coord)`, `placeFleet :: PlaceFleetFn`. Độ dài lấy từ ID tàu, không nhận độ dài tùy chọn. Đặt đúng năm ID duy nhất bảo đảm đủ cả năm loại: thiếu entry trả InvalidFleetSize, năm entry nhưng lặp ID trả DuplicateShip; không cần nhánh MissingShip riêng. Thứ tự lỗi: kiểm tra count trước, rồi từng placement trái sang phải: trùng ID → điểm đầu → vượt biên → chồng. Điểm đầu ngoài bàn trả InvalidCoordinate; phần thân vượt bàn trả ShipOutOfBounds kèm ô ngoài đầu tiên. Nếu nhiều ô chồng, trả ô nhỏ nhất theo Ord Coord. Tàu chạm cạnh/góc được phép; chỉ Right mới có Fleet, không trả fleet từng phần.
 
+A-03 trên nhánh `Minh-Dat_tau` giữ API và các guard đã có trong A-02/B-01, bổ sung nghiệm thu trong BoardSpec. Fleet phải có đúng Carrier/Battleship/Cruiser/Submarine/Destroyer, không chỉ đúng tổng chiều dài: lặp Cruiser thay Submarine vẫn đủ 17 ô nhưng bị từ chối. Board kiểm tra hình học độc lập với trạng thái; Rules.step kiểm tra FleetAlreadyPlaced trước Board và không cho thay fleet đã xác nhận khi chờ/đang chơi. Finished trả GameAlreadyFinished. Test kiểm tra cả P1/P2, request hợp lệ khác/sai, sửa request trước xác nhận và giữ đội tàu đầu tiên khi người thứ hai đặt. Năm probe GHC kiểm chứng public constructor/read access hợp lệ và chặn constructor thô, record update, coerce từ Map rỗng, import module private. Không thay khai báo kiểu, wire v1 hoặc quyền tạo Fleet.
+
 Khung B-01 xuất `step :: Step` từ Rules, dùng Board thật và không import Internal. Ma trận hiện có:
 
 | Phase | PlaceFleet | Fire | Quit |
@@ -230,6 +232,7 @@ stack test --test-arguments="--match S-01"
 ```
 
 - TypesSpec: kiểu/alias, helper, hằng số R-01, hai trạng thái riêng.
+- BoardSpec A-02/A-03: hình học/fleet đúng MVP, mép/chạm cạnh/lặp ID dài 3, toàn bộ 3125 tổ hợp năm ID, đặt lại bị Rules từ chối và các probe GHC bảo vệ API Fleet.
 - ProtocolSpec D-01/D-02: gọi API production với golden vectors/transcript D-01, framing byte, lỗi, định tuyến và round-trip; giữ Coord/Command của Types.
 - RulesSpec B-01: chữ ký step thực tế, đủ Command/Phase cho hai actor/turn/winner/reason, Board thật, bắt đầu P1 một lần, rollback hợp đồng Left, readiness/sai lượt/tọa độ/bắn lặp, Quit/EOF lặp và điểm FIRE tạm thời.
 - SharedContractSpec: API nguồn khớp bản chụp, chỉ Types định nghĩa Coord/Command, Fleet abstract và chỉ Board/Types truy cập representation private, danh sách chủ sở hữu đủ/không trùng, hai điểm vào Main có main :: IO (). Test đọc src/app/test trong repository; chạy test binary riêng cần đặt working directory ở gốc repo.

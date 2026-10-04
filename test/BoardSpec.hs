@@ -1,15 +1,26 @@
 module BoardSpec (spec) where
 
 import Battleship.Board (inBounds, placeFleet, shipCells)
+import Battleship.Rules (step)
 import Battleship.Types
-import Control.Monad (forM_)
-import Data.List (permutations)
+import Control.Exception (bracket)
+import Control.Monad (foldM, forM_)
+import Data.List (isInfixOf, permutations, sort)
 import qualified Data.Map.Strict as Map
 import qualified Data.Set as Set
+import System.Directory (getTemporaryDirectory, removeFile)
+import System.Exit (ExitCode (ExitFailure, ExitSuccess))
+import System.IO (hClose, hPutStr, openTempFile)
+import System.Process (readProcessWithExitCode)
 import Test.Hspec (Spec, describe, expectationFailure, it, shouldBe, shouldSatisfy)
 
 spec :: Spec
-spec = describe "A-02 board and checked fleet" $ do
+spec = do
+  a02Spec
+  a03Spec
+
+a02Spec :: Spec
+a02Spec = describe "A-02 board and checked fleet" $ do
   describe "inBounds" $ do
     it "accepts every cell in A1..J10" $
       forM_ [Coord column row | column <- [1 .. 10], row <- [1 .. 10]] $ \coordinate ->
@@ -144,6 +155,182 @@ spec = describe "A-02 board and checked fleet" $ do
               $ replaceShip Carrier (Coord 0 1) Horizontal horizontalFleet
       placeFleet bad `shouldBe` Left (InvalidCoordinate (Coord 0 1))
       placeFleet (reverse bad) `shouldBe` Left (ShipOutOfBounds Destroyer (Coord 11 10))
+
+a03Spec :: Spec
+a03Spec = describe "A-03 complete MVP placement" $ do
+  describe "corners, IDs and contact" $ do
+    forM_ [Horizontal, Vertical] $ \direction -> do
+      it ("every ship starts at A1 with " ++ show direction) $
+        forM_ shipSizes $ \(ship, size) ->
+          shipCells (ShipPlacement ship (Coord 1 1) direction) `shouldBe`
+            Right (Set.fromList [case direction of
+              Horizontal -> Coord offset 1
+              Vertical -> Coord 1 offset | offset <- [1 .. size]])
+      it ("every ship starting at J10 exceeds the board with " ++ show direction) $
+        forM_ shipSizes $ \(ship, _) ->
+          shipCells (ShipPlacement ship (Coord 10 10) direction) `shouldBe`
+            Left (ShipOutOfBounds ship (case direction of
+              Horizontal -> Coord 11 10
+              Vertical -> Coord 10 11))
+
+    it "accepts a horizontal fleet containing both A1 and J10" $
+      checkFleet cornerFleet (Map.fromList
+        [(Carrier, Set.fromList [Coord column 1 | column <- [1 .. 5]]),
+         (Battleship, Set.fromList [Coord column 2 | column <- [7 .. 10]]),
+         (Cruiser, Set.fromList [Coord column 3 | column <- [8 .. 10]]),
+         (Submarine, Set.fromList [Coord column 4 | column <- [8 .. 10]]),
+         (Destroyer, Set.fromList [Coord column 10 | column <- [9 .. 10]])])
+
+    it "accepts a vertical fleet containing both A1 and J10" $
+      checkFleet verticalCornerFleet (Map.fromList
+        [(Carrier, Set.fromList [Coord 1 row | row <- [1 .. 5]]),
+         (Battleship, Set.fromList [Coord 2 row | row <- [7 .. 10]]),
+         (Cruiser, Set.fromList [Coord 3 row | row <- [8 .. 10]]),
+         (Submarine, Set.fromList [Coord 4 row | row <- [8 .. 10]]),
+         (Destroyer, Set.fromList [Coord 10 row | row <- [9 .. 10]])])
+
+    it "accepts both distinct length-three ships: Cruiser and Submarine" $
+      checkFleet horizontalFleet expectedHorizontal
+
+    forM_ [(Cruiser, Submarine), (Submarine, Cruiser)] $ \(duplicate, missing) ->
+      it ("rejects repeated length-three ID " ++ show duplicate ++ " even with five ships and 17 cells") $ do
+        let placements = [if placementShip placement == missing
+                            then placement { placementShip = duplicate } else placement |
+                          placement <- horizontalFleet]
+        length placements `shouldBe` 5
+        sum (map (shipLength . placementShip) placements) `shouldBe` 17
+        placeFleet placements `shouldBe` Left (DuplicateShip duplicate)
+
+    it "accepts end-to-end edge contact at E1/F1 without sharing cells" $
+      checkFleet (replaceShip Battleship (Coord 6 1) Horizontal horizontalFleet)
+        (Map.insert Battleship (Set.fromList [Coord column 1 | column <- [6 .. 9]]) expectedHorizontal)
+
+    it "accepts parallel edge contact along Carrier and Battleship" $
+      checkFleet horizontalFleet expectedHorizontal
+
+    it "checks all 3125 five-ID assignments: only the 120 permutations form a fleet" $
+      forM_ (sequence (replicate 5 (map fst shipSizes))) $ \ids -> do
+        let placements = zipWith (\ship row -> ShipPlacement ship (Coord 1 row) Horizontal) ids [1 .. 5]
+        case placeFleet placements of
+          Right fleet -> do
+            sort ids `shouldBe` map fst shipSizes
+            checkInvariants fleet
+          Left (DuplicateShip _) -> sort ids `shouldSatisfy` (/= map fst shipSizes)
+          Left fault -> expectationFailure ("Unexpected ID validation error: " ++ show fault)
+
+  describe "confirmation through the public Rules API" $ do
+    forM_ [P1, P2] $ \actor -> do
+      it (show actor ++ " cannot replace a confirmed fleet while waiting, even with another valid fleet") $
+        case step actor (PlaceFleet horizontalFleet) initialGameState of
+          Left fault -> expectationFailure (show fault)
+          Right (waiting, events) -> do
+            events `shouldBe` [FleetAccepted actor]
+            retained <- foldM (rejectPlacement actor FleetAlreadyPlaced) waiting replacementRequests
+            retained `shouldBe` waiting
+            gamePhase retained `shouldBe` Placing
+            case step (otherPlayer actor) (PlaceFleet cornerFleet) retained of
+              Left fault -> expectationFailure (show fault)
+              Right (ready, started) -> do
+                playerStateFor actor ready `shouldBe` playerStateFor actor waiting
+                gamePhase ready `shouldBe` Turn P1
+                started `shouldBe` [FleetAccepted (otherPlayer actor), GameStarted P1, TurnReady P1]
+
+      it (show actor ++ " can correct rejected fleets before confirmation without retaining partial ships") $
+        forM_ badPlacementRequests $ \(placements, expectedError) -> do
+          rejected <- rejectPlacement actor expectedError initialGameState placements
+          rejected `shouldBe` initialGameState
+          step actor (PlaceFleet horizontalFleet) rejected `shouldBe`
+            fmap (\fleet -> (setPlayerState actor (PlayerState (Just fleet) Map.empty) initialGameState,
+                            [FleetAccepted actor])) (placeFleet horizontalFleet)
+
+      forM_ [P1, P2] $ \current ->
+        it (show actor ++ " cannot replace fleet in Turn " ++ show current) $
+          case (placeFleet horizontalFleet, placeFleet cornerFleet) of
+            (Right first, Right second) -> do
+              let ready = GameState (PlayerState (Just first) Map.empty)
+                                    (PlayerState (Just second) Map.empty) (Turn current)
+              foldM (rejectPlacement actor FleetAlreadyPlaced) ready replacementRequests
+                >>= (`shouldBe` ready)
+            _ -> expectationFailure "Invalid ready-state fixture"
+
+    it "rejects placement after termination without overwriting fleet or winner" $
+      forM_ [P1, P2] $ \actor -> forM_ [P1, P2] $ \winner ->
+        forM_ [AllShipsSunk, OpponentLeft] $ \reason ->
+          case placeFleet horizontalFleet of
+            Left fault -> expectationFailure (show fault)
+            Right fleet -> do
+              let finished = GameState (PlayerState (Just fleet) Map.empty)
+                                       (PlayerState (Just fleet) Map.empty) (Finished winner reason)
+              foldM (rejectPlacement actor GameAlreadyFinished) finished replacementRequests
+                >>= (`shouldBe` finished)
+
+  describe "Fleet abstraction checked by GHC against the installed public package" $ do
+    it "allows checked construction and read access through public imports" $
+      compileProbe (unlines
+        ["import Battleship.Board (placeFleet)", "import Battleship.Types",
+         "probe :: Either GameError Fleet", "probe = placeFleet []",
+         "inspect :: Fleet -> Int", "inspect = length . fleetShips"])
+        >>= (\(code, _, errors) -> (code, errors) `shouldBe` (ExitSuccess, ""))
+
+    forM_ [("raw constructor", "probe = Fleet Map.empty", "term-level"),
+           ("record update", "probe fleet = fleet { fleetShips = Map.empty }", "record field"),
+           ("coerce from an empty map", "probe = coerce (Map.empty :: Map.Map ShipId (Set.Set Coord)) :: Fleet", "representation"),
+           ("private module import", "import Battleship.Internal.Fleet\nprobe = Fleet Map.empty", "hidden module")] $ \(name, body, diagnostic) ->
+      it ("prevents invalid construction by " ++ name) $ do
+        (code, _, errors) <- compileProbe (unlines
+          ["import Battleship.Types", "import qualified Data.Map.Strict as Map",
+           "import qualified Data.Set as Set", "import Data.Coerce (coerce)", body])
+        code `shouldBe` ExitFailure 1
+        errors `shouldSatisfy` isInfixOf diagnostic
+
+-- A Left carries neither an updated state nor success events. This test caller
+-- keeps the old state and continues the sequence, just as Coordinator must.
+rejectPlacement :: PlayerId -> GameError -> GameState -> FleetPlacement -> IO GameState
+rejectPlacement actor expected state placements = case step actor (PlaceFleet placements) state of
+  Left fault -> (fault `shouldBe` expected) >> pure state
+  Right (changed, _) -> expectationFailure "Rejected placement unexpectedly succeeded" >> pure changed
+
+cornerFleet :: FleetPlacement
+cornerFleet = [ShipPlacement Carrier (Coord 1 1) Horizontal,
+               ShipPlacement Battleship (Coord 7 2) Horizontal,
+               ShipPlacement Cruiser (Coord 8 3) Horizontal,
+               ShipPlacement Submarine (Coord 8 4) Horizontal,
+               ShipPlacement Destroyer (Coord 9 10) Horizontal]
+
+verticalCornerFleet :: FleetPlacement
+verticalCornerFleet = [ShipPlacement Carrier (Coord 1 1) Vertical,
+                       ShipPlacement Battleship (Coord 2 7) Vertical,
+                       ShipPlacement Cruiser (Coord 3 8) Vertical,
+                       ShipPlacement Submarine (Coord 4 8) Vertical,
+                       ShipPlacement Destroyer (Coord 10 9) Vertical]
+
+badPlacementRequests :: [(FleetPlacement, GameError)]
+badPlacementRequests =
+  [([], InvalidFleetSize 0),
+   (take 4 horizontalFleet, InvalidFleetSize 4),
+   (horizontalFleet ++ take 1 horizontalFleet, InvalidFleetSize 6),
+   (map (\placement -> if placementShip placement == Submarine
+                        then placement { placementShip = Cruiser } else placement) horizontalFleet,
+    DuplicateShip Cruiser),
+   (replaceShip Destroyer (Coord 1 1) Horizontal horizontalFleet, ShipsOverlap (Coord 1 1)),
+   (replaceShip Destroyer (Coord 10 10) Vertical horizontalFleet, ShipOutOfBounds Destroyer (Coord 10 11)),
+   (replaceShip Carrier (Coord 0 1) Horizontal horizontalFleet, InvalidCoordinate (Coord 0 1))]
+
+replacementRequests :: [FleetPlacement]
+replacementRequests = [horizontalFleet, cornerFleet, verticalCornerFleet] ++ map fst badPlacementRequests
+
+-- Compile only against the built package: clearing -i prevents source imports
+-- from bypassing Cabal's hidden-module boundary. Temporary probes are removed.
+compileProbe :: String -> IO (ExitCode, String, String)
+compileProbe body = do
+  directory <- getTemporaryDirectory
+  bracket (openTempFile directory "battleship-a03.hs")
+    (\(path, handle) -> hClose handle >> removeFile path) $ \(path, handle) -> do
+      hPutStr handle ("module Probe where\n" ++ body)
+      hClose handle
+      readProcessWithExitCode "ghc"
+        ["-fno-code", "-fforce-recomp", "-hide-all-packages", "-package", "base",
+         "-package", "containers", "-package", "battleship-haskell", "-i", path] ""
 
 -- Independently specified R-01 lengths, not derived from the implementation.
 shipSizes :: [(ShipId, Int)]

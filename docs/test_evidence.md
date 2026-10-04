@@ -240,3 +240,37 @@ Các vấn đề xử lý trong D-02:
 Căn cứ slide: ADT/pattern matching và Either cho lỗi tường minh; Chap8 tách module codec thuần/IO client và Hspec describe/it/shouldBe; Chap11 dùng Network.Socket/bracket và xử lý TCP stream; Chap7 dùng async/deadline để quản lý I/O. Tái sử dụng network/bytestring/async đã có trong snapshot; ClientMain khai báo thêm network/bytestring ở component executable vì import trực tiếp, không thêm thư viện mới vào dependency set.
 
 **Giới hạn nghiệm thu:** transcript đặt tàu/bắn đã được codec encode/parse đúng, chưa được server thực thi thành trận thật. C-02 vẫn trả ERROR INVALID_COMMAND mẫu cho PLACE/FIRE; QUIT/slot/EOF hoạt động thật. Client gửi một lệnh rồi đóng, có deadline 10 giây cho connect/handshake/gửi/đọc, chưa có vòng nhập/render bàn hoặc chờ lượt lâu. Coordinator/STM, kết quả bắn và viewFor thuộc task tiếp theo; S-01 chưa khóa. README và mục 9 protocol.md ghi API/quy ước và cách chạy.
+
+## A-03 — 2026-10-04
+
+Nhánh `Minh-Dat_tau`, tách từ `Minh-Parser` tại `cad31d53d88286b513b0a79a06f39984b673661e`. Windows, Stack 3.11.1, LTS 24.59, GHC 9.10.3. Người dùng yêu cầu tiếp tục A-03; S-01 vẫn chờ xác nhận A/B/C/D.
+
+```text
+stack build
+  Thành công: library, battleship-server, battleship-client.
+
+stack test
+  476 examples, 0 failures
+
+stack test --ghc-options=-Werror
+  476 examples, 0 failures
+
+stack test --ghc-options=-Werror --test-arguments="--match A-03"
+  26 examples, 0 failures
+```
+
+BoardSpec có 78 test A-02 và thêm 26 test A-03; tổng toàn dự án tăng từ 450 lên 476. Các test thuần gọi Board/Rules production, không cần socket hoặc server; năm test GHC kiểm chứng ranh giới package public.
+
+| Nhóm mới | Số test | Phạm vi |
+|---|---:|---|
+| Mép, ID và chạm cạnh | 12 | Mỗi loại tàu ở A1/J10 theo H/V; hai fleet ngang/dọc chứa cả A1 và J10; CR/SB cùng dài 3 được phép khi khác ID; lặp CR hoặc SB vẫn đủ 5 tàu/17 ô bị từ chối; tiếp xúc E1/F1 và hai tàu song song hợp lệ; duyệt toàn bộ 5^5 = 3125 tổ hợp ID, chỉ 120 hoán vị đúng năm ID được chấp nhận |
+| Xác nhận qua Rules.step | 9 | Cả P1/P2; chuỗi request cùng fleet/fleet hợp lệ khác/fleet sai bị từ chối sau xác nhận; giữ fleet đầu khi đối thủ đặt và chỉ bắt đầu một lần; sai trước xác nhận có thể sửa, không giữ fleet từng phần; cấm đặt lại ở Turn P1/Turn P2 và mọi winner/reason Finished |
+| Ranh giới API bằng GHC | 5 | Positive control import Board/Types, gọi placeFleet và đọc fleetShips biên dịch thành công; bốn probe constructor thô/record update/coerce từ Map rỗng/import private phải exit 1 với diagnostic đúng nguyên nhân |
+
+Các probe dùng `ghc -fno-code -fforce-recomp -hide-all-packages -package base -package containers -package battleship-haskell -i <probe.hs>` trong môi trường Stack. `-i` xóa đường dẫn import nguồn để kiểm tra đúng package đã build, không import src trực tiếp và vô tình bỏ qua hidden module. Probe được tạo trong thư mục tạm và xóa bằng bracket, không commit artifact hoặc cần dependency mới. Các lỗi biên dịch âm là kết quả mong đợi, không phải lỗi build dự án. Stack cung cấp GHC/package database; nên chạy các test này bằng stack test.
+
+Rà soát trước A-03 cho thấy A-02 đã kiểm tra đủ năm ID, chiều dài cố định, vượt biên/chồng; B-01 đã cấm đặt lại. Không phát hiện lỗi thuật toán đặt tàu cần sửa. Phần còn thiếu là nhóm nghiệm thu A-03 độc lập: trường hợp lặp một ID dài 3 thay ID dài 3 còn lại (tổng vẫn 17), chuỗi thử thay bằng fleet hợp lệ khác sau xác nhận, và tự động hóa kiểm tra public API bằng compiler thay vì chỉ các probe thủ công A-02. Nếu thiếu các test này, thay đổi sau có thể chỉ kiểm tra tổng ô, cho thay fleet hoặc expose constructor mà không bị nhóm test đặt tàu phát hiện rõ.
+
+Giữ placeFleet thuần với chữ ký đã thống nhất: nó kiểm tra một request và không có GameState để biết ai đã đặt. Quy tắc không đặt lại được kiểm tra qua Rules.step trước khi gọi Board; test caller giữ state cũ khi Left, chưa kiểm chứng Coordinator/STM thực tế. Board bổ sung Haddock về đúng ID/độ dài, chạm cạnh và ranh giới xác nhận; README/hợp đồng chung bổ sung hướng dẫn nghiệm thu. Không đổi Types, constructor export, luật R-01, wire v1 hoặc dependency.
+
+Căn cứ slide: ADT cho hai ShipId dài 3 riêng biệt; hàm thuần/Either và quy nạp trên danh sách cho kiểm tra toàn bộ fleet; module/constructor ẩn để giữ bất biến; Hspec describe/it/shouldBe cho unit test (Chap8). A-03 đạt tiêu chí ở API miền public với giá trị được tạo theo kiểu an toàn; tích hợp PLACE vào TCP server, kết quả bắn và viewFor vẫn thuộc các task sau. C-02 tiếp tục dùng phản hồi mẫu PLACE/FIRE.

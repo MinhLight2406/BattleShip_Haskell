@@ -1,4 +1,4 @@
--- | Pure board geometry and checked fleet construction (A-02).
+-- | Pure board geometry and checked fleet construction (A-02/A-03).
 module Battleship.Board (inBounds, shipCells, placeFleet) where
 
 import Battleship.Types
@@ -30,9 +30,13 @@ shipCells (ShipPlacement ship start@(Coord column row) orientation)
             | offset <- [0 .. shipLength ship - 1]]
 
 -- | The public smart constructor. No partial Fleet is returned on failure.
+-- Each distinct ID fixes its length: CV/BB/CR/SB/DD = 5/4/3/3/2.
 -- Five unique IDs exhaust ShipId, so a separate missing-ID branch is unnecessary.
+-- Edge/corner contact is legal; only shared cells count as overlap.
 -- Error order: count, then left-to-right duplicate/start/extent/overlap checks.
 -- For multiple shared cells, report the least Coord under its Ord instance.
+-- This validates a request, not a player's readiness. Rules.step must reject
+-- an already confirmed fleet before calling here, then install Right once.
 placeFleet :: PlaceFleetFn
 placeFleet placements
   | count /= length ([minBound .. maxBound] :: [ShipId]) = Left (InvalidFleetSize count)
