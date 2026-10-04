@@ -20,7 +20,7 @@ Các module sử dụng kiểu chung bằng `import Battleship.Types` hoặc imp
 
 S-01 v1 đã đối chiếu kỹ thuật tại commit `f73dc87e336ba01d4723f642582403b1f20e2504` nhưng chưa có đủ bốn xác nhận. Người dùng yêu cầu tiếp tục A-02 trên nhánh `Minh-Build_board`: v2 cập nhật việc ẩn constructor Fleet và cài đặt Board; đây là nội dung mới để A/B/C/D duyệt, không phải bằng chứng v1/v2 đã khóa. R-01 và wire v1 giữ nguyên.
 
-A-02 đã có `Board.placeFleet`, `shipCells`, `inBounds` thuần. Rules/View/Protocol/Coordinator/Server/Client vẫn còn khung; chưa có `step`, `viewFor` thực thi, parser/encoder production hoặc trận TCP thật. Không tạo hàm giả dùng `undefined`/`error` để làm như đã có cài đặt.
+A-02 đã có `Board.placeFleet`, `shipCells`, `inBounds` thuần. B-01 có `Rules.step` với đủ nhánh Command/Phase, đặt tàu, bắt đầu trận, bỏ cuộc và kiểm tra lỗi trước FIRE. Kết quả bắn còn chờ task tiếp theo; View/Protocol/Coordinator/Server/Client vẫn là khung. Chưa có `viewFor`, parser/encoder production hoặc trận TCP thật. Không tạo hàm giả dùng `undefined`/`error` để làm như đã có cài đặt. B-01 tiếp tục theo yêu cầu người dùng trên nhánh `Minh-Build_Rule`; chữ ký/kiểu chung và wire v1 giữ nguyên, S-01 vẫn chờ bốn xác nhận.
 
 ## 2. API miền dùng chung
 
@@ -133,6 +133,18 @@ Helper hiện có: `boardSize :: Int`, `shipLength :: ShipId -> Int`, `otherPlay
 
 API Board A-02: `inBounds :: Coord -> Bool`, `shipCells :: ShipPlacement -> Either GameError (Set Coord)`, `placeFleet :: PlaceFleetFn`. Độ dài lấy từ ID tàu, không nhận độ dài tùy chọn. Đặt đúng năm ID duy nhất bảo đảm đủ cả năm loại: thiếu entry trả InvalidFleetSize, năm entry nhưng lặp ID trả DuplicateShip; không cần nhánh MissingShip riêng. Thứ tự lỗi: kiểm tra count trước, rồi từng placement trái sang phải: trùng ID → điểm đầu → vượt biên → chồng. Điểm đầu ngoài bàn trả InvalidCoordinate; phần thân vượt bàn trả ShipOutOfBounds kèm ô ngoài đầu tiên. Nếu nhiều ô chồng, trả ô nhỏ nhất theo Ord Coord. Tàu chạm cạnh/góc được phép; chỉ Right mới có Fleet, không trả fleet từng phần.
 
+Khung B-01 xuất `step :: Step` từ Rules, dùng Board thật và không import Internal. Ma trận hiện có:
+
+| Phase | PlaceFleet | Fire | Quit |
+|---|---|---|---|
+| Placing | Đã đặt → FleetAlreadyPlaced; chưa đặt → Board kiểm tra và lưu toàn bộ fleet; đủ hai người → Turn P1 | FleetsNotReady | Finished (otherPlayer actor) OpponentLeft |
+| Turn current | Thiếu một fleet → FleetsNotReady; đủ → FleetAlreadyPlaced | Kiểm tra readiness, actor/current, tọa độ, bắn lặp; qua hết → Left tạm thời | Finished (otherPlayer actor) OpponentLeft |
+| Finished winner reason | GameAlreadyFinished | GameAlreadyFinished | GameAlreadyFinished, giữ winner/reason |
+
+PLACE thành công phát `[FleetAccepted actor]`; lần đặt bắt đầu trận phát `[FleetAccepted actor, GameStarted P1, TurnReady P1]`. QUIT phát duy nhất `[GameEnded winner OpponentLeft]`, giữ nguyên hai fleet/lịch sử. Lỗi trả Left, không có state mới hoặc Event thành công; caller phải giữ toàn bộ state cũ. RulesSpec dùng adapter riêng để kiểm tra hợp đồng caller, chưa kiểm thử implementation Coordinator/STM.
+
+Nhánh FIRE qua hết kiểm tra B-01 trả `Left (InvalidCommand "B-01: shot resolution is not implemented")`. Đây là lỗi tạm thời của khung, không có kết quả bắn giả; task tiếp theo thay nhánh này bằng ShotResolved/TurnReady/GameEnded đúng R-01. Chuỗi lý do chỉ phục vụ debug nội bộ; wire không thêm mã mới và không echo chuỗi đó. Transcript bắn trong D-01 là mục tiêu triển khai sau, B-01 chưa chạy được phần FIRE thành công.
+
 ## 3. Ghép kiểu với giao thức và hai Main
 
 | Điểm giao nhau | Quy ước đã đối chiếu |
@@ -203,6 +215,7 @@ stack test --test-arguments="--match S-01"
 
 - TypesSpec: kiểu/alias, helper, hằng số R-01, hai trạng thái riêng.
 - ProtocolSpec: kiểu A-01 trong grammar tham chiếu và transcript D-01, framing byte, lỗi, định tuyến.
+- RulesSpec B-01: chữ ký step thực tế, đủ Command/Phase cho hai actor/turn/winner/reason, Board thật, bắt đầu P1 một lần, rollback hợp đồng Left, readiness/sai lượt/tọa độ/bắn lặp, Quit/EOF lặp và điểm FIRE tạm thời.
 - SharedContractSpec: API nguồn khớp bản chụp, chỉ Types định nghĩa Coord/Command, Fleet abstract và chỉ Board/Types truy cập representation private, danh sách chủ sở hữu đủ/không trùng, hai điểm vào Main có main :: IO (). Test đọc src/app/test trong repository; chạy test binary riêng cần đặt working directory ở gốc repo.
 - IntegrationSpec: hai executable được build từ package khởi chạy và thoát thành công. Đây là smoke test khung, không phải tích hợp TCP thật.
 

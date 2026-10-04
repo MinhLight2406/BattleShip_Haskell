@@ -130,3 +130,37 @@ Mọi Right Fleet trong các fixture kiểm tra có đúng năm ID, từng tàu 
 Bốn lỗi biên dịch trên là kết quả mong đợi của kiểm tra âm, không phải lỗi build package. SharedContractSpec thêm một test giới hạn truy cập Internal và bảo đảm Types không xuất Fleet(..); tổng S-01 hiện 10 test. Fixture TypesSpec chuyển sang placeFleet thay vì tạo raw Fleet. Không thêm dependency runtime; module private dùng containers sẵn có.
 
 R-01/wire v1 không đổi. Rules.step, View.viewFor và TCP thực tế chưa được cài đặt/kiểm thử ở A-02. S-01 v2 vẫn chưa có bốn xác nhận nên chưa khóa; unit test xanh không thay thế bước xác nhận đó.
+
+## B-01 — 2026-10-04
+
+Nhánh `Minh-Build_Rule`, tách từ `Minh-Build_board` tại `ceb073968e4ab41ca0d2565de12dc9305872902c`. Môi trường Windows, Stack 3.11.1, LTS 24.59, GHC 9.10.3. Tiếp tục theo yêu cầu người dùng; S-01 vẫn chờ bốn xác nhận, không ghi đã khóa.
+
+```text
+stack build
+  Thành công: library, battleship-server, battleship-client.
+
+stack test
+  354 examples, 0 failures
+
+stack test --ghc-options=-Werror
+  354 examples, 0 failures
+
+stack test --ghc-options=-Werror --test-arguments="--match B-01"
+  114 examples, 0 failures
+```
+
+| Nhóm RulesSpec | Số test | Nội dung |
+|---|---:|---|
+| Chữ ký thực tế | 1 | Type của hàm step đã cài khớp alias Step |
+| Ma trận Command/Phase | 42 | Ba lệnh × Placing/Turn/Finished; cả hai actor/current turn, bốn tổ hợp winner/reason |
+| Đặt tàu/bắt đầu | 19 | Board thật; P1/P2 đặt trước; luôn Turn P1; sự kiện đúng thứ tự; không đặt lại; năm lỗi Board; lỗi rồi sửa request |
+| FIRE/ưu tiên lỗi | 48 | Tọa độ bốn cạnh/cực trị; bắn lặp mọi Outcome; sai lượt trước tọa độ/lặp; readiness cho raw Turn thiếu fleet; nhánh FIRE hợp lệ tạm thời |
+| Kết thúc/lịch sử | 4 | Quit giữ fleet/history; Quit/EOF lặp không đổi winner; Finished từ chối payload sai; chuỗi lỗi không đổi state/event |
+
+Rules pattern-match từng Command và từng Phase, không có undefined/error hoặc IO trong production. -Wall và -Werror kiểm tra nhánh thiếu khi compiler biên dịch; các test chạy qua mọi tổ hợp constructor hiện có. Không định nghĩa lại Coord/Command; không import Fleet private; không thêm dependency hoặc sửa Main.
+
+`applyAsCaller` trong test mô phỏng hợp đồng coordinator: Left giữ nguyên toàn bộ GameState và không có Event thành công. Các assertion còn kiểm tra chính step trả đúng Left; lỗi đặt đội tàu thứ hai rồi sửa lại phải giữ đội tàu thứ nhất và khởi động được trận. Đây không phải kiểm thử Coordinator/STM/socket production, các module đó chưa triển khai.
+
+**Giới hạn có chủ đích của B-01:** khung xử lý PLACE/bắt đầu/QUIT và các lỗi trước FIRE. Nhánh FIRE qua mọi kiểm tra trả `Left (InvalidCommand "B-01: shot resolution is not implemented")`; chưa tạo Miss/Hit/Sunk/Win hoặc phát ShotResolved, chưa có chuyển lượt sau một phát bắn. Test lịch sử có Outcome Win chỉ là fixture để kiểm tra bắn lặp, không chứng minh thắng trận. Task luật tiếp theo thay nhánh Left tạm thời này và cập nhật test tương ứng.
+
+Kiểu/chữ ký chung, luật R-01 và wire v1 giữ nguyên. Các transcript bắn D-01 là hợp đồng đích, chưa được thực thi trong B-01. Tài liệu hiện tại ghi rõ trạng thái triển khai thay vì coi game đã chơi được.

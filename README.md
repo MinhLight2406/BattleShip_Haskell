@@ -2,7 +2,7 @@
 
 Dự án Battleship cho hai người chơi, dự kiến chạy bằng hai client terminal kết nối đến một server TCP. Server giữ trạng thái trận đấu; luật chơi được triển khai bằng các hàm thuần Haskell.
 
-**Trạng thái hiện tại:** đã có khung C-01, kiểu A-01, giao thức D-01 và Board A-02 (`inBounds`, `shipCells`, `placeFleet`). Fleet được tạo qua hàm kiểm tra và chỉ có API đọc; chưa triển khai lượt bắn/Rules, parser/encoder production, TCP hay `viewFor`.
+**Trạng thái hiện tại:** đã có khung C-01, kiểu A-01, giao thức D-01, Board A-02 và khung Rules B-01 (`step`). Step xử lý đặt tàu/bắt đầu trận/bỏ cuộc, kiểm tra lỗi trước khi bắn; tính kết quả Miss/Hit/Sunk/Win còn chờ task luật tiếp theo. Chưa có parser/encoder production, TCP hay `viewFor`.
 
 **S-01:** bản hợp đồng chung v2 cập nhật A-02 ở [docs/shared_contract.md](docs/shared_contract.md). Chưa khóa mốc vì còn chờ xác nhận A/B/C/D; việc ẩn constructor Fleet, chủ sở hữu file và quy trình thay đổi được ghi tại đó.
 
@@ -17,7 +17,7 @@ stack build
 stack test
 ```
 
-`stack build` biên dịch thư viện và hai executable. `stack test` chạy A-01 (`TypesSpec`), A-02 (`BoardSpec`), D-01 (`ProtocolSpec`), S-01 (`SharedContractSpec`) và hai smoke test C-01; tất cả phải đạt, không có failure. Smoke test kiểm tra server/client khởi chạy, in thông báo khung và thoát thành công. Windows Application Control chặn executable sẽ khiến smoke test thất bại.
+`stack build` biên dịch thư viện và hai executable. `stack test` chạy A-01 (`TypesSpec`), A-02 (`BoardSpec`), B-01 (`RulesSpec`), D-01 (`ProtocolSpec`), S-01 (`SharedContractSpec`) và hai smoke test C-01; tất cả phải đạt, không có failure. Smoke test kiểm tra server/client khởi chạy, in thông báo khung và thoát thành công. Windows Application Control chặn executable sẽ khiến smoke test thất bại.
 
 Chạy riêng hợp đồng giao thức:
 
@@ -39,6 +39,14 @@ Chạy riêng A-02:
 ```sh
 stack test --test-arguments="--match A-02"
 ```
+
+Chạy riêng khung luật B-01:
+
+```sh
+stack test --ghc-options=-Werror --test-arguments="--match B-01"
+```
+
+`step :: Step` có đủ nhánh Command/Phase. FIRE sai bị từ chối theo điều kiện; FIRE đã qua kiểm tra hiện trả `Left (InvalidCommand "B-01: shot resolution is not implemented")`, giữ nguyên state và không phát ShotResolved. Đây là điểm thay thế bằng logic bắn ở task tiếp theo, chưa phải game chơi được. Coordinator phải giữ state cũ khi Left; adapter trong RulesSpec kiểm tra hợp đồng này, chưa kiểm chứng Coordinator/STM thực tế.
 
 Thử hàm thuần bằng `stack ghci battleship-haskell:lib`:
 
@@ -86,4 +94,4 @@ Luật đầy đủ ở [docs/game_spec.md](docs/game_spec.md). Sơ đồ hoạt
 | D | `Protocol.hs`, `Client.hs`, `ClientMain.hs`, test giao thức và tích hợp |
 | R | `docs/`, báo cáo, minh chứng kiểm thử và demo |
 
-Trước khi tích hợp nghiệp vụ tiếp theo, cả nhóm review và ghi xác nhận S-01 v2 tại [docs/shared_contract.md](docs/shared_contract.md), gồm A-01/C-01/D-01 và cập nhật A-02. Phân công chi tiết gồm cả Main, test và YAML nằm ở đó. Board/Types đã có cài đặt; các module nghiệp vụ còn lại tiếp tục do từng thành viên triển khai.
+Trước khi tích hợp nghiệp vụ tiếp theo, cả nhóm review và ghi xác nhận S-01 v2 tại [docs/shared_contract.md](docs/shared_contract.md), gồm A-01/C-01/D-01 và cập nhật A-02/B-01. Phân công chi tiết gồm cả Main, test và YAML nằm ở đó. Board/Types và khung step đã có cài đặt; logic kết quả bắn và các module nghiệp vụ còn lại tiếp tục do từng thành viên triển khai.

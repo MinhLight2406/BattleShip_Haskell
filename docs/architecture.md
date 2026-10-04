@@ -1,6 +1,6 @@
 # Kiến trúc điều phối Battleship
 
-Phạm vi: một server, hai client terminal, một trận. Server giữ trạng thái duy nhất; các module `Board`, `Rules` và `View` là hàm thuần. Types A-01 và Board A-02 đã có cài đặt; luồng điều phối, luật bắn và góc nhìn dưới đây được triển khai ở các task tiếp theo.
+Phạm vi: một server, hai client terminal, một trận. Server giữ trạng thái duy nhất; các module `Board`, `Rules` và `View` là hàm thuần. Types A-01, Board A-02 và khung step B-01 đã có cài đặt; luồng điều phối, kết quả bắn và góc nhìn được triển khai ở các task tiếp theo.
 
 ```mermaid
 flowchart LR
@@ -30,6 +30,8 @@ flowchart LR
 D-01 tại `docs/protocol.md` là hợp đồng wire v1: không gửi snapshot `PlayerView`. Client dựng bàn từ đội tàu của mình đã được xác nhận và các event được phép thấy. `View.viewFor` vẫn là hợp đồng hàm thuần phía server; không gửi nguyên `GameState` hay đội tàu đối thủ. Định tuyến `ShotResolved` thành `SHOT` cho người bắn và `INCOMING` cho người bị bắn; mỗi người nhận kết quả trước `TURN` hoặc `GAME_OVER`.
 
 ## Luồng bắn và giữ lượt
+
+Phần dưới là luồng đích theo R-01/D-01. B-01 hiện kiểm tra readiness → lượt → tọa độ → bắn lặp; FIRE qua hết kiểm tra trả Left InvalidCommand với lý do debug `B-01: shot resolution is not implemented`. Không ghi phát bắn hoặc đổi lượt ở nhánh này. PLACE/bắt đầu trận và QUIT đã có chuyển trạng thái/sự kiện thật qua hàm thuần step.
 
 1. Client đang có lượt gửi `Fire Coord`.
 2. Trong một giao dịch STM, coordinator đọc trạng thái cũ, gọi `step`, ghi trạng thái mới và xếp thông báo vào kênh riêng. Socket writer gửi thông báo sau giao dịch.
@@ -73,6 +75,6 @@ viewFor :: PlayerId -> GameState -> PlayerView
 - C truyền `PlayerId` của socket vào `step`; D không parse danh tính trong `Command`. C chuyển ngắt kết nối bất thường thành `Quit` của người đó. Sau khi kết thúc, Rules từ chối mọi lệnh bằng `GameAlreadyFinished`.
 - `PlayerView` có fleet của chính người nhận, lịch sử bắn ra/bắn vào, phase và readiness của đối thủ. Không có field fleet đối thủ. B phải kiểm tra `ownFleetView` lấy đúng người; A-01 chưa chứng minh cài đặt `viewFor` lọc bí mật đúng.
 
-Luật R-01 giữ nguyên: đủ hai đội tàu thì `Turn P1`; `Miss` đổi lượt, `Hit`/`Sunk` giữ lượt; `Win` kết thúc ngay. BoardSpec A-02 kiểm tra đặt tàu bằng hàm thuần; chuyển trạng thái/lọc bí mật vẫn thuộc B. TypesSpec A-01 kiểm tra kiểu, hằng số và helper thuần, với fleet fixture tạo qua placeFleet.
+Luật R-01 giữ nguyên: đủ hai đội tàu thì `Turn P1`; `Miss` đổi lượt, `Hit`/`Sunk` giữ lượt; `Win` kết thúc ngay. BoardSpec A-02 kiểm tra đặt tàu bằng hàm thuần; RulesSpec B-01 kiểm tra đặt tàu/bắt đầu/bỏ cuộc và các nhánh lỗi giữ state. Kết quả bắn/lọc bí mật vẫn chờ các task B tiếp theo. TypesSpec A-01 dùng fleet fixture tạo qua placeFleet.
 
 Trạng thái review chung tại [shared_contract.md](shared_contract.md), S-01 v2 cập nhật A-02: đã đối chiếu Types, Board, giao thức và hai Main; chưa có đủ xác nhận A/B/C/D để khóa mốc. Bảng chủ sở hữu tại S-01 gồm cả app/test/YAML và module private; bảng module ở đây chỉ là tóm tắt kiến trúc.
