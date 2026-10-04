@@ -1,10 +1,10 @@
 module TypesSpec (spec) where
 
 import Battleship.Types
+import Battleship.Board (placeFleet)
 import Control.Monad (forM_)
 import qualified Data.Map.Strict as Map
 import Data.Proxy (Proxy (..))
-import qualified Data.Set as Set
 import Data.Typeable (typeRep)
 import Test.Hspec (Spec, describe, it, shouldBe, shouldNotBe)
 
@@ -102,20 +102,19 @@ expectedShips =
 
 -- The example PLACE command in protocol.md occupies five separate rows.
 firstFleet :: Fleet
-firstFleet = Fleet $ Map.fromList
-  [ (Carrier, cells 1 5)
-  , (Battleship, cells 2 4)
-  , (Cruiser, cells 3 3)
-  , (Submarine, cells 4 3)
-  , (Destroyer, cells 5 2)
-  ]
-  where
-    cells row count = Set.fromList [Coord column row | column <- [1 .. count]]
+firstFleet = fixtureFleet 1
 
 secondFleet :: Fleet
-secondFleet = Fleet $ Map.map (Set.map moveDown) (fleetShips firstFleet)
-  where
-    moveDown coord = coord { coordRow = coordRow coord + 5 }
+secondFleet = fixtureFleet 6
+
+-- Fixtures also pass the production smart constructor; an invalid fixture must
+-- fail the test rather than manufacturing an invalid domain value.
+fixtureFleet :: Int -> Fleet
+fixtureFleet startRow = case placeFleet
+  [ShipPlacement ship (Coord 1 row) Horizontal |
+   (ship, row) <- zip [Carrier, Battleship, Cruiser, Submarine, Destroyer] [startRow ..]] of
+  Right fleet -> fleet
+  Left gameError -> error ("Invalid TypesSpec fixture: " ++ show gameError)
 
 firstPlayer :: PlayerState
 firstPlayer = PlayerState (Just firstFleet) (Map.singleton (Coord 1 6) Hit)

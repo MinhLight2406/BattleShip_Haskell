@@ -90,3 +90,43 @@ SharedContractSpec dùng `directory`/`filepath` ở test component để đọc 
 Trước S-01 không có định nghĩa Coord/Command trùng để phải xóa; còn thiếu bản hợp đồng tập trung, bảng người phụ trách đủ app/test/YAML, kiểm tra tự động API lệch tài liệu và bằng chứng A/B/C/D duyệt. Đã bổ sung các phần kỹ thuật tại [shared_contract.md](shared_contract.md), tái dùng 113 test D-01, 37 test A-01 và hai smoke test C-01.
 
 **Chưa đủ nghiệm thu S-01:** chưa nhận được bốn xác nhận thật trên cùng nội dung. Bảng A/B/C/D đang CHỜ XÁC NHẬN; không ghi ĐÃ KHÓA chỉ vì build/test xanh. Không có thử nghiệm TCP thật hoặc cài đặt nghiệp vụ trong S-01.
+
+## A-02 — 2026-10-04
+
+Nhánh `Minh-Build_board`, tách từ `Minh-Connect_Type_and_Main` tại `f73dc87e336ba01d4723f642582403b1f20e2504`. Tiếp tục theo yêu cầu người dùng khi S-01 còn chờ xác nhận; bản hợp đồng v2 ghi thay đổi abstract Fleet để nhóm duyệt. Môi trường vẫn Windows, Stack 3.11.1, LTS 24.59, GHC 9.10.3.
+
+```text
+stack build
+  Thành công: library, battleship-server, battleship-client.
+
+stack test
+  240 examples, 0 failures
+
+stack test --ghc-options=-Werror
+  240 examples, 0 failures
+
+stack test --ghc-options=-Werror --test-arguments="--match A-02"
+  78 examples, 0 failures
+```
+
+| Nhóm A-02 | Số test | Nội dung |
+|---|---:|---|
+| inBounds | 11 | Toàn bộ 100 ô; ngoài bốn cạnh, số âm, minBound/maxBound Int |
+| shipCells | 41 | Mỗi loại tàu theo H/V, đúng chiều dài, sát mép/vượt mép; điểm đầu cực trị; duyệt đủ 1000 tổ hợp ID/ô/hướng |
+| placeFleet | 26 | Hai fleet trong transcript, 120 hoán vị, fleet dọc/sát mép, chạm cạnh/góc, thiếu/thừa entry, trùng cả năm ID, chồng song song/giao nhau, sai tọa độ, sửa rồi gửi lại, ưu tiên lỗi |
+
+Mọi Right Fleet trong các fixture kiểm tra có đúng năm ID, từng tàu dài 5/4/3/3/2, hợp các ô có kích thước 17 và tất cả trong bàn. Lỗi trả Left, không có đội tàu từng phần. Chiều dài lấy theo ShipId; request không chứa số chiều dài tùy chọn. Với năm ID duy nhất, đủ cả năm loại được bảo đảm; thiếu entry dùng InvalidFleetSize, lặp dùng DuplicateShip.
+
+Đã kiểm tra thêm API public bằng GHC, dùng `stack exec -- ghc -fno-code -fforce-recomp -hide-all-packages -package base -package containers -package battleship-haskell <probe.hs>`; probe đặt trong .stack-work/a02-api-probes (không commit):
+
+| Probe | Kết quả dự đoán / thực tế |
+|---|---|
+| PublicApi: tạo bằng placeFleet và đọc fleetShips | Biên dịch thành công, exit 0 |
+| BadConstructor: Fleet Map.empty | Bị từ chối: constructor không có ở term level, exit 1 |
+| BadRecordUpdate: fleet { fleetShips = Map.empty } | Bị từ chối: không có record field công khai, exit 1 |
+| BadInternalImport: import Battleship.Internal.Fleet | Bị từ chối: hidden module, exit 1 |
+| BadCoercion: coerce từ Map rỗng sang Fleet | Bị từ chối: constructor newtype không trong scope, exit 1 |
+
+Bốn lỗi biên dịch trên là kết quả mong đợi của kiểm tra âm, không phải lỗi build package. SharedContractSpec thêm một test giới hạn truy cập Internal và bảo đảm Types không xuất Fleet(..); tổng S-01 hiện 10 test. Fixture TypesSpec chuyển sang placeFleet thay vì tạo raw Fleet. Không thêm dependency runtime; module private dùng containers sẵn có.
+
+R-01/wire v1 không đổi. Rules.step, View.viewFor và TCP thực tế chưa được cài đặt/kiểm thử ở A-02. S-01 v2 vẫn chưa có bốn xác nhận nên chưa khóa; unit test xanh không thay thế bước xác nhận đó.

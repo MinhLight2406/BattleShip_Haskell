@@ -7,7 +7,8 @@ module Battleship.Types
   , Orientation (..)
   , ShipPlacement (..)
   , FleetPlacement
-  , Fleet (..)
+  , Fleet
+  , fleetShips
   , Outcome (..)
   , PlayerState (..)
   , EndReason (..)
@@ -29,6 +30,7 @@ module Battleship.Types
   ) where
 
 import Data.Map.Strict (Map)
+import qualified Battleship.Internal.Fleet as Internal
 import qualified Data.Map.Strict as Map
 import Data.Set (Set)
 
@@ -64,10 +66,8 @@ type FleetPlacement = [ShipPlacement]
 -- | Normalized ship cells, produced by Board.placeFleet after validation.
 -- Invariant: exactly five IDs, lengths 5/4/3/3/2, straight contiguous cells,
 -- all in bounds and no overlap. Touching ships are permitted.
--- The public constructor supports domain code/tests; it does not validate.
-newtype Fleet = Fleet
-  { fleetShips :: Map ShipId (Set Coord)
-  } deriving (Eq, Show)
+-- The constructor and record update are private. Use Board.placeFleet.
+type Fleet = Internal.Fleet ShipId Coord
 
 -- | The recorded outcome when a shot was made, not a mutable cell status.
 data Outcome = Miss | Hit | Sunk ShipId | Win
@@ -193,3 +193,8 @@ playerStateFor P2 = gamePlayer2
 setPlayerState :: PlayerId -> PlayerState -> GameState -> GameState
 setPlayerState P1 player state = state { gamePlayer1 = player }
 setPlayerState P2 player state = state { gamePlayer2 = player }
+
+-- | Read-only ship cells. Changing the returned immutable Map does not change
+-- the Fleet; callers cannot use this function as a record-update field.
+fleetShips :: Fleet -> Map ShipId (Set Coord)
+fleetShips = Internal.fleetShips

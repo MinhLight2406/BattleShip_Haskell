@@ -2,7 +2,7 @@
 
 Đây là hợp đồng wire đã chốt cho một server, hai client, một trận theo R-01 và kiểu A-01. C/D triển khai theo grammar, thứ tự phản hồi và transcript dưới đây. Thay đổi không tương thích phải tăng phiên bản và cập nhật cả hai phía cùng test. Văn bản hiển thị tiếng Việt do client ánh xạ từ mã; wire không chứa câu thông báo tự do.
 
-Đối chiếu với Types, hai Main, chủ sở hữu file và trạng thái xác nhận của cả nhóm tại [shared_contract.md](shared_contract.md), S-01 v1. Các xác nhận còn thiếu được ghi ở đó; chưa khóa mốc chung bằng kết quả test đơn thuần.
+Đối chiếu với Types, Board A-02, hai Main, chủ sở hữu file và trạng thái xác nhận của cả nhóm tại [shared_contract.md](shared_contract.md), S-01 v2. Các xác nhận còn thiếu được ghi ở đó; wire vẫn là v1.
 
 ## 1. Kết nối và framing
 

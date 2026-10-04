@@ -42,6 +42,15 @@ spec = describe "S-01 shared contract" $ do
     it "allows Command only in Battleship.Types across src, app and test" $ \(_, sources) ->
       declarationFiles "Command" sources `shouldBe` ["src/Battleship/Types.hs"]
 
+    it "keeps Fleet abstract and restricts private representation access to Board/Types" $ \(_, sources) -> do
+      let exports = takeUntil ["where"] (haskellTokens (sourceFor "src/Battleship/Types.hs" sources))
+          privateModule = haskellTokens "Battleship.Internal.Fleet"
+          users = [path | (path, source) <- sources, path /= "src/Battleship/Internal/Fleet.hs",
+                          privateModule `isInfixOf` haskellTokens source]
+      exports `shouldSatisfy` (not . isInfixOf ["Fleet", "("])
+      exports `shouldSatisfy` elem "fleetShips"
+      users `shouldBe` ["src/Battleship/Board.hs", "src/Battleship/Types.hs"]
+
     it "lists every Haskell source and build configuration exactly once with an owner" $ \(document, sources) -> do
       let rows = map words (lines (fixture "contract:owners" "text" document))
           entries = [(path, owner) | [path, owner] <- rows]

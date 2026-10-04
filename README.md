@@ -2,9 +2,9 @@
 
 Dự án Battleship cho hai người chơi, dự kiến chạy bằng hai client terminal kết nối đến một server TCP. Server giữ trạng thái trận đấu; luật chơi được triển khai bằng các hàm thuần Haskell.
 
-**Trạng thái hiện tại:** đã có khung C-01, kiểu/hợp đồng hàm A-01 trong `Types` và đặc tả giao thức D-01. Test suite gồm unit test kiểu/helper, kiểm tra grammar/framing/transcript trong tài liệu và hai smoke test server/client; chưa triển khai luật chơi, parser/encoder production, TCP hay `viewFor`.
+**Trạng thái hiện tại:** đã có khung C-01, kiểu A-01, giao thức D-01 và Board A-02 (`inBounds`, `shipCells`, `placeFleet`). Fleet được tạo qua hàm kiểm tra và chỉ có API đọc; chưa triển khai lượt bắn/Rules, parser/encoder production, TCP hay `viewFor`.
 
-**S-01:** bản hợp đồng chung và kiểm tra kỹ thuật ở [docs/shared_contract.md](docs/shared_contract.md). Chưa khóa mốc vì còn chờ xác nhận A/B/C/D; chủ sở hữu file và quy trình thay đổi được ghi tại đó.
+**S-01:** bản hợp đồng chung v2 cập nhật A-02 ở [docs/shared_contract.md](docs/shared_contract.md). Chưa khóa mốc vì còn chờ xác nhận A/B/C/D; việc ẩn constructor Fleet, chủ sở hữu file và quy trình thay đổi được ghi tại đó.
 
 ## Build và test
 
@@ -17,7 +17,7 @@ stack build
 stack test
 ```
 
-`stack build` biên dịch thư viện và hai executable. `stack test` chạy test A-01 (`TypesSpec`), hợp đồng D-01 (`ProtocolSpec`), đối chiếu S-01 (`SharedContractSpec`) và hai smoke test C-01; tất cả phải đạt, không có failure. Smoke test kiểm tra server/client khởi chạy, in thông báo khung và thoát thành công. Windows Application Control chặn executable sẽ khiến smoke test thất bại.
+`stack build` biên dịch thư viện và hai executable. `stack test` chạy A-01 (`TypesSpec`), A-02 (`BoardSpec`), D-01 (`ProtocolSpec`), S-01 (`SharedContractSpec`) và hai smoke test C-01; tất cả phải đạt, không có failure. Smoke test kiểm tra server/client khởi chạy, in thông báo khung và thoát thành công. Windows Application Control chặn executable sẽ khiến smoke test thất bại.
 
 Chạy riêng hợp đồng giao thức:
 
@@ -33,6 +33,25 @@ stack test --ghc-options=-Werror
 ```
 
 Kiểm tra S-01 đọc file trong src/app/test và docs/shared_contract.md từ gốc repository để phát hiện định nghĩa Coord/Command trùng, API lệch tài liệu hoặc file thiếu người phụ trách. Nếu chạy test binary trực tiếp, đặt working directory ở gốc repo.
+
+Chạy riêng A-02:
+
+```sh
+stack test --test-arguments="--match A-02"
+```
+
+Thử hàm thuần bằng `stack ghci battleship-haskell:lib`:
+
+```haskell
+import Battleship.Types
+import Battleship.Board
+let placements = [ShipPlacement ship (Coord 1 row) Horizontal | (ship, row) <- zip [Carrier, Battleship, Cruiser, Submarine, Destroyer] [1..5]]
+placeFleet placements -- Right fleet hợp lệ, đủ 17 ô
+placeFleet (take 4 placements) -- Left (InvalidFleetSize 4)
+shipCells (ShipPlacement Carrier (Coord 9 10) Horizontal) -- Left (ShipOutOfBounds Carrier (Coord 11 10))
+```
+
+`Fleet(..)` và record update `fleet { fleetShips = ... }` không còn là API công khai. Tạo fixture/game fleet bằng `placeFleet`; đọc các ô qua `fleetShips fleet`. Module `Battleship.Internal.Fleet` chỉ dành cho Board/Types và không được expose cho executable/client.
 
 Có thể kiểm tra hai điểm vào:
 
@@ -67,4 +86,4 @@ Luật đầy đủ ở [docs/game_spec.md](docs/game_spec.md). Sơ đồ hoạt
 | D | `Protocol.hs`, `Client.hs`, `ClientMain.hs`, test giao thức và tích hợp |
 | R | `docs/`, báo cáo, minh chứng kiểm thử và demo |
 
-Trước khi viết mã nghiệp vụ, cả nhóm review và ghi xác nhận S-01 tại [docs/shared_contract.md](docs/shared_contract.md), trong đó ghép A-01/C-01/D-01. Phân công chi tiết gồm cả từng Main, test và YAML nằm ở bản hợp đồng này. Các module ngoài `Types` còn là khung để từng thành viên triển khai.
+Trước khi tích hợp nghiệp vụ tiếp theo, cả nhóm review và ghi xác nhận S-01 v2 tại [docs/shared_contract.md](docs/shared_contract.md), gồm A-01/C-01/D-01 và cập nhật A-02. Phân công chi tiết gồm cả Main, test và YAML nằm ở đó. Board/Types đã có cài đặt; các module nghiệp vụ còn lại tiếp tục do từng thành viên triển khai.

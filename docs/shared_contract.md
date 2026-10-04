@@ -1,4 +1,4 @@
-# Hợp đồng chung S-01 v1
+# Hợp đồng chung S-01 v2 — cập nhật A-02, chờ duyệt
 
 Ngày đối chiếu kỹ thuật: 2026-10-04. Chủ trì tài liệu: R.
 
@@ -18,7 +18,9 @@ Nhánh thực hiện: `Minh-Connect_Type_and_Main`, tách từ `Minh-Giao_thuc_l
 
 Các module sử dụng kiểu chung bằng `import Battleship.Types` hoặc import có danh sách/qualified. Chỉ `src/Battleship/Types.hs` được định nghĩa `Coord` và `Command`; không tạo alias/ADT cùng tên ở Board, Rules, Protocol, Client, Server hoặc Main. `Show` dùng debug, không phải encoder TCP.
 
-S-01 duyệt hợp đồng trước khi viết nghiệp vụ. Board/Rules/View/Protocol/Coordinator/Server/Client hiện còn khung; chưa có `placeFleet`, `step`, `viewFor` thực thi, parser/encoder production hoặc trận TCP thật. Không tạo hàm giả dùng `undefined`/`error` để làm như đã có cài đặt.
+S-01 v1 đã đối chiếu kỹ thuật tại commit `f73dc87e336ba01d4723f642582403b1f20e2504` nhưng chưa có đủ bốn xác nhận. Người dùng yêu cầu tiếp tục A-02 trên nhánh `Minh-Build_board`: v2 cập nhật việc ẩn constructor Fleet và cài đặt Board; đây là nội dung mới để A/B/C/D duyệt, không phải bằng chứng v1/v2 đã khóa. R-01 và wire v1 giữ nguyên.
+
+A-02 đã có `Board.placeFleet`, `shipCells`, `inBounds` thuần. Rules/View/Protocol/Coordinator/Server/Client vẫn còn khung; chưa có `step`, `viewFor` thực thi, parser/encoder production hoặc trận TCP thật. Không tạo hàm giả dùng `undefined`/`error` để làm như đã có cài đặt.
 
 ## 2. API miền dùng chung
 
@@ -48,9 +50,7 @@ data ShipPlacement = ShipPlacement
 
 type FleetPlacement = [ShipPlacement]
 
-newtype Fleet = Fleet
-  { fleetShips :: Map ShipId (Set Coord)
-  } deriving (Eq, Show)
+type Fleet = Internal.Fleet ShipId Coord
 
 data Outcome = Miss | Hit | Sunk ShipId | Win
   deriving (Eq, Show)
@@ -115,9 +115,9 @@ type PlaceFleetFn = FleetPlacement -> Either GameError Fleet
 type ViewFor = PlayerId -> GameState -> PlayerView
 ```
 
-`Map` và `Set` ở đây là kiểu từ `containers`, lần lượt `Data.Map.Strict` và `Data.Set`. Constructor Fleet mở cho fixture/module nội bộ; A-02 phải kiểm tra bất biến trước khi coi Fleet là hợp lệ.
+`Map` và `Set` ở đây là kiểu từ `containers`, lần lượt `Data.Map.Strict` và `Data.Set`. `Internal` là module private `Battleship.Internal.Fleet` trong `other-modules` của library, không được expose. Nó giữ newtype tổng quát `Fleet ship coord` có Eq/Show để tránh vòng import Types ↔ Board. Types chỉ xuất type Fleet và hàm đọc `fleetShips :: Fleet -> Map ShipId (Set Coord)`; không xuất constructor hoặc trường record có thể cập nhật. Board là module production duy nhất tạo Fleet qua constructor private, sau khi kiểm tra toàn bộ request. Code luật/client chỉ import API public; không import Internal. Fixture test cũng dùng placeFleet.
 
-Các hàm cần triển khai theo alias đã công bố:
+Các hàm theo alias đã công bố (placeFleet đã cài đặt ở A-02):
 
 ```haskell
 -- A: Battleship.Board
@@ -130,6 +130,8 @@ viewFor :: PlayerId -> GameState -> PlayerView
 ```
 
 Helper hiện có: `boardSize :: Int`, `shipLength :: ShipId -> Int`, `otherPlayer :: PlayerId -> PlayerId`, `initialGameState :: GameState`, `playerStateFor :: PlayerId -> GameState -> PlayerState`, `setPlayerState :: PlayerId -> PlayerState -> GameState -> GameState`.
+
+API Board A-02: `inBounds :: Coord -> Bool`, `shipCells :: ShipPlacement -> Either GameError (Set Coord)`, `placeFleet :: PlaceFleetFn`. Độ dài lấy từ ID tàu, không nhận độ dài tùy chọn. Đặt đúng năm ID duy nhất bảo đảm đủ cả năm loại: thiếu entry trả InvalidFleetSize, năm entry nhưng lặp ID trả DuplicateShip; không cần nhánh MissingShip riêng. Thứ tự lỗi: kiểm tra count trước, rồi từng placement trái sang phải: trùng ID → điểm đầu → vượt biên → chồng. Điểm đầu ngoài bàn trả InvalidCoordinate; phần thân vượt bàn trả ShipOutOfBounds kèm ô ngoài đầu tiên. Nếu nhiều ô chồng, trả ô nhỏ nhất theo Ord Coord. Tàu chạm cạnh/góc được phép; chỉ Right mới có Fleet, không trả fleet từng phần.
 
 ## 3. Ghép kiểu với giao thức và hai Main
 
@@ -163,6 +165,7 @@ Danh sách dưới bao phủ toàn bộ file Haskell hiện tại và hai cấu 
 <!-- contract:owners -->
 ```text
 src/Battleship/Types.hs A
+src/Battleship/Internal/Fleet.hs A
 src/Battleship/Board.hs A
 src/Battleship/Rules.hs B
 src/Battleship/View.hs B
@@ -200,7 +203,7 @@ stack test --test-arguments="--match S-01"
 
 - TypesSpec: kiểu/alias, helper, hằng số R-01, hai trạng thái riêng.
 - ProtocolSpec: kiểu A-01 trong grammar tham chiếu và transcript D-01, framing byte, lỗi, định tuyến.
-- SharedContractSpec: API nguồn khớp bản chụp, chỉ Types định nghĩa Coord/Command, danh sách chủ sở hữu đủ/không trùng, hai điểm vào Main có main :: IO (). Test đọc src/app/test trong repository; chạy test binary riêng cần đặt working directory ở gốc repo.
+- SharedContractSpec: API nguồn khớp bản chụp, chỉ Types định nghĩa Coord/Command, Fleet abstract và chỉ Board/Types truy cập representation private, danh sách chủ sở hữu đủ/không trùng, hai điểm vào Main có main :: IO (). Test đọc src/app/test trong repository; chạy test binary riêng cần đặt working directory ở gốc repo.
 - IntegrationSpec: hai executable được build từ package khởi chạy và thoát thành công. Đây là smoke test khung, không phải tích hợp TCP thật.
 
 Căn cứ các slide đã cung cấp: ADT/pattern matching để chia Command/Event/GameError; lập trình module để dùng chung kiểu và phân công; Hspec describe/it/shouldBe để kiểm tra; Networking để tách TCP stream thành dòng. STM, thread, supervision và coordination nằm ở hợp đồng kiến trúc C, được cài đặt/kiểm chứng ở task sau. Xem [architecture.md](architecture.md) và [test_evidence.md](test_evidence.md).
@@ -216,7 +219,7 @@ Mỗi người code cần đọc Types, protocol (đặc biệt transcript 7.1),
 | C | — | — | — | — | CHỜ XÁC NHẬN |
 | D | — | — | — | — | CHỜ XÁC NHẬN |
 
-Mẫu để mỗi thành viên ghi: `A — <tên/GitHub>: xác nhận S-01 v1 tại <SHA>; đã duyệt Types, giao thức/transcript, Main, chủ sở hữu và build/test.` B/C/D dùng mẫu tương ứng. Nếu có chỉnh sửa nội dung sau khi một người duyệt, người đó cần duyệt lại revision mới; commit chỉ bổ sung các bằng chứng xác nhận không thay đổi nội dung kỹ thuật thì không cần lặp chữ ký.
+Mẫu để mỗi thành viên ghi: `A — <tên/GitHub>: xác nhận S-01 v2 tại <SHA>; đã duyệt Types, Board/ẩn Fleet, giao thức/transcript, Main, chủ sở hữu và build/test.` B/C/D dùng mẫu tương ứng. Nếu có chỉnh sửa nội dung sau khi một người duyệt, người đó cần duyệt lại revision mới; commit chỉ bổ sung các bằng chứng xác nhận không thay đổi nội dung kỹ thuật thì không cần lặp chữ ký.
 
 R chỉ chuyển trạng thái sang **ĐÃ KHÓA** khi đủ bốn xác nhận cho cùng nội dung và build/test xanh. Sau mốc khóa, mọi thay đổi cần A/B/C/D đồng ý trước khi hợp nhất. R ghi thay đổi, ảnh hưởng, bằng chứng test và bốn xác nhận; đổi hợp đồng thì tăng revision S-01, đổi wire không tương thích thì tăng phiên bản giao thức. Không tự sửa Types/transcript rồi coi test xanh là đã được nhóm đồng ý.
 
