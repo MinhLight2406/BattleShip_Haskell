@@ -289,7 +289,11 @@ stack test --test-arguments="--match D-01"
 stack test --ghc-options=-Werror --test-arguments="--match D-02"
 ```
 
-Giữ các marker HTML để test tìm đúng block; thay đổi transcript/grammar phải cập nhật test và phiên bản nếu không tương thích. Kiểm thử transcript chứng minh codec đúng, chưa chứng minh server chạy toàn bộ trận: Rules B-02 đã xử lý bắn bằng hàm thuần, nhưng C-02 vẫn dùng ERROR INVALID_COMMAND mẫu cho PLACE/FIRE, chờ Coordinator nối vào Rules.
+Giữ các marker HTML để test tìm đúng block; thay đổi transcript/grammar phải cập nhật test và phiên bản nếu không tương thích. Coordinator C-03 đã nối server vào Rules thật. CoordinatorSpec kiểm tra TCP từ kết nối → đặt tàu → bắn đầu, lỗi/retry, Miss/chuyển lượt, Sunk/Win, EOF sau thắng và lệnh đồng thời. Test codec và test TCP là hai lớp nghiệm thu riêng; client D-02 vẫn chỉ gửi một lệnh rồi đóng.
+
+```sh
+stack test --ghc-options=-Werror --test-arguments="--match C-03"
+```
 
 ## 9. API production D-02
 
@@ -311,7 +315,7 @@ encodeEvent :: Phase -> Event -> Either ProtocolError [(PlayerId, ByteString)]
 - `feedFrames pending chunk` trả các payload hoàn chỉnh theo thứ tự và buffer còn lại hoặc lỗi. Nếu frame sau quá dài, các frame trước vẫn được trả để xử lý trước lỗi. Buffer giữ tối đa 256 byte, hoặc 257 khi byte cuối là CR chờ LF. EOF không tạo frame cho phần thiếu LF.
 - Parser PLACE giữ nguyên danh sách/thứ tự/trùng ID; Board/Rules chịu trách nhiệm count, chiều dài, vượt biên và chồng lấn. Encoder sắp theo CV/BB/CR/SB/DD, giữ các entry trùng/thiếu; PLACE rỗng không có biểu diễn wire hợp lệ. Vì có chuẩn hóa thứ tự, round-trip PLACE so với danh sách đã sắp xếp.
 - `Response` mô tả thông điệp trên wire, khác `Event` nội bộ: một ShotResolved tạo SHOT và INCOMING. `WireError` chỉ chứa tham số thực sự truyền, không dựng Coord giả cho lỗi không gửi tọa độ và không echo debug string của GameError. Không encode GameState/Fleet đối thủ.
-- `routeEvent` nhận **phase mới sau step** để chỉ thêm WAITING khi còn Placing. Broadcast liệt kê hai người nhận logic; Coordinator phải lọc socket đã ngắt và giữ thứ tự Event từ step. Encoder từ chối tọa độ raw ngoài bàn hoặc START P2.
+- `routeEvent` nhận **phase mới sau step** để chỉ thêm WAITING khi còn Placing. Broadcast liệt kê hai người nhận logic; Coordinator giữ thứ tự Event, Server lọc theo registry và đóng socket nếu send thất bại. Encoder từ chối tọa độ raw ngoài bàn hoặc START P2.
 
 `Battleship.Client.runClient :: HostName -> PortNumber -> Command -> (Response -> IO ()) -> IO ()` kiểm tra lệnh trước khi kết nối, chờ WELCOME v1 rồi gửi một frame. ERROR SERVER_FULL trước WELCOME được hiển thị mà không gửi lệnh. Callback nhận các response hợp lệ; kết thúc trên OK PLACE/SHOT tương ứng lệnh, ERROR hoặc GAME_OVER. Các frame hoàn chỉnh đã nhận cùng chunk được kiểm tra/hiển thị tiếp; client không chờ thêm frame sau phản hồi kết thúc một lệnh. EOF trước phản hồi, sai handshake, SHOT khác tọa độ và dữ liệu sai là lỗi; bracket đóng socket ở mọi đường thoát.
 

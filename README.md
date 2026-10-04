@@ -2,7 +2,7 @@
 
 Dự án Battleship cho hai người chơi, dự kiến chạy bằng hai client terminal kết nối đến một server TCP. Server giữ trạng thái trận đấu; luật chơi được triển khai bằng các hàm thuần Haskell.
 
-**Trạng thái hiện tại:** đã có khung C-01, kiểu A-01, giao thức D-01, Board A-02/A-03, Rules B-01/B-02 (`step`), server TCP C-02 và parser/encoder cùng client gửi một lệnh D-02. A-03 kiểm chứng đội tàu đúng MVP và cấm đặt lại sau xác nhận qua Rules. Step xử lý đặt tàu/bắt đầu trận/bỏ cuộc, Miss/Hit/Sunk/Win và chuyển lượt; có thể mô phỏng trọn ván bằng chuỗi lệnh thuần. Server dùng framer chung nhưng vẫn trả phản hồi mẫu cho PLACE/FIRE; chưa nối Coordinator/Rules để chơi trận TCP thật hoặc có `viewFor`.
+**Trạng thái hiện tại:** đã có C-01, A-01, D-01, Board A-02/A-03, Rules B-01/B-02, server C-02, codec/client một lệnh D-02 và Coordinator C-03. Server thực thi PLACE/FIRE/QUIT qua Rules thật: đặt tàu, bắt đầu trận, Miss/Hit/Sunk/Win, chuyển lượt và bỏ cuộc. Một MVar bảo vệ trạng thái và thứ tự phản hồi của hai client. Test TCP kiểm chứng transcript từ kết nối đến phát bắn đầu và các kết quả kết thúc. `viewFor`, client tương tác/render bàn và STM/queue writer chưa triển khai.
 
 **S-01:** bản hợp đồng chung v2 cập nhật A-02 ở [docs/shared_contract.md](docs/shared_contract.md). Chưa khóa mốc vì còn chờ xác nhận A/B/C/D; việc ẩn constructor Fleet, chủ sở hữu file và quy trình thay đổi được ghi tại đó.
 
@@ -17,7 +17,7 @@ stack build
 stack test
 ```
 
-`stack build` biên dịch thư viện và hai executable. `stack test` chạy A-01 (`TypesSpec`), A-02/A-03 (`BoardSpec`), B-01/B-02 (`RulesSpec`), D-01/D-02 (`ProtocolSpec`/`ClientSpec`), S-01 (`SharedContractSpec`), C-02/D-02 (`IntegrationSpec`) và hai smoke test C-01; tất cả phải đạt, không có failure. Smoke test dùng `--help` của cả hai executable. Test TCP dùng port do OS cấp và kiểm tra cả library lẫn executable; ProtocolSpec gọi parser/encoder production với các transcript trong tài liệu. Windows Application Control chặn executable sẽ khiến smoke test thất bại.
+`stack build` biên dịch thư viện và hai executable. `stack test` chạy Types/Board/Rules, Protocol/Client, hợp đồng S-01, Server C-02, Coordinator C-03, executable và smoke test C-01. Test TCP dùng port do OS cấp, gồm cả stub và Rules production; ProtocolSpec kiểm tra các transcript trong tài liệu. Windows Application Control chặn executable sẽ khiến smoke test thất bại.
 
 Chạy riêng hợp đồng giao thức:
 
@@ -56,7 +56,7 @@ stack test --ghc-options=-Werror --test-arguments="--match B-01"
 stack test --ghc-options=-Werror --test-arguments="--match B-02"
 ```
 
-`step :: Step` có đủ nhánh Command/Phase. FIRE kiểm tra readiness → lượt → tọa độ → bắn lặp; sai trả Left và không tiêu lượt. FIRE hợp lệ ghi đúng một tọa độ/kết quả vào `playerShots` của người bắn; `shotsReceived opponent state` đọc chính lịch sử đó cho bàn đối thủ, không lưu bản sao thứ hai. Miss đổi lượt; Hit/Sunk giữ lượt; trúng toàn bộ ô tàu trả Win và Finished. Sự kiện là ShotResolved rồi TurnReady hoặc GameEnded, không có TURN sau WIN. Coordinator phải giữ state cũ khi Left; adapter trong RulesSpec kiểm tra hợp đồng này, chưa kiểm chứng Coordinator/STM thực tế.
+`step :: Step` có đủ nhánh Command/Phase. FIRE kiểm tra readiness → lượt → tọa độ → bắn lặp; sai trả Left và không tiêu lượt. FIRE hợp lệ ghi đúng một tọa độ/kết quả vào `playerShots` của người bắn; `shotsReceived opponent state` đọc chính lịch sử đó cho bàn đối thủ, không lưu bản sao thứ hai. Miss đổi lượt; Hit/Sunk giữ lượt; trúng toàn bộ ô tàu trả Win và Finished. Sự kiện là ShotResolved rồi TurnReady hoặc GameEnded, không có TURN sau WIN. C-03 kiểm chứng Coordinator giữ state cũ khi Left qua unit test và TCP thật.
 
 Thử hàm thuần bằng `stack ghci battleship-haskell:lib`:
 
@@ -89,7 +89,7 @@ fmap (Map.size . shotsReceived P2 . fst) game -- Right 17
 fmap (take 1 . reverse . snd) game -- batch cuối gồm ShotResolved ... Win, GameEnded P1 AllShipsSunk
 ```
 
-## Chạy và kiểm tra server C-02
+## Chạy và kiểm tra server C-02/C-03
 
 Khởi chạy server trong terminal thứ nhất (mặc định port 4000):
 
@@ -116,12 +116,13 @@ try {
 
 Terminal kết nối trước nhận `WELCOME 1 P1`, terminal sau nhận `WELCOME 1 P2`; cả hai giữ kết nối dù chưa gửi lệnh. Chạy lại đoạn đó trong terminal thứ ba: chỉ nhận `ERROR SERVER_FULL` rồi EOF. Đóng một terminal client để ngắt kết nối; người còn lại nhận `GAME_OVER <người còn lại> OPPONENT_LEFT`, server đóng session và dừng. Muốn thử trận mới, khởi chạy server lại. Nhấn Ctrl+C ở terminal server để dừng và cleanup.
 
-C-02 chỉ nhận chính xác `QUIT` với LF/CRLF. Mọi dòng còn lại trong giới hạn, gồm PLACE/FIRE, trả mẫu `ERROR INVALID_COMMAND`; chưa parse tọa độ, xác nhận đội tàu hay tạo SHOT. Dòng quá dài nhận `ERROR LINE_TOO_LONG` rồi kết thúc session theo D-01. Không tái sử dụng slot hay nhận người thay thế.
+C-03 nhận PLACE/FIRE/QUIT theo [giao thức v1](docs/protocol.md), parser từ chối cú pháp/tọa độ sai; Board/Rules quyết định lỗi nghiệp vụ và kết quả. FIRE trước khi đủ hai fleet trả `ERROR FLEETS_NOT_READY`. Dòng quá dài nhận `ERROR LINE_TOO_LONG` rồi kết thúc session theo D-01. Không tái sử dụng slot hay nhận người thay thế. Đoạn PowerShell trên chỉ giữ kết nối/đọc để thử slot; nghiệm thu đặt tàu/bắn dùng test TCP bên dưới.
 
 Chạy các kiểm thử tự động tương ứng:
 
 ```sh
 stack test --ghc-options=-Werror --test-arguments="--match C-02"
+stack test --ghc-options=-Werror --test-arguments="--match C-03"
 ```
 
 ## Chạy client D-02
@@ -135,7 +136,7 @@ stack exec battleship-client -- 4000 "PLACE CV=A1:H;BB=A2:H;CR=A3:H;SB=A4:H;DD=A
 stack exec battleship-client -- --help
 ```
 
-Có thể bỏ PORT để dùng 4000, ví dụ `stack exec battleship-client -- "QUIT"`. Client nhận WELCOME, gửi đúng một lệnh rồi đọc phản hồi và hiển thị tiếng Việt bằng UTF-8. QUIT nhận GAME_OVER; PLACE/FIRE hợp lệ hiện nhận lỗi mẫu của C-02. Lệnh thiếu tham số hoặc tọa độ sai bị từ chối ngay ở client. Mỗi lần chạy client đóng kết nối sau phản hồi, khiến session C-02 kết thúc; khởi chạy lại server trước khi thử lệnh tiếp theo. Client chưa có vòng nhập nhiều lệnh hoặc render bàn; muốn giữ hai slot để thử P2/SERVER_FULL, dùng hai terminal PowerShell như mục trên.
+Có thể bỏ PORT để dùng 4000, ví dụ `stack exec battleship-client -- "QUIT"`. Client nhận WELCOME, gửi đúng một lệnh rồi đọc phản hồi và hiển thị tiếng Việt bằng UTF-8. QUIT nhận GAME_OVER; PLACE hợp lệ nhận OK, FIRE trước khi đủ hai fleet báo chưa sẵn sàng. Lệnh thiếu tham số/tọa độ sai bị từ chối ngay ở client. Client đóng kết nối sau phản hồi khiến session kết thúc; khởi chạy lại server trước khi thử lệnh tiếp theo. Client chưa có vòng nhập nhiều lệnh/render bàn nên chưa dùng để chơi trọn ván tương tác; CoordinatorSpec giữ hai kết nối để nghiệm thu TCP.
 
 `package.yaml` là nguồn cấu hình package; file `.cabal` được Stack/Hpack sinh tự động. Giữ `stack.yaml.lock` trong Git để chia sẻ cùng snapshot.
 
@@ -163,4 +164,4 @@ Luật đầy đủ ở [docs/game_spec.md](docs/game_spec.md). Sơ đồ hoạt
 | D | `Protocol.hs`, `Client.hs`, `ClientMain.hs`, test giao thức và tích hợp |
 | R | `docs/`, báo cáo, minh chứng kiểm thử và demo |
 
-Trước khi tích hợp nghiệp vụ tiếp theo, cả nhóm review và ghi xác nhận S-01 v2 tại [docs/shared_contract.md](docs/shared_contract.md), gồm A-01/C-01/D-01 và cập nhật A-02/A-03/B-01/B-02/C-02/D-02. Phân công chi tiết gồm cả Main, test và YAML nằm ở đó. Board/Types, luật step, transport hai client và codec/client một lệnh đã có cài đặt; Coordinator/STM và các module nghiệp vụ còn lại tiếp tục do từng thành viên triển khai.
+Trước khi tích hợp nghiệp vụ tiếp theo, cả nhóm review và ghi xác nhận S-01 v2 tại [docs/shared_contract.md](docs/shared_contract.md), gồm các cập nhật đến C-03. Phân công chi tiết gồm cả Main, test và YAML nằm ở đó. Board/Types, Rules, Coordinator/server và codec/client một lệnh đã có cài đặt; STM/queue writer và góc nhìn tiếp tục theo task tương ứng.

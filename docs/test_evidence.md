@@ -316,3 +316,39 @@ Các thay đổi chính:
 **Lần lỗi TCP được ghi nhận:** lượt stack test đầu tiên có 513 example và một lỗi ngoài test luật: C-02 `serializes simultaneous QUITs into one consistent final broadcast`, Network.Socket.recvBuf InvalidArgument trên Windows. Chạy riêng 50 lần không tái hiện; bổ sung test này lặp 50 session trong cùng process và gắn thông tin P1/P2, GAME_OVER/EOF cho IOException. Lượt khoanh vùng và hai lượt full-suite nghiệm thu cuối đều đạt. Test vẫn yêu cầu hai GAME_OVER giống nhau và EOF, không nuốt lỗi recv hoặc coi IOException là EOF. Chưa xác định được nguyên nhân gốc của lần lỗi hiếm, không ghi rằng transport đã được sửa; giữ minh chứng để điều tra nếu tái hiện. Server production không thay đổi ở B-02. Quy ước EOF/lỗi của API được đối chiếu [Microsoft recv](https://learn.microsoft.com/en-us/windows/win32/api/winsock2/nf-winsock2-recv).
 
 Căn cứ slide: hàm thuần/state bất biến, ADT/pattern matching và Either cho kết quả/lỗi; Map/Set với phép kiểm tra tập con để xác định chìm/thắng; foldM để nối chuỗi lệnh thuần; Hspec describe/it/shouldBe theo Chap8. B-02 đạt tiêu chí mô phỏng ván thuần. Coordinator/STM, viewFor và tích hợp PLACE/FIRE vào server C-02 vẫn thuộc task sau; server tiếp tục trả phản hồi mẫu cho PLACE/FIRE. S-01 chưa khóa.
+
+## C-03 — 2026-10-04
+
+Nhánh `Minh-Ghep_server_voi_luat`, tách từ `Minh-Chien_luoc` tại `6601377edfe0c00f9f73e2d4f6111e91cbb8af21`. Windows, Stack 3.11.1, LTS 24.59, GHC 9.10.3. Người dùng yêu cầu tiếp tục C-03; S-01 vẫn chờ xác nhận A/B/C/D.
+
+```text
+stack build
+  Thành công: library, battleship-server, battleship-client.
+
+stack test
+  553 examples, 0 failures
+
+stack test --ghc-options=-Werror
+  553 examples, 0 failures
+
+stack test --ghc-options=-Werror --test-arguments="--match C-03"
+  40 examples, 0 failures
+```
+
+CoordinatorSpec bổ sung 40 test: 31 unit test thuần và 9 test TCP thật. Tổng suite tăng từ 513 lên 553; các assertion C-02/D-02 nhận lỗi mẫu được cập nhật sang lỗi Rules thật, không bỏ test. IntegrationSpec mở rộng test server executable hiện có để đặt hai fleet, nhận START/TURN, bắn A6 HIT và QUIT; client executable nhận lỗi NotReady với tiếng Việt UTF-8.
+
+| Nhóm | Số test | Phạm vi |
+|---|---:|---|
+| Parser và đối số Step | 14 | Payload sai không gọi Step (stub cố ý lỗi nếu bị gọi); actor P1/P2 từ socket, đủ ba Command, giữ thứ tự danh sách PLACE và state cũ |
+| Lỗi luật/state/batch | 17 | 12 loại GameError chỉ trả actor và giữ toàn bộ state; phase mới quyết định WAITING; thứ tự event/broadcast; lỗi encode không trả partial state/frame; retry sau lỗi/lặp với lõi thật |
+| TCP | 9 | Stub P2 nhận FIRE, state của lần gọi thứ nhất được dùng ở lần thứ hai; transcript 7.1/7.2 và Miss chuyển lượt; fleet sai có thể sửa; simultaneous PLACE/FIRE; lỗi encode truyền ra supervisor; Sunk/Win cho cả hai actor và EOF/QUIT sau Win giữ winner/reason; EOF được gửi vào core như Quit |
+
+Đường chạy production: recv → feedFrames → Coordinator.coordinate → parseCommand → Rules.step → encodeEvent → định tuyến theo registry → sendAll. Coordinator không chứa logic hình học, xác định trúng/chìm/thắng hoặc bản sao Coord/Command. Với Left, giữ state cũ; chỉ Right đã encode đủ batch mới được dùng để cập nhật. MVar bảo vệ parse/step/cập nhật/gửi để hai reader không ghi chồng hoặc xen byte. EOF/lỗi socket đi qua applyCommand Quit, terminal state ngăn broadcast lần hai.
+
+**Điểm stub/Đợt 6:** `Server.runServerWith :: Step -> GameState -> PortNumber -> (PortNumber -> IO ()) -> IO ()`. Production `runServer = runServerWith Rules.step initialGameState`. Do A/B đã hoàn thiện, dùng lõi thật ngay; countingStub/eofStub/badEventStub chỉ nằm trong test để nhận biết việc gọi core, giữ state, dùng kết quả EOF và xử lý lỗi nội bộ. Không tạo một bộ luật mẫu trong server.
+
+**Vấn đề phát hiện và sửa trong C-03:** lúc đầu lỗi encode của core ném exception vào reader, nhưng finalizer Quit báo hoàn tất bình thường; supervisor có thể nhận tín hiệu kết thúc trước exception nên test yêu cầu server báo lỗi bị thất bại. Kênh kết thúc chuyển thành Either SomeException (), reader lỗi đánh dấu ended và báo Left trước finalizer; supervisor truyền lỗi lên caller. Test yêu cầu đúng nội dung lỗi Coordinator, hai socket EOF và không có frame/turn/game-over giả. Các tên biến test che khuất hàm coordinate được đổi để build -Werror sạch.
+
+Giới hạn: write vẫn trong MVar, peer chậm có thể trì hoãn người kia đến deadline send 2 giây; STM/TVar và queue writer riêng chưa triển khai. Client D-02 một lệnh vẫn đóng sau phản hồi, chưa phải client chơi tương tác. viewFor và bốn xác nhận S-01 còn thiếu. Lỗi recv Windows hiếm ghi tại B-02 không tái hiện trong các lượt full-suite C-03, chưa xác định nguyên nhân gốc nên không coi C-03 là minh chứng đã chữa lỗi đó.
+
+Căn cứ slide: hàm thuần/ADT/pattern matching/Either cho Coordinator; dùng chung module/kiểu và Hspec describe/it/shouldBe (Chap8); MVar để đồng bộ state (Chap5); async/bracket/timeout quản lý worker và truyền lỗi (Chap7); TCP stream/Network.Socket (Chap11). C-03 đạt tiêu chí một lệnh client tới Step và phản hồi quay về server, được kiểm chứng cả stub lẫn lõi thật.

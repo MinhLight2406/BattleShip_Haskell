@@ -37,8 +37,8 @@ spec = do
         errors `shouldSatisfy` (not . null)
 
     forM_ [("QUIT", ["Bạn là Người chơi 1.", "Người chơi 2 thắng: đối thủ đã rời trận."]),
-           ("FIRE A1", ["Bạn là Người chơi 1.", "Lỗi: lệnh không hợp lệ."])] $ \(command, expected) ->
-      it ("client executable talks to C-02 with " ++ command) $
+           ("FIRE A1", ["Bạn là Người chơi 1.", "Lỗi: hai đội tàu chưa sẵn sàng."])] $ \(command, expected) ->
+      it ("client executable talks to the integrated server with " ++ command) $
         withServer $ \port server -> do
           (code, output, errors) <- await "client executable request"
             (readClientProcess [show port, command])
@@ -63,7 +63,7 @@ spec = do
         output `shouldBe` ""
         errors `shouldSatisfy` isPrefixOf "Battleship server: "
 
-    it "runs the built executable with two clients, rejects the third and exits after QUIT" $
+    it "runs the executable with two clients, rejects a third, calls Rules for PLACE/FIRE and exits after QUIT" $
       withSocketsDo $ withCreateProcess
         (proc "battleship-server" ["0"]) { std_out = CreatePipe, std_err = CreatePipe } $
         \_ output errors process -> case (output, errors) of
@@ -80,6 +80,18 @@ spec = do
                 withClient port $ \third -> do
                   expectLine third "ERROR SERVER_FULL"
                   expectClosed third
+                sendAll first (BSC.pack "PLACE CV=A1:H;BB=A2:H;CR=A3:H;SB=A4:H;DD=A5:H\n")
+                expectLine first "OK PLACE"
+                expectLine first "WAITING OPPONENT"
+                sendAll second (BSC.pack "PLACE CV=A6:H;BB=A7:H;CR=A8:H;SB=A9:H;DD=A10:H\n")
+                expectLine second "OK PLACE"
+                forM_ [first, second] $ \connection -> do
+                  expectLine connection "START P1"
+                  expectLine connection "TURN P1"
+                sendAll first (BSC.pack "FIRE A6\n")
+                expectLine first "SHOT A6 HIT"
+                expectLine second "INCOMING A6 HIT"
+                forM_ [first, second] $ \connection -> expectLine connection "TURN P1"
                 sendAll first (BSC.pack "QUIT\n")
                 forM_ [first, second] $ \connection -> do
                   expectLine connection "GAME_OVER P2 OPPONENT_LEFT"

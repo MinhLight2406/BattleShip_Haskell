@@ -1,20 +1,26 @@
 # Kiến trúc điều phối Battleship
 
-Phạm vi: một server, hai client terminal, một trận. Server giữ trạng thái duy nhất; các module `Board`, `Rules` và `View` là hàm thuần. Types A-01, Board A-02/A-03, Rules B-01/B-02, transport C-02 và codec/client một lệnh D-02 đã có cài đặt; luật có thể chạy trọn ván bằng chuỗi lệnh thuần. Luồng điều phối TCP/STM và góc nhìn được triển khai ở các task tiếp theo. Sơ đồ STM dưới đây là kiến trúc đích, chưa phải cài đặt C-02.
+Phạm vi: một server, hai client terminal, một trận. Types, Board, Rules, transport C-02, codec/client D-02 và Coordinator C-03 đã có cài đặt. C-03 nối TCP vào lõi thật; MVar giữ trạng thái duy nhất. View còn là khung; client chưa tương tác/render bàn. Sơ đồ STM dưới đây là kiến trúc đích, chưa phải cài đặt C-03.
 
-## Transport C-02 hiện tại
+## Transport C-02 và điều phối C-03 hiện tại
 
 ServerMain đọc port rồi gọi `Server.runServer`; bind IPv4 loopback `127.0.0.1` và accept theo thứ tự P1/P2. Hai socket tồn tại trong bracket lồng nhau với worker reader có withAsync/link. Sau khi đủ hai slot, acceptor tiếp tục nhận để gửi `ERROR SERVER_FULL` và đóng ngay socket thứ ba. Một client không gửi dữ liệu không chặn việc nhận client tiếp theo.
 
-MVar bảo vệ hai danh tính/socket và cờ ended; welcome, lỗi và batch game-over được gửi dưới cùng khóa để không xen byte hoặc gửi kết thúc trước welcome. QUIT/EOF/lỗi socket/dòng quá dài chỉ tạo một batch GAME_OVER OPPONENT_LEFT, đánh dấu ended rồi đánh thức supervisor. Supervisor hủy acceptor/readers, bracket đóng các socket và listener; khi supervisor bị cancel cũng cleanup mà không tự gán người thắng mới.
+MVar bảo vệ registry, GameState và cờ ended; welcome, parse/step, cập nhật state và batch phản hồi cùng khóa. Hai reader không thể cùng ghi từ một state cũ; các frame của một người nhận giữ thứ tự. QUIT/EOF/lỗi socket đi qua Rules.step Quit. Finished đánh dấu ended và đánh thức supervisor sau batch cuối; EOF tiếp theo không đổi winner/reason. Cleanup đóng socket trước khi join worker để đánh thức IO Windows; cancel không tự gán người thắng mới.
 
-Reader dùng `Protocol.feedFrames`, giữ buffer tối đa 256 byte hoặc 257 nếu cuối là CR chờ LF; mỗi recv lấy tối đa phần còn lại của frame 258 byte. Xử lý frame hoàn chỉnh theo thứ tự, chấp nhận CRLF và bỏ tail thiếu LF ở EOF. C-02 chỉ xử lý QUIT; PLACE/FIRE và payload khác nhận mẫu ERROR INVALID_COMMAND, không gọi step hay tạo OK/SHOT. Writer dùng timeout 2 giây; đây là khóa write đơn giản cho demo hai người, chưa có các queue riêng hoặc STM GameState. Khi Coordinator được triển khai, thay handleFrame mẫu bằng Protocol.parseCommand/Rules.step và đưa write ra queue theo sơ đồ đích.
+Reader dùng `Protocol.feedFrames`, giữ buffer tối đa 256 byte hoặc 257 nếu cuối là CR chờ LF; mỗi recv lấy tối đa phần còn lại của frame 258 byte. Frame đủ LF đi qua Coordinator.coordinate → parseCommand → Step → encodeEvent; EOF bỏ tail rồi applyCommand Quit. Lỗi parser không gọi Step, lỗi parser/Rules giữ state và phản hồi actor-only. Encode toàn bộ batch trước khi commit/gửi; lỗi encode nội bộ dừng session và truyền exception lên supervisor, không phát một phần batch hoặc bịa kết quả thắng. Send lỗi đóng đúng socket để finalizer xử lý Quit của người đó.
+
+`runServer = runServerWith Rules.step initialGameState` là điểm nối lõi thật ở Đợt 6. `runServerWith :: Step -> GameState -> PortNumber -> (PortNumber -> IO ()) -> IO ()` cho phép test dùng stub/fixture mà không thay transport. A/B đã hoàn thiện nên production dùng lõi thật ngay; stub chỉ nằm trong test, không có bản sao luật thắng thua. Coordinator xuất coordinate (payload) và applyCommand (Command đã có, dùng cho EOF); cả hai thuần, trả Either ProtocolError (GameState, danh sách người nhận/frame).
+
+Giới hạn hiện tại: write nằm trong MVar, mỗi send có deadline/watchdog 2 giây; peer chậm có thể trì hoãn peer kia đến khi hết deadline. Queue writer riêng/TVar GameState thuộc bước STM tiếp theo; không thực hiện socket IO trong transaction STM. Không thêm dependency cho C-03.
 
 ## Codec và client D-02 hiện tại
 
-Protocol là module thuần: parse payload thành Command/Response, encode thành frame LF, dùng Either để trả lỗi tường minh. Command/Coord dùng Types chung. Response khác Event vì ShotResolved tạo hai thông điệp có hai người nhận; WireError chỉ giữ dữ liệu xuất hiện trong grammar. `encodeEvent` nhận phase sau step để thêm WAITING đúng lúc; Coordinator tương lai lọc socket ngắt, giữ thứ tự và gọi encodeResponse cho lỗi người gửi. Không có serializer GameState hoặc fleet đối thủ.
+Protocol là module thuần: parse payload thành Command/Response, encode thành frame LF, dùng Either để trả lỗi tường minh. Command/Coord dùng Types chung. Response khác Event vì ShotResolved tạo hai thông điệp có hai người nhận; WireError chỉ giữ dữ liệu xuất hiện trong grammar. `encodeEvent` nhận phase sau step để thêm WAITING đúng lúc; Server lọc người nhận theo registry và gửi frame Coordinator tạo. Không có serializer GameState hoặc fleet đối thủ.
 
-ClientMain đọc CLI và chuyển cho Client.runClient. Client dùng bracket quản lý socket, chờ WELCOME v1, gửi một lệnh đã encode, dùng framer/parser đọc phản hồi và chuyển Response cho callback hiển thị tiếng Việt. Kết thúc trên OK/SHOT tương ứng, ERROR hoặc GAME_OVER; có deadline 10 giây cho khung một lệnh, chưa phải client tương tác chờ lượt lâu. Windows dùng shutdown Both/close để đánh thức foreign IO và stdout/stderr UTF-8 để tránh lỗi in tiếng Việt. Codec được test bằng transcript và golden vectors; client được test với C-02 và peer có kịch bản, chưa nối trận thật theo sơ đồ sau.
+ClientMain đọc CLI và chuyển cho Client.runClient. Client dùng bracket quản lý socket, chờ WELCOME v1, gửi một lệnh đã encode, dùng framer/parser đọc phản hồi và chuyển Response cho callback tiếng Việt. Kết thúc trên OK/SHOT tương ứng, ERROR hoặc GAME_OVER; có deadline 10 giây, chưa phải client tương tác chờ lượt lâu. Windows dùng shutdown Both/close để đánh thức foreign IO và stdout/stderr UTF-8. Client được test với server đã tích hợp và peer có kịch bản.
+
+## Kiến trúc STM đích
 
 ```mermaid
 flowchart LR
@@ -47,7 +53,7 @@ D-01 tại `docs/protocol.md` là hợp đồng wire v1: không gửi snapshot `
 
 B-02 đã cài luật thuần theo R-01/D-01: kiểm tra readiness → lượt → tọa độ → bắn lặp, tra ô trong fleet đối thủ để xác định Miss/Hit/Sunk/Win. Lịch sử lưu một lần ở playerShots của người bắn; `shotsReceived player state` đọc lịch sử người kia cho bàn của player. Thêm tọa độ mới vào tập ô đã bắn để kiểm tra tàu chìm/toàn bộ fleet; Win ưu tiên trước Sunk ở ô cuối cùng. Tàu chạm cạnh vẫn là các ShipId riêng, không gom theo vùng liên thông. Giữ các Outcome lịch sử, không sửa Hit cũ thành Sunk/Win.
 
-step chỉ đổi lịch sử người bắn và phase; giữ nguyên hai fleet và lịch sử bắn ra của đối thủ. Mỗi Right trả ShotResolved rồi TurnReady hoặc GameEnded. Lỗi trả Left, caller giữ toàn bộ state cũ. Test mô phỏng trọn ván cho cả hai người thắng, gồm đặt tàu và đổi lượt sau Miss. Phần STM/writer dưới đây vẫn là luồng đích, chưa nối server C-02 vào step.
+step chỉ đổi lịch sử người bắn và phase; giữ nguyên hai fleet và lịch sử bắn ra của đối thủ. Mỗi Right trả ShotResolved rồi TurnReady hoặc GameEnded. Lỗi trả Left, Coordinator giữ state cũ. C-03 đã nghiệm thu qua TCP thật. Phần STM/writer dưới đây vẫn là luồng đích; cài đặt hiện tại tuần tự hóa bằng MVar.
 
 1. Client đang có lượt gửi `Fire Coord`.
 2. Trong một giao dịch STM, coordinator đọc trạng thái cũ, gọi `step`, ghi trạng thái mới và xếp thông báo vào kênh riêng. Socket writer gửi thông báo sau giao dịch.

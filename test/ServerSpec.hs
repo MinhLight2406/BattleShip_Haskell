@@ -1,4 +1,4 @@
-module ServerSpec (spec, withServer, withClient, expectLine, expectClosed, await) where
+module ServerSpec (spec, withServer, withClient, expectLine, expectClosed, readLine, await) where
 
 import Battleship.Server (runServer)
 import Control.Concurrent (threadDelay)
@@ -31,7 +31,7 @@ spec = describe "C-02 TCP server" $ do
         expectClosed third
       forM_ [first, second] $ \client -> do
         sendText client "FIRE A1\n"
-        expectLine client "ERROR INVALID_COMMAND"
+        expectLine client "ERROR FLEETS_NOT_READY"
       quitAndWait first [first, second] "P2" server
 
   it "assigns exactly two unique slots when three clients connect concurrently" $
@@ -83,10 +83,14 @@ spec = describe "C-02 TCP server" $ do
       await "server exit after simultaneous QUITs" (wait server)
 
 
-  it "uses sample errors for PLACE/FIRE and never forwards private payloads" $
+  it "routes PLACE/FIRE through Rules and never forwards private payloads" $
     withServer $ \port server -> withPair port $ \first second -> do
-      forM_ ["PLACE CV=A1:H;BB=A2:H;CR=A3:H;SB=A4:H;DD=A5:H",
-             "FIRE A1", "P2 FIRE A1", "", "quit", "QUIT P2", " QUIT", "QUIT ",
+      sendText first "PLACE CV=A1:H;BB=A2:H;CR=A3:H;SB=A4:H;DD=A5:H\n"
+      expectLine first "OK PLACE"
+      expectLine first "WAITING OPPONENT"
+      sendText first "FIRE A1\n"
+      expectLine first "ERROR FLEETS_NOT_READY"
+      forM_ ["P2 FIRE A1", "", "quit", "QUIT P2", " QUIT", "QUIT ",
              "QUIT\rX", "QUIT\0"] $ \payload -> do
         sendText first (payload ++ "\n")
         expectLine first "ERROR INVALID_COMMAND"
@@ -113,7 +117,7 @@ spec = describe "C-02 TCP server" $ do
       expectLine first "WELCOME 1 P1"
       sendText first "UNKNOWN\nFIRE A1\nQUIT\nIGNORED\n"
       expectLine first "ERROR INVALID_COMMAND"
-      expectLine first "ERROR INVALID_COMMAND"
+      expectLine first "ERROR FLEETS_NOT_READY"
       expectEnd [first] "P2"
       await "server exit after combined frames" (wait server)
 

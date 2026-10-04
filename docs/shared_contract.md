@@ -20,7 +20,7 @@ Các module sử dụng kiểu chung bằng `import Battleship.Types` hoặc imp
 
 S-01 v1 đã đối chiếu kỹ thuật tại commit `f73dc87e336ba01d4723f642582403b1f20e2504` nhưng chưa có đủ bốn xác nhận. Người dùng yêu cầu tiếp tục A-02 trên nhánh `Minh-Build_board`: v2 cập nhật việc ẩn constructor Fleet và cài đặt Board; đây là nội dung mới để A/B/C/D duyệt, không phải bằng chứng v1/v2 đã khóa. R-01 và wire v1 giữ nguyên.
 
-A-02/A-03 đã có `Board.placeFleet`, `shipCells`, `inBounds` thuần và nghiệm thu fleet đúng MVP. B-01/B-02 có `Rules.step` với đủ nhánh Command/Phase, đặt tàu, bắt đầu trận, bỏ cuộc, kiểm tra lỗi và mọi kết quả FIRE/chuyển lượt/thắng; có thể mô phỏng trọn ván bằng chuỗi lệnh thuần. C-02 có TCP server nhận hai slot trên localhost, từ chối người thứ ba và cleanup; chưa nối vào Rules. D-02 có codec production và client TCP một lệnh; Server/Client dùng framer chung. View/Coordinator vẫn là khung. Chưa có `viewFor` hoặc trận TCP chơi được. Không tạo hàm giả dùng `undefined`/`error` để làm như đã có cài đặt. Các task tiếp tục theo yêu cầu người dùng; B-02 trên nhánh `Minh-Chien_luoc` thêm helper đọc shotsReceived, giữ nguyên các khai báo kiểu/chữ ký miền và wire v1. S-01 vẫn chờ bốn xác nhận.
+A-02/A-03 đã có Board thuần và fleet đúng MVP; B-01/B-02 có Rules.step cho toàn bộ Command/Phase và kết quả bắn. C-02/C-03 nhận hai slot TCP, từ chối người thứ ba và gọi Rules thật qua Coordinator; MVar giữ state/định tuyến, có test transcript TCP và stub. D-02 có codec/client một lệnh; Server/Client dùng framer chung. View còn là khung; client chưa tương tác/render bàn và chưa có STM/queue writer. C-03 trên nhánh `Minh-Ghep_server_voi_luat` giữ nguyên kiểu/chữ ký miền và wire v1. S-01 vẫn chờ bốn xác nhận.
 
 ## 2. API miền dùng chung
 
@@ -145,9 +145,9 @@ Rules B-01/B-02 xuất `step :: Step`, dùng Board thật và không import Inte
 | Turn current | Thiếu một fleet → FleetsNotReady; đủ → FleetAlreadyPlaced | Kiểm tra readiness, actor/current, tọa độ, bắn lặp; qua hết → ghi shot, Miss/Hit/Sunk/Win và phase mới | Finished (otherPlayer actor) OpponentLeft |
 | Finished winner reason | GameAlreadyFinished | GameAlreadyFinished | GameAlreadyFinished, giữ winner/reason |
 
-PLACE thành công phát `[FleetAccepted actor]`; lần đặt bắt đầu trận phát `[FleetAccepted actor, GameStarted P1, TurnReady P1]`. QUIT phát duy nhất `[GameEnded winner OpponentLeft]`, giữ nguyên hai fleet/lịch sử. Lỗi trả Left, không có state mới hoặc Event thành công; caller phải giữ toàn bộ state cũ. RulesSpec dùng adapter riêng để kiểm tra hợp đồng caller, chưa kiểm thử implementation Coordinator/STM.
+PLACE thành công phát `[FleetAccepted actor]`; lần đặt bắt đầu trận phát `[FleetAccepted actor, GameStarted P1, TurnReady P1]`. QUIT phát duy nhất `[GameEnded winner OpponentLeft]`, giữ nguyên hai fleet/lịch sử. Lỗi trả Left, không có state mới/Event thành công; Coordinator giữ toàn bộ state cũ. RulesSpec và CoordinatorSpec kiểm tra hợp đồng này, gồm TCP thật; STM chưa triển khai.
 
-B-02 thay nhánh FIRE tạm thời bằng kết quả thật. Không thuộc tàu đối thủ → Miss; thuộc tàu và sau phát bắn tất cả ô fleet đã được bắn → Win; nếu chỉ toàn bộ ô tàu đó đã được bắn → Sunk ship; còn lại → Hit. Kiểm tra tập tọa độ, không dùng tổng số shot hoặc vùng liên thông của các tàu chạm nhau. Ghi tọa độ/outcome mới vào lịch sử actor một lần, không sửa outcome cũ hay hai fleet. Miss đổi Turn sang đối thủ; Hit/Sunk giữ Turn actor; Win chuyển Finished actor AllShipsSunk. Event đúng thứ tự `[ShotResolved actor coord outcome, TurnReady next]` hoặc `[ShotResolved actor coord Win, GameEnded actor AllShipsSunk]`, không có Sunk/TurnReady thêm sau Win. FIRE lặp/sai vẫn Left theo ưu tiên B-01, không tiêu lượt. Transcript đặt tàu/bắn đã có luật thuần và codec tương ứng, nhưng C-02 chưa gọi step để thực thi qua TCP.
+B-02 thay nhánh FIRE tạm thời bằng kết quả thật. Không thuộc tàu đối thủ → Miss; thuộc tàu và sau phát bắn tất cả ô fleet đã được bắn → Win; nếu chỉ toàn bộ ô tàu đó đã được bắn → Sunk ship; còn lại → Hit. Kiểm tra tập tọa độ, không dùng tổng số shot hoặc vùng liên thông của các tàu chạm nhau. Ghi tọa độ/outcome mới vào lịch sử actor một lần, không sửa outcome cũ hay hai fleet. Miss đổi Turn sang đối thủ; Hit/Sunk giữ Turn actor; Win chuyển Finished actor AllShipsSunk. Event đúng thứ tự `[ShotResolved actor coord outcome, TurnReady next]` hoặc `[ShotResolved actor coord Win, GameEnded actor AllShipsSunk]`, không có Sunk/TurnReady thêm sau Win. FIRE lặp/sai vẫn Left theo ưu tiên B-01, không tiêu lượt. C-03 đã gọi step để thực thi các phản hồi này qua TCP.
 
 ## 3. Ghép kiểu với giao thức và hai Main
 
@@ -174,19 +174,21 @@ Transcript chuẩn để C/D nghiệm thu là mục 7.1 của [protocol.md](prot
 
 Hai file đều tên module Main vì nằm trong hai component Cabal khác nhau; `other-modules: []` tránh Hpack đưa Main còn lại vào nhầm executable. Cả hai phụ thuộc cùng library `battleship-haskell`, trong đó Types chỉ được biên dịch như một module chung. ServerMain C-02 đọc port (mặc định 4000), gọi Server, in địa chỉ sẵn sàng; ClientMain D-02 đọc `[PORT] "COMMAND"`, dùng Protocol và Client, in tiếng Việt UTF-8. Smoke test dùng `--help` của cả hai; test executable kiểm chứng vòng đời TCP thực tế. Luật thuần thuộc Board/Rules/View, không viết vào Main.
 
-### Phạm vi transport C-02
+### Phạm vi transport C-02/C-03
 
 `Battleship.Server.runServer :: PortNumber -> (PortNumber -> IO ()) -> IO ()` bind `127.0.0.1`; callback nhận port thực tế sau listen, port 0 dành cho thử nghiệm không tranh port cố định. `PortNumber` thuộc `network`, không tạo kiểu miền trùng với Types. Hai kết nối nhận WELCOME theo thứ tự accept; kết nối thứ ba nhận ERROR SERVER_FULL rồi bị đóng, không tạo worker hay thay đổi hai slot.
 
-Server C-02 tách dòng TCP với LF/CRLF và giới hạn 256 byte, dùng phản hồi mẫu ERROR INVALID_COMMAND cho mọi payload khác QUIT. PLACE/FIRE chưa đi qua parser/Rules: đây là demo transport được task cho phép, không phải server thực thi đầy đủ transcript 7.1. QUIT/EOF/lỗi socket/LINE_TOO_LONG kết thúc một session, gửi GAME_OVER OPPONENT_LEFT cho các socket còn gửi được rồi đóng và dừng. Không thêm mã wire hoặc đổi luật R-01.
+Server tách dòng TCP với LF/CRLF và giới hạn 256 byte, gọi Coordinator.coordinate → Protocol.parseCommand → Step → Protocol.encodeEvent. Payload sai không tới Step; Left GameError giữ state cũ và trả lỗi actor-only. EOF/lỗi socket gọi applyCommand core actor Quit; sau Finished không gọi lại hoặc đổi winner. LINE_TOO_LONG gửi lỗi rồi xử lý rời trận qua core. Không thêm mã wire hoặc đổi luật R-01.
 
-MVar bảo vệ registry hai socket và cờ kết thúc, tuần tự hóa các write vào socket đã nhận. Bracket/withAsync quản lý listener, hai socket và hai reader; acceptor lỗi sẽ truyền lên supervisor. Send có timeout 2 giây để shutdown không chờ peer vô hạn. Đây chưa phải TVar GameState, transaction STM hoặc queue writer theo kiến trúc đích; Coordinator sẽ nối Protocol/Rules vào nghiệp vụ ở task tương ứng.
+MVar bảo vệ registry, GameState, cờ kết thúc và thứ tự gửi batch. Bracket/withAsync quản lý listener/socket/reader; send có timeout/watchdog 2 giây. Encode toàn bộ batch trước commit; lỗi encode nội bộ dừng session và được báo qua kênh kết thúc có Either SomeException (), tránh finalizer Quit che lỗi. Chưa có TVar/queue writer: peer chậm có thể trì hoãn người kia đến deadline.
+
+Coordinator API thuần: `coordinate :: Step -> PlayerId -> ByteString -> GameState -> Either ProtocolError (GameState, [(PlayerId, ByteString)])`; `applyCommand` cùng kết quả nhưng nhận Command thay payload, dùng cho EOF. `runServerWith :: Step -> GameState -> PortNumber -> (PortNumber -> IO ()) -> IO ()` là chỗ thay stub bằng lõi ở Đợt 6. Production `runServer` đã dùng Rules.step/initialGameState vì A/B hoàn thiện; test dùng stub/fixture qua API này. Danh tính lấy từ socket, không từ lệnh. Không viết lại luật thắng thua trong C.
 
 ### API giao thức/client D-02
 
 `Protocol.parseCommand` dùng Command/Coord từ Types; `parseResponse` dùng Response/WireError riêng cho các token wire, không định nghĩa lại kiểu miền. Parser nhận ByteString payload không có terminator, encoder trả frame LF và Either ProtocolError. Server/Client dùng `feedFrames pending chunk` để xử lý LF/CRLF và giới hạn byte. `wireError` loại bỏ tham số debug không được truyền; `encodeEvent phaseMới event` trả danh sách người nhận/frame, dùng SHOT/INCOMING và WAITING đúng hợp đồng. Chữ ký và quy ước đầy đủ tại mục 9 của protocol.md.
 
-`Client.runClient :: HostName -> PortNumber -> Command -> (Response -> IO ()) -> IO ()` nhận WELCOME, gửi một lệnh, callback hiển thị phản hồi, rồi đóng socket khi nhận OK PLACE/SHOT phù hợp, ERROR hoặc GAME_OVER. Có deadline 10 giây và cleanup socket; chưa có vòng nhập tương tác hoặc render bàn. C-02 vẫn phản hồi mẫu PLACE/FIRE; test D-02 kiểm tra codec của transcript và giao tiếp thật với C-02, không chứng minh game đã chơi được.
+`Client.runClient :: HostName -> PortNumber -> Command -> (Response -> IO ()) -> IO ()` nhận WELCOME, gửi một lệnh, callback hiển thị phản hồi, rồi đóng socket khi nhận OK PLACE/SHOT phù hợp, ERROR hoặc GAME_OVER. Có deadline 10 giây và cleanup; chưa có vòng nhập tương tác/render bàn nên không dùng client này để chơi trọn ván. Test D-02 nhận lỗi Rules thật qua server tích hợp; CoordinatorSpec giữ hai kết nối để kiểm chứng nhiều lệnh/TCP.
 
 ## 4. Chủ sở hữu file
 
@@ -239,10 +241,11 @@ stack test --test-arguments="--match S-01"
 - RulesSpec B-01/B-02: chữ ký step thực tế, đủ Command/Phase cho hai actor/turn/winner/reason, Board thật, bắt đầu P1 một lần, rollback hợp đồng Left, readiness/sai lượt/tọa độ/bắn lặp, Quit/EOF lặp; mọi kết quả bắn, lịch sử/shot nhận, tàu chạm cạnh/ngang/dọc, mọi thứ tự bắn từng tàu và ván thuần cho cả hai winner.
 - SharedContractSpec: API nguồn khớp bản chụp, chỉ Types định nghĩa Coord/Command, Fleet abstract và chỉ Board/Types truy cập representation private, danh sách chủ sở hữu đủ/không trùng, hai điểm vào Main có main :: IO (). Test đọc src/app/test trong repository; chạy test binary riêng cần đặt working directory ở gốc repo.
 - ServerSpec C-02: TCP thật qua server library; slot/third client, QUIT/EOF, race kết nối/bỏ cuộc, framing byte và cleanup khi cancel/lỗi startup, dừng rồi bind lại cùng port.
+- CoordinatorSpec C-03: unit test ranh giới parse/step/state/encode và TCP thật với stub/lõi thật; transcript, rollback, concurrent PLACE/FIRE, lỗi nội bộ, Sunk/Win và EOF giữ winner.
 - ClientSpec D-02: client library với C-02/peer có kịch bản; handshake, một lệnh, phân mảnh, lỗi/EOF, cleanup, hiển thị tiếng Việt.
 - IntegrationSpec: hai smoke test --help, CLI sai/bind lỗi, server executable thật với hai client và người thứ ba; client executable gửi QUIT/FIRE vào C-02, xác nhận tiếng Việt UTF-8 và exit code.
 
-Căn cứ các slide đã cung cấp: ADT/pattern matching để chia Command/Event/GameError và xử lý Either; lập trình module để dùng chung kiểu và phân công; Hspec describe/it/shouldBe để kiểm tra; Networking để tách TCP stream thành dòng. C-02/D-02 dùng Network.Socket/bracket (Chap11), C-02 dùng MVar đồng bộ (Chap5), async/timeout quản lý worker và deadline (Chap7); codec thuần và client IO tách thành module (Chap8). STM và coordination nghiệp vụ vẫn thuộc các task C tiếp theo. Xem [architecture.md](architecture.md) và [test_evidence.md](test_evidence.md).
+Căn cứ slide: ADT/pattern matching/Either cho kiểu và lỗi; hàm thuần và module để tách Coordinator khỏi socket; Hspec describe/it/shouldBe (Chap8); Network.Socket/bracket và TCP stream (Chap11); MVar giữ state/thứ tự cập nhật (Chap5), async/timeout quản lý worker/deadline (Chap7). C-03 đã điều phối nghiệp vụ; STM/queue writer thuộc task tiếp theo. Xem [architecture.md](architecture.md) và [test_evidence.md](test_evidence.md).
 
 ## 6. Xác nhận và hiệu lực khóa
 

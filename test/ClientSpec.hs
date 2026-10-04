@@ -34,10 +34,11 @@ spec = describe "D-02 client" $ do
       expectClosed first
       await "C-02 exit" (wait server)
 
-  forM_ [Fire (Coord 1 1), PlaceFleet [ShipPlacement Carrier (Coord 1 1) Horizontal]] $ \command ->
-    it ("reads the C-02 sample error for " ++ show command) $
+  forM_ [(Fire (Coord 1 1), NotReady),
+         (PlaceFleet [ShipPlacement Carrier (Coord 1 1) Horizontal], FleetSize 1)] $ \(command, fault) ->
+    it ("reads the Rules error through the integrated server for " ++ show command) $
       withServer $ \port server -> do
-        collect port command `shouldReturnResponses` [Welcome P1, Rejected BadCommand]
+        collect port command `shouldReturnResponses` [Welcome P1, Rejected fault]
         await "C-02 exit after one-shot client closes" (wait server)
 
   it "handles SERVER_FULL before WELCOME without sending a command" $
@@ -47,7 +48,7 @@ spec = describe "D-02 client" $ do
         expectLine second "WELCOME 1 P2"
         collect port Quit `shouldReturnResponses` [Rejected ServerFull]
         sendAll first (BSC.pack "FIRE A1\n")
-        expectLine first "ERROR INVALID_COMMAND"
+        expectLine first "ERROR FLEETS_NOT_READY"
 
   it "validates an unencodable command before opening a connection" $
     runClient "127.0.0.1" 1 (Fire (Coord 0 1)) (const (pure ()))
