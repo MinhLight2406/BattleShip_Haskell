@@ -5,6 +5,7 @@ import qualified CoordinatorSpec
 import qualified IntegrationSpec
 import qualified ProtocolSpec
 import qualified RulesSpec
+import qualified SharedContractSpec
 import Test.Hspec (hspec)
 import qualified TypesSpec
 import qualified ViewSpec
@@ -16,5 +17,6 @@ main = hspec $ do
   RulesSpec.spec
   ViewSpec.spec
   ProtocolSpec.spec
+  SharedContractSpec.spec
   CoordinatorSpec.spec
   IntegrationSpec.spec

@@ -77,6 +77,8 @@ tests:
       - process
       - containers
       - bytestring
+      - directory
+      - filepath
     ghc-options:
       - -Wall
       - -threaded

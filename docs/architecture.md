@@ -75,4 +75,4 @@ viewFor :: PlayerId -> GameState -> PlayerView
 
 Luật R-01 giữ nguyên: đủ hai đội tàu thì `Turn P1`; `Miss` đổi lượt, `Hit`/`Sunk` giữ lượt; `Win` kết thúc ngay. Các kiểm thử chuyển trạng thái, kiểm tra đội tàu và lọc bí mật thuộc A-02/B; test A-01 chỉ kiểm tra kiểu, hằng số và helper thuần đã có.
 
-Trạng thái review: A-01 đã có hợp đồng để B/C/D đối chiếu; chưa có xác nhận review của các thành viên.
+Trạng thái review chung chuyển sang [shared_contract.md](shared_contract.md), S-01 v1: đã đối chiếu Types, giao thức và hai Main; chưa có đủ xác nhận A/B/C/D để khóa mốc. Bảng chủ sở hữu tại S-01 gồm cả app/test/YAML; bảng module ở đây chỉ là tóm tắt kiến trúc.

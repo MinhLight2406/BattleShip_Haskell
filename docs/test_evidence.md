@@ -58,3 +58,35 @@ stack test --ghc-options=-Werror --test-arguments="--match D-01"
 Đã bổ sung `bytestring` ở test component, đóng gói `docs/protocol.md` bằng `data-files` và khai báo module Cabal tự sinh `Paths_battleship_haskell`. Lượt chạy nghiêm ngặt ban đầu phát hiện thiếu module này trong cấu hình; sau sửa đã biên dịch và chạy thành công.
 
 Các hàm tham chiếu trong `ProtocolSpec` chỉ kiểm tra hợp đồng D-01. Transcript là fixture đã chốt, không phải log một trận TCP thật. Chưa có parser/encoder production, Rules, server TCP hoặc client tương tác; kiểm tra tích hợp socket và chuyển trạng thái thực tế thuộc các task triển khai tiếp theo. R-01 và kiểu A-01 không thay đổi.
+
+## S-01 — Đối chiếu kỹ thuật, chờ xác nhận — 2026-10-04
+
+Nhánh `Minh-Connect_Type_and_Main`, tách từ `Minh-Giao_thuc_lenh_va_event` tại `62ef6018a9d6167bda9909b04fce4a3c370ed936`. Môi trường Windows, Stack 3.11.1, LTS 24.59, GHC 9.10.3.
+
+```text
+stack build
+  Thành công: library, battleship-server, battleship-client.
+
+stack test
+  161 examples, 0 failures
+
+stack test --ghc-options=-Werror
+  161 examples, 0 failures
+
+stack test --ghc-options=-Werror --test-arguments="--match S-01"
+  9 examples, 0 failures
+```
+
+| Kiểm tra S-01 mới | Số test | Kết quả |
+|---|---:|---|
+| Nhận diện khai báo | 4 | data/newtype/alias nhiều dòng và family; bỏ comment lồng/literal; không nhầm tên dài, chữ ký hay tham chiếu |
+| API so với bản hợp đồng | 1 | Constructor, trường, kiểu trường, deriving và ba alias khớp bản chụp |
+| Coord/Command duy nhất | 2 | Quét 19 file Haskell trong src/app/test; mỗi kiểu chỉ khai báo một lần tại src/Battleship/Types.hs |
+| Chủ sở hữu | 1 | 19 file Haskell và hai YAML đều có đúng một vai trò phụ trách trong bản hợp đồng |
+| Hai Main | 1 | Hai file Main riêng, xuất main và có chữ ký main :: IO (); hai smoke test C-01 vẫn xanh |
+
+SharedContractSpec dùng `directory`/`filepath` ở test component để đọc cây nguồn. Checker xét token và các dạng khai báo nêu trên, không thay thế compiler Haskell; GHC và TypesSpec vẫn kiểm tra kiểu/import. Chạy từ gốc repo để đối chiếu đúng file nguồn.
+
+Trước S-01 không có định nghĩa Coord/Command trùng để phải xóa; còn thiếu bản hợp đồng tập trung, bảng người phụ trách đủ app/test/YAML, kiểm tra tự động API lệch tài liệu và bằng chứng A/B/C/D duyệt. Đã bổ sung các phần kỹ thuật tại [shared_contract.md](shared_contract.md), tái dùng 113 test D-01, 37 test A-01 và hai smoke test C-01.
+
+**Chưa đủ nghiệm thu S-01:** chưa nhận được bốn xác nhận thật trên cùng nội dung. Bảng A/B/C/D đang CHỜ XÁC NHẬN; không ghi ĐÃ KHÓA chỉ vì build/test xanh. Không có thử nghiệm TCP thật hoặc cài đặt nghiệp vụ trong S-01.
