@@ -45,8 +45,8 @@ test('two browsers over bridge play real Haskell game; errors, private events, s
   await new Promise((resolve) => reuse.close(resolve))
 })
 
-for (const duringBattle of [false, true]) test(`WebSocket disconnect ${duringBattle ? 'mid-game' : 'while waiting'} gives opponent win and clean exit`, async (t) => {
-  const server = await game(t)
+for (const duringBattle of [false, true]) test(`WebSocket disconnect ${duringBattle ? 'mid-game' : 'while waiting'} gives opponent win after grace and clean exit`, async (t) => {
+  const server = await game(t, { reconnectGraceMs: 150 })
   const first = await peer(server.port); await first.wait('WELCOME 1 P1')
   const second = await peer(server.port); await second.wait('WELCOME 1 P2')
   first.send(fleet1); await first.wait('OK PLACE'); await first.wait('WAITING OPPONENT')

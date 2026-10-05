@@ -126,6 +126,7 @@ export type PlayerView = {
   winner: PlayerId | null
   reason?: string
   error?: string
+  missing?: { player: PlayerId; deadline: number }[]
 }
 export const emptyView = (): PlayerView => ({
   player: null, phase: 'connecting', accepted: false, turn: null,
@@ -206,14 +207,15 @@ export function applyFrame(view: PlayerView, frame: Frame): PlayerView {
 }
 export const canFire = (view: PlayerView, coord: string, pending: boolean) =>
   view.phase === 'playing' && view.player !== null && view.turn === view.player &&
-  !pending && new RegExp(`^${coordPattern}$`).test(coord) && !view.outgoing[coord]
+  !view.missing?.length && !pending && new RegExp(`^${coordPattern}$`).test(coord) && !view.outgoing[coord]
 
 export const outcomeText = (result: Outcome) => result === 'MISS' ? 'Trượt' :
   result === 'HIT' ? 'Trúng' : result === 'WIN' ? 'Trúng — hạ tàu cuối cùng' : 'Chìm tàu ' + result.slice(5)
 
 export const statusText = (view: PlayerView, pending: boolean) => {
   if (view.phase === 'finished') return `${view.winner === view.player ? 'Bạn thắng!' : 'Bạn thua.'} ${view.reason === 'OPPONENT_LEFT' ? 'Đối thủ đã rời trận.' : view.winner === view.player ? 'Hạm đội đối phương đã bị đánh chìm.' : 'Hạm đội của bạn đã bị đánh chìm.'}`
-  if (view.phase === 'disconnected') return 'Đã ngắt kết nối. Khởi động lại server để mở trận mới.'
+  if (view.phase === 'disconnected') return 'Mất kết nối. Có 5 phút để khôi phục tại địa chỉ máy chủ hiện tại.'
+  if (view.missing?.length) return 'Tạm dừng: chờ người chơi mất kết nối quay lại trong 5 phút.'
   if (view.phase === 'connecting') return 'Đang kết nối máy chủ…'
   if (view.phase === 'waiting') return view.accepted ? 'Đã xác nhận hạm đội. Chờ đối thủ đặt tàu…' : 'Đang gửi hạm đội…'
   return pending ? 'Đang chờ kết quả phát bắn…' : view.turn === view.player ? 'Đến lượt bạn — chọn ô trên vùng biển đối phương.' : 'Lượt đối thủ — chờ kết quả.'

@@ -13,8 +13,8 @@ export async function listen(server) {
   await once(server, 'listening')
   return server.address().port
 }
-export async function peer(port) {
-  const ws = new WebSocket(`ws://127.0.0.1:${port}/play`, { origin: `http://127.0.0.1:${port}` })
+export async function peer(port, host = '127.0.0.1', token = '', options = {}) {
+  const ws = new WebSocket(`ws://${host}:${port}/play${token ? '?resume=' + token : ''}`, { ...options, origin: `http://${host}:${port}` })
   const frames = [], queue = [], waiters = []
   const closed = once(ws, 'close')
   ws.on('message', (bytes) => {
@@ -34,11 +34,23 @@ export async function peer(port) {
         queue.splice(queue.indexOf(frame), 1)
       })(), frame)
     },
+    async meta(type) {
+      let result
+      await within((async () => {
+        while (!result) {
+          const index = queue.findIndex((line) => line.startsWith('{') && JSON.parse(line).type === type)
+          if (index >= 0) { result = JSON.parse(queue.splice(index, 1)[0]); return }
+          if (ws.readyState === WebSocket.CLOSED) throw new Error(`closed waiting for ${type}`)
+          await new Promise((resolve) => waiters.push(resolve))
+        }
+      })(), type)
+      return result
+    },
     send(line) { ws.send(line) },
   }
 }
 
-export async function game(t) {
+export async function game(t, bridgeOptions = {}) {
   const child = spawn(process.env.BATTLESHIP_SERVER ?? 'battleship-server', ['0'], { windowsHide: true })
   let output = ''
   child.stderr.on('data', (data) => { output += data })
@@ -52,7 +64,7 @@ export async function game(t) {
     })
     child.once('exit', (code) => reject(new Error(`server exited ${code}: ${output}`)))
   }), 'Haskell start')
-  const bridge = createBridge({ tcpPort })
+  const bridge = createBridge({ tcpPort, ...bridgeOptions })
   const port = await listen(bridge.server)
   t.after(async () => {
     await bridge.close()

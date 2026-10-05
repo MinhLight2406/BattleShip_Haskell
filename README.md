@@ -25,7 +25,7 @@ stack exec battleship-server -- 4000
 node frontend/bridge.mjs
 ```
 
-Mở `http://127.0.0.1:8080` ở **hai tab**. Chọn Cổ điển, đặt đủ năm tàu, nhấn Bắt đầu trận. Tab xác nhận trước là P1; chờ đủ hai người rồi bấm ô đối phương khi đến lượt. Trượt chuyển lượt; trúng/chìm giữ lượt. Rời hoặc đóng tab là bỏ cuộc. Người thứ ba nhận lỗi phòng đầy. Không cần nhập giao thức thô.
+Mở link LAN được terminal cầu web tự in, hoặc `http://127.0.0.1:8080` ở **hai tab**. Chọn Cổ điển, đặt đủ năm tàu, nhấn Bắt đầu trận. Tab xác nhận trước là P1; chờ đủ hai người rồi bấm ô đối phương khi đến lượt. Trượt chuyển lượt; trúng/chìm giữ lượt. Nút Rời trận gửi QUIT để bỏ cuộc ngay; đóng tab/mất Wi-Fi được giữ phiên 5 phút. Người thứ ba nhận lỗi phòng đầy. Không cần nhập giao thức thô.
 
 Server Haskell hiện phục vụ **một trận**. Sau khi thắng hoặc bỏ cuộc, chạy lại lệnh server ở Terminal 1 trước trận mới; cầu web ở Terminal 2 có thể giữ nguyên. Trinh sát chưa được hỗ trợ.
 
@@ -40,6 +40,67 @@ stack test --ghc-options=-Werror
 ```
 
 Các test tích hợp tự mở port trống, dựng trận mới và dọn process/socket; không dùng trận đang chơi ở port 4000. Test trình duyệt tự thao tác giao diện, xuất ảnh vào `frontend/test-results/`.
+
+### Tự nhận IP LAN và khôi phục trong 5 phút
+
+Trên nhánh `Updata_Connecting_LAN`, cầu mặc định lắng nghe IPv4 tại `0.0.0.0`, tự đọc IP hiện tại của các giao diện mạng và in link. Không ghi cố định IP Wi-Fi vào mã nguồn. Khi Wi-Fi/IP thay đổi, cầu kiểm tra lại mỗi 2 giây, in link mới và chỉ cho WebSocket dùng origin của IP hiện tại, với Host trùng origin. Link cũ không được giữ trong danh sách cho phép. Kết nối Haskell vẫn là `127.0.0.1:4000`.
+
+Nếu đã dùng cấu hình IP thủ công ở terminal trước, xóa nó trước khi chạy tự động:
+
+```powershell
+Remove-Item Env:HOST, Env:PUBLIC_ORIGIN -ErrorAction SilentlyContinue
+$env:PORT = '8081'
+node frontend/bridge.mjs
+```
+
+Terminal in các link lấy từ IP thực tế; hai thiết bị mở link của giao diện Wi-Fi/LAN chung. Nếu máy có cả VPN/máy ảo/Ethernet, có thể chọn đúng giao diện bằng `$env:LAN_INTERFACE = 'Wi-Fi'` (tên lấy từ máy thực tế). Không có IPv4 LAN thì cầu vẫn phục vụ localhost và chờ giao diện mạng xuất hiện.
+
+**Đổi Wi-Fi trong trận:**
+
+1. Lưu **Mã phiên của bạn** trên giao diện trước khi đổi mạng. Mỗi người có mã ngẫu nhiên riêng; không gửi cho đối thủ.
+2. Cầu giữ nguyên TCP/P1/P2 và lõi Haskell khi mất WebSocket. Trận tạm dừng, người còn lại thấy thời gian còn lại; không gửi PLACE/FIRE trong lúc chờ.
+3. Cầu bắt đầu hạn **300.000 ms** khi phát hiện mất kết nối. Ping mỗi 10 giây phát hiện kết nối im lặng trong khoảng tối đa 20 giây; đóng tab chủ động được phát hiện ngay khi nhận close. Hạn do máy chủ giữ, không bị đặt lại bởi tải trang hoặc thử kết nối thất bại.
+4. Giao diện tự thử lại địa chỉ cũ mỗi 2 giây. Nếu IP máy chủ đổi, đọc link mới trên terminal; nhập vào **Địa chỉ máy chủ hiện tại → Kết nối địa chỉ mới**. Hoặc mở link mới rồi nhập mã ở **Khôi phục trận**. Dữ liệu trình duyệt thuộc từng origin, nên không thể trông chờ IP mới tự có mã của IP cũ.
+5. Đúng mã và trước hạn: nhận lại chính P1/P2, đội tàu của mình, lịch sử đã lọc và lượt hiện tại; không gửi lại phát bắn cũ. Một mã không được dùng trên hai kết nối đang hoạt động.
+6. Hết hạn: cầu gửi QUIT cho Haskell, người mất kết nối thua do bỏ cuộc; kết quả là GAME_OVER ... OPPONENT_LEFT. Có thể quay lại xem kết quả trong 5 phút sau khi phiên TCP kết thúc. Nếu cả hai cùng mất kết nối, phiên hết hạn trước bị xử QUIT trước.
+
+Giữ cả process cầu web và server Haskell chạy khi đổi Wi-Fi. Khởi động lại process sẽ mất phiên đang giữ trong RAM. Hai thiết bị phải cùng mạng có thể liên lạc và firewall cho phép cổng web; tự nhận IP không vượt qua cô lập mạng khách. Chế độ client TCP terminal vẫn dùng luật EOF/QUIT tức thời; hạn khôi phục này áp dụng cho giao diện web qua cầu.
+
+### Cấu hình IP thủ công — tùy chọn LAN-01
+
+Nhánh `Updata_Connecting_LAN` bổ sung `HOST` và `PUBLIC_ORIGIN`. Sau khi build frontend, chạy Haskell server ở một terminal như trên. Trong terminal PowerShell thứ hai:
+
+```powershell
+$env:HOST = '192.168.1.10'  # Thay bằng IPv4 Wi-Fi/LAN của máy chạy server
+$env:PORT = '8080'
+$env:PUBLIC_ORIGIN = 'http://192.168.1.10:8080'
+node frontend/bridge.mjs
+```
+
+Hai thiết bị cùng LAN mở đúng URL trong `PUBLIC_ORIGIN`; log khởi động cũng in URL này. TCP tới Haskell vẫn là `127.0.0.1:4000` mặc định. Có thể đặt `HOST='0.0.0.0'` để lắng nghe trên mọi giao diện IPv4, nhưng vẫn phải đặt `PUBLIC_ORIGIN` bằng IP LAN thật, không dùng `0.0.0.0` trong URL người chơi.
+
+`HOST` nhận IPv4 hoặc `localhost`; `PUBLIC_ORIGIN` nhận HTTP với IPv4/localhost, có port trùng `PORT`, không có đường dẫn/query/credentials. Cấu hình rõ `HOST='127.0.0.1'` để chỉ chạy localhost. Xóa cả HOST/PUBLIC_ORIGIN để dùng tự nhận LAN; đặt IP thủ công thì IP đó không tự đổi khi Wi-Fi đổi.
+
+Thiết bị ngoài máy chủ cần được mạng Wi-Fi và firewall cho phép truy cập cổng web đã chọn. Quy tắc firewall và nghiệm thu hai thiết bị thật thuộc LAN-05/LAN-06.
+
+Kiểm tra cầu qua IP LAN của chính máy chủ (sau `stack build`):
+
+```powershell
+$env:BATTLESHIP_LAN_TEST_HOST = '192.168.1.10' # Thay bằng IP LAN thật của máy
+stack exec -- node --test frontend/test/lan.test.mjs
+```
+
+Test tự chọn cổng trống, chạy bridge CLI/server Haskell production, kiểm tra HTTP, `WELCOME` P1/P2, từ chối Origin/Host sai, tự tìm IP không truyền HOST/PUBLIC_ORIGIN và khôi phục từ localhost sang origin IP LAN. Test này chạy trên máy chủ qua IP LAN; không thay thế nghiệm thu từ hai thiết bị vật lý.
+
+Test khôi phục phiên và giới hạn thời gian:
+
+```sh
+pnpm --dir frontend test
+stack exec -- node --test frontend/test/integration.test.mjs frontend/test/reconnect.test.mjs
+stack exec -- node --test frontend/test/browser.test.mjs
+```
+
+Test clock tăng tốc kiểm tra đúng mốc 299.999/300.000 ms với socket và Haskell thật; test ngắt kết nối dùng hạn ngắn được truyền vào fixture, không đổi hạn 5 phút của CLI production. Test trình duyệt kiểm tra tải lại, chuyển origin bằng mã, riêng tư, tiếp tục bắn và kết quả thua khi quay lại muộn.
 
 **Trạng thái hiện tại:** đã có C-01, A-01, D-01, Board A-02/A-03/A-04, Rules B-01/B-02/B-04, View B-03, server C-02/C-05, codec/client D-02, Coordinator C-03/C-04 và client tương tác D-03/D-04/D-05. Server thực thi PLACE/FIRE/QUIT qua Rules thật; một TVar giữ GameState, STM commit trạng thái/phản hồi cùng lúc và hai writer gửi từ TQueue riêng. Client hướng dẫn nhập/sửa năm tàu, nhập bắn theo lượt, cập nhật hai bàn từ dữ liệu riêng tư và hiển thị kết quả đến thắng/thua.
 

@@ -14,6 +14,7 @@ import {
   parseFrame, applyFrame, emptyView, canFire, statusText, outcomeText,
   type ShipState, type ShipId, type Orientation, type Coordinate, type PlayerView, type Outcome,
 } from './game.ts'
+import { parseBridgeMessage, decodeOwnFleet, replayView, recoveryURL } from './connection.ts'
 
 type Screen = 'landing' | 'mode' | 'placement' | 'battle'
 type GameMode = 'classic' | 'advanced'
@@ -609,7 +610,7 @@ function Battle({ fleet, view, pending, onFire, onHome }: {
   fleet: ShipState[]; view: PlayerView; pending: boolean
   onFire: (row: number, col: number) => void; onHome: () => void
 }) {
-  const ready = view.phase === 'playing' && view.player === view.turn && !pending
+  const ready = view.phase === 'playing' && view.player === view.turn && !pending && !view.missing?.length
   return (
     <section className="screen battle-screen">
       <div className="tactical-backdrop battle-backdrop" aria-hidden="true" />
@@ -678,7 +679,7 @@ function HelpDialog({ onClose }: { onClose: () => void }) {
         <ol className="help-steps">
           <li><span>01</span><div><strong>Chọn chế độ</strong><p>Chọn Cổ điển. Mở hai tab trình duyệt cho hai người chơi.</p></div></li>
           <li><span>02</span><div><strong>Bố trí hạm đội</strong><p>Kéo tàu lên lưới, xoay hướng và tránh chồng lấn.</p></div></li>
-          <li><span>03</span><div><strong>Vào trận</strong><p>Nhấn “Bắt đầu trận” để xác nhận tàu. Đợi đủ hai người, rồi bấm ô đối phương khi đến lượt. Trúng/chìm giữ lượt; trượt chuyển lượt. Rời hoặc đóng tab là bỏ cuộc.</p></div></li>
+          <li><span>03</span><div><strong>Vào trận</strong><p>Nhấn “Bắt đầu trận” để xác nhận tàu. Đợi đủ hai người, rồi bấm ô đối phương khi đến lượt. Trúng/chìm giữ lượt; trượt chuyển lượt. Mất kết nối có 5 phút khôi phục bằng mã riêng. Nút rời trận là bỏ cuộc ngay.</p></div></li>
         </ol>
         <button className="primary-button dialog-button" onClick={onClose} type="button">Đã hiểu</button>
       </section>
@@ -694,6 +695,14 @@ export default function App() {
   const [view, setView] = useState<PlayerView>(emptyView)
   const [pending, setPending] = useState(false)
   const [notice, setNotice] = useState('')
+  const [token, setToken] = useState('')
+  const [recoveryCode, setRecoveryCode] = useState('')
+  const [serverAddress, setServerAddress] = useState(location.origin)
+  const [now, setNow] = useState(Date.now())
+  const tokenRef = useRef('')
+  const commandRef = useRef('')
+  const reconnectRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+  const retryUntilRef = useRef(0)
   const viewRef = useRef(view)
   const pendingRef = useRef(false)
   const socketRef = useRef<WebSocket | null>(null)
@@ -706,11 +715,17 @@ export default function App() {
     pendingRef.current = false
     setPending(false)
   }
-  const closeSession = () => {
+  const saveToken = (value: string) => {
+    tokenRef.current = value; setToken(value)
+    try { value ? sessionStorage.setItem('battleship.resume', value) : sessionStorage.removeItem('battleship.resume') } catch { /* The visible code also works without browser storage. */ }
+  }
+  const closeSession = (quit = false) => {
     clearTimeout(timerRef.current)
+    clearTimeout(reconnectRef.current)
     const socket = socketRef.current
     socketRef.current = null
-    socket?.close() // EOF is Quit in the Haskell coordinator.
+    if (quit && socket?.readyState === WebSocket.OPEN) socket.send('QUIT')
+    socket?.close()
   }
   useEffect(() => {
     const leave = () => socketRef.current?.close()
@@ -719,6 +734,10 @@ export default function App() {
   }, [])
   useEffect(() => { mainRef.current?.focus() }, [screen])
   useEffect(() => {
+    const ticker = setInterval(() => setNow(Date.now()), 1000)
+    return () => clearInterval(ticker)
+  }, [])
+  useEffect(() => {
     if (!helpOpen) return
     const escape = (event: KeyboardEvent) => { if (event.key === 'Escape') setHelpOpen(false) }
     window.addEventListener('keydown', escape)
@@ -726,35 +745,55 @@ export default function App() {
   }, [helpOpen])
 
   const goHome = () => {
-    if (socketRef.current && !['finished', 'disconnected'].includes(viewRef.current.phase) &&
+    if (tokenRef.current && viewRef.current.phase !== 'finished' &&
         !window.confirm('Rời trận sẽ tính là bỏ cuộc. Bạn muốn rời?')) return
-    closeSession(); releasePending(); updateView(emptyView())
+    closeSession(true); saveToken(''); releasePending(); updateView(emptyView())
     setScreen('landing'); setHelpOpen(false); setNotice('')
   }
-  const start = () => {
-    if (socketRef.current) return
-    let command: string
-    try { command = encodeFleet(fleet) }
-    catch (error) { setNotice((error as Error).message); return }
-    updateView(emptyView()); releasePending(); setScreen('battle'); setNotice('')
-    const socket = new WebSocket(`${location.protocol === 'https:' ? 'wss:' : 'ws:'}//${location.host}/play`)
+  const connect = (resume = '') => {
+    if (socketRef.current?.readyState === WebSocket.OPEN || socketRef.current?.readyState === WebSocket.CONNECTING) return
+    releasePending(); setScreen('battle'); setNotice('')
+    const socket = new WebSocket(`${location.protocol === 'https:' ? 'wss:' : 'ws:'}//${location.host}/play${resume ? '?resume=' + encodeURIComponent(resume) : ''}`)
     socketRef.current = socket
     const current = () => socketRef.current === socket
     const timedOut = () => {
       if (!current()) return
-      updateView({ ...viewRef.current, phase: 'disconnected', error: 'Máy chủ không phản hồi. Kiểm tra server Haskell và cầu WebSocket.' })
+      updateView({ ...viewRef.current, phase: 'disconnected', error: 'Máy chủ không phản hồi. Kiểm tra địa chỉ hiện tại và server Haskell.' })
       releasePending(); socket.close()
     }
     timerRef.current = setTimeout(timedOut, 10000)
     socket.onmessage = (message) => {
       if (!current()) return
       try {
+        if (String(message.data).startsWith('{')) {
+          const meta = parseBridgeMessage(String(message.data))
+          if (meta.type === 'RESUME_ERROR') {
+            if (meta.code === 'INVALID_SESSION') saveToken('')
+            updateView({ ...viewRef.current, phase: 'disconnected', error: meta.message })
+            releasePending(); socket.close(); return
+          }
+          if (meta.type === 'CONNECTION') {
+            if (meta.missing.length) releasePending()
+            updateView({ ...viewRef.current, missing: meta.missing }); return
+          }
+          saveToken(meta.token)
+          if (meta.fleet) { setFleet(decodeOwnFleet(meta.fleet)); commandRef.current = meta.fleet }
+          if (meta.frames) {
+            updateView(replayView(meta.frames)); releasePending(); retryUntilRef.current = 0
+            if (viewRef.current.phase === 'finished') saveToken('')
+            if (!viewRef.current.accepted && viewRef.current.phase !== 'finished') {
+              if (commandRef.current) socket.send(commandRef.current)
+              else { setFleet(createFleet()); setScreen('placement'); setNotice('Phiên đã khôi phục. Hãy bố trí và xác nhận hạm đội.') }
+            }
+          }
+          return
+        }
         const frame = parseFrame(String(message.data))
         if (frame.kind === 'WELCOME' && viewRef.current.player !== null) throw new Error('Máy chủ gửi danh tính lặp.')
         updateView(applyFrame(viewRef.current, frame))
-        if (frame.kind === 'WELCOME') socket.send(command)
+        if (frame.kind === 'WELCOME' && !resume) socket.send(commandRef.current)
         if (['OK', 'TURN', 'ERROR', 'GAME_OVER'].includes(frame.kind)) releasePending()
-        if (frame.kind === 'ERROR' && !viewRef.current.accepted) socket.close()
+        if (frame.kind === 'GAME_OVER') { clearTimeout(reconnectRef.current); saveToken('') }
       } catch (error) {
         updateView({ ...viewRef.current, phase: 'disconnected', error: (error as Error).message })
         releasePending(); socket.close()
@@ -762,14 +801,39 @@ export default function App() {
     }
     socket.onclose = (event) => {
       if (!current()) return
+      socketRef.current = null
       releasePending()
       if (viewRef.current.phase !== 'finished') updateView({ ...viewRef.current, phase: 'disconnected',
         error: viewRef.current.error ?? (event.code === 1011 ? 'Không kết nối được server Haskell. Hãy chạy server trước.' : 'Kết nối kết thúc trước khi nhận kết quả trận.') })
+      if (viewRef.current.phase !== 'finished' && tokenRef.current) {
+        if (!retryUntilRef.current) retryUntilRef.current = Date.now() + 300000
+        if (Date.now() < retryUntilRef.current) reconnectRef.current = setTimeout(() => connect(tokenRef.current), 2000)
+        else updateView({ ...viewRef.current, error: 'Hết thời gian tự kết nối. Mở IP hiện tại và nhập mã để xem kết quả từ máy chủ.' })
+      }
     }
     socket.onerror = () => {
       if (current()) updateView({ ...viewRef.current, error: 'Không kết nối được cầu WebSocket. Kiểm tra lệnh pnpm start.' })
     }
   }
+  const start = () => {
+    try { commandRef.current = encodeFleet(fleet) }
+    catch (error) { setNotice((error as Error).message); return }
+    if (socketRef.current?.readyState === WebSocket.OPEN && tokenRef.current) {
+      socketRef.current.send(commandRef.current); setScreen('battle'); return
+    }
+    updateView(emptyView()); retryUntilRef.current = 0; connect()
+  }
+  const resumeGame = (code: string) => {
+    if (!/^[a-f0-9]{64}$/.test(code.trim())) { setNotice('Mã khôi phục phải có 64 ký tự.'); return }
+    saveToken(code.trim()); retryUntilRef.current = 0; updateView(emptyView()); connect(code.trim())
+  }
+  useEffect(() => {
+    let code = new URLSearchParams(location.hash.slice(1)).get('resume') ?? ''
+    if (code) history.replaceState(null, '', location.pathname)
+    if (!code) { try { code = sessionStorage.getItem('battleship.resume') ?? '' } catch { /* Manual code entry remains available. */ } }
+    const boot = setTimeout(() => { if (code) resumeGame(code) }, 0)
+    return () => clearTimeout(boot)
+  }, [])
   const fire = (row: number, col: number) => {
     const coord = wireCoord({ row, col })
     const socket = socketRef.current
@@ -792,6 +856,22 @@ export default function App() {
       <a className="skip-link" href="#main-content">Bỏ qua thanh công cụ</a>
       <Header onFullscreen={() => void toggleFullscreen()} onHelp={() => setHelpOpen(true)} onHome={goHome} />
       {notice && <p className="game-error" role="alert">{notice}</p>}
+      {screen === 'landing' && <section className="recovery-panel" aria-label="Khôi phục trận">
+        <label>Mã khôi phục<input aria-label="Mã khôi phục" value={recoveryCode} onChange={(event) => setRecoveryCode(event.target.value)} /></label>
+        <button className="secondary-button" onClick={() => resumeGame(recoveryCode)} type="button">Khôi phục trận</button>
+      </section>}
+      {screen === 'battle' && token && view.phase !== 'finished' && <section className="recovery-panel" aria-label="Kết nối lại">
+        <label>Mã riêng để quay lại (hãy lưu trước khi đổi Wi-Fi)<input aria-label="Mã phiên của bạn" readOnly value={token} /></label>
+        <p>Không chia sẻ mã này với đối thủ. Nếu máy chủ đổi IP, nhập link mới được in trên terminal máy chủ.</p>
+        {view.missing?.map((entry) => <p key={entry.player}>{entry.player} còn {Math.max(0, Math.ceil((entry.deadline - now) / 1000))} giây để quay lại.</p>)}
+        {view.phase === 'disconnected' && <>
+          <p>Đang tự thử lại địa chỉ cũ. Thời gian thử còn khoảng {Math.max(0, Math.ceil((retryUntilRef.current - now) / 1000))} giây; máy chủ quyết định hạn khôi phục.</p>
+          <label>Địa chỉ máy chủ hiện tại<input aria-label="Địa chỉ máy chủ hiện tại" value={serverAddress} onChange={(event) => setServerAddress(event.target.value)} /></label>
+          <button className="secondary-button" type="button" onClick={() => {
+            try { location.assign(recoveryURL(serverAddress, token)) } catch (error) { setNotice((error as Error).message) }
+          }}>Kết nối địa chỉ mới</button>
+        </>}
+      </section>}
       <div id="main-content" ref={mainRef} tabIndex={-1}>
         {screen === 'landing' && <Landing onHelp={() => setHelpOpen(true)} onStart={() => setScreen('mode')} />}
         {screen === 'mode' && <ModeSelect onBack={() => setScreen('landing')} onSelect={(next) => {
