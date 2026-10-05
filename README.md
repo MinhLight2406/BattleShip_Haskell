@@ -1,6 +1,45 @@
 # BattleShip Haskell
 
-Dự án Battleship cho hai người chơi bằng hai client terminal kết nối đến một server TCP. Server giữ trạng thái trận đấu; luật chơi được triển khai bằng các hàm thuần Haskell.
+Dự án Battleship cho hai người chơi qua client terminal hoặc giao diện web. Server TCP giữ trạng thái trận đấu; luật chơi được triển khai bằng các hàm thuần Haskell.
+
+## Chơi bằng giao diện web
+
+Nhánh `Connect_ui_backend` được rẽ từ `frontend-ui` (`a6ca31f`). Giao diện của nhóm đã kết nối với server Haskell qua cầu WebSocket–TCP. Hướng dẫn đầy đủ, kiến trúc và kết quả test: [docs/frontend_integration.md](docs/frontend_integration.md).
+
+Cần Stack, Node.js 24 trở lên và pnpm 11.25.0. Từ thư mục gốc repository:
+
+```sh
+stack build
+cd frontend
+pnpm install --frozen-lockfile
+pnpm build
+cd ..
+```
+
+Mở hai terminal ở thư mục gốc:
+
+```sh
+# Terminal 1: server luật Haskell
+stack exec battleship-server -- 4000
+# Terminal 2: web server và cầu kết nối
+node frontend/bridge.mjs
+```
+
+Mở `http://127.0.0.1:8080` ở **hai tab**. Chọn Cổ điển, đặt đủ năm tàu, nhấn Bắt đầu trận. Tab xác nhận trước là P1; chờ đủ hai người rồi bấm ô đối phương khi đến lượt. Trượt chuyển lượt; trúng/chìm giữ lượt. Rời hoặc đóng tab là bỏ cuộc. Người thứ ba nhận lỗi phòng đầy. Không cần nhập giao thức thô.
+
+Server Haskell hiện phục vụ **một trận**. Sau khi thắng hoặc bỏ cuộc, chạy lại lệnh server ở Terminal 1 trước trận mới; cầu web ở Terminal 2 có thể giữ nguyên. Trinh sát chưa được hỗ trợ.
+
+Test giao diện và tích hợp (chạy từ gốc repository sau khi build):
+
+```sh
+pnpm --dir frontend test
+stack exec -- node --test frontend/test/integration.test.mjs
+pnpm --dir frontend exec playwright install chromium
+stack exec -- node --test frontend/test/browser.test.mjs
+stack test --ghc-options=-Werror
+```
+
+Các test tích hợp tự mở port trống, dựng trận mới và dọn process/socket; không dùng trận đang chơi ở port 4000. Test trình duyệt tự thao tác giao diện, xuất ảnh vào `frontend/test-results/`.
 
 **Trạng thái hiện tại:** đã có C-01, A-01, D-01, Board A-02/A-03/A-04, Rules B-01/B-02/B-04, View B-03, server C-02/C-05, codec/client D-02, Coordinator C-03/C-04 và client tương tác D-03/D-04/D-05. Server thực thi PLACE/FIRE/QUIT qua Rules thật; một TVar giữ GameState, STM commit trạng thái/phản hồi cùng lúc và hai writer gửi từ TQueue riêng. Client hướng dẫn nhập/sửa năm tàu, nhập bắn theo lượt, cập nhật hai bàn từ dữ liệu riêng tư và hiển thị kết quả đến thắng/thua.
 
@@ -10,7 +49,7 @@ Dự án Battleship cho hai người chơi bằng hai client terminal kết nố
 
 **S-03:** đã build sạch, chạy 794 test xanh và chơi trọn trận với hai terminal/lõi thật; [hồ sơ và log demo](docs/s03_acceptance.md). Còn chờ xác nhận A/B/C/D và R; một vấn đề trình bày nhỏ được ghi tại [task Đợt 9](docs/round9_fixes.md).
 
-**S-04:** A-05/B-05/C-06/D-06 đã được kiểm tra kỹ thuật; [hồ sơ chốt tính năng](docs/s04_feature_freeze.md) ghi bản mã, build/test và lỗi còn lại. Sau commit chốt chỉ sửa lỗi, test và tài liệu; không thêm GUI, AI, nhiều phòng hoặc lưu trận. Còn chờ nhóm xác nhận cùng commit để chọn bản báo cáo.
+**S-04:** A-05/B-05/C-06/D-06 đã được kiểm tra kỹ thuật; [hồ sơ chốt tính năng](docs/s04_feature_freeze.md) ghi bản terminal dùng tại mốc đó. Nhánh hiện tại bổ sung GUI theo yêu cầu tích hợp `frontend-ui` ngày 2026-10-05. Việc nhóm xác nhận bản dùng để báo cáo vẫn cần ghi riêng.
 
 ## Build và test
 

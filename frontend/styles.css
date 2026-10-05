@@ -297,7 +297,7 @@ a:focus-visible {
 
 .hero-image {
   z-index: -3;
-  background-image: url('/assets/naval-hero.png');
+  background-image: url('./naval-hero.png');
   background-position: center;
   background-size: cover;
   transform: scale(1.01);
@@ -1674,3 +1674,14 @@ a:focus-visible {
     transition-duration: 0.01ms !important;
   }
 }
+.game-status { margin: 1rem 0; padding: 1rem; border: 1px solid #37dbc0; background: #0b262a; border-radius: 12px; color: #c6fff0; }
+.game-error { margin: 1rem; padding: 1rem; background: #4c1921; color: #ffd6db; border: 1px solid #f48293; border-radius: 12px; }
+.board-cell.shot-miss { background: #193944; }
+.board-cell.shot-hit, .board-cell.shot-sunk, .board-cell.shot-win { background: #813641; }
+.shot-marker { position: absolute; inset: 0; display: grid; place-items: center; z-index: 2; color: #fff; font-size: 1.5rem; font-weight: 800; }
+.shot-log { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: .6rem; padding: 0; list-style: none; max-height: 9rem; overflow-y: auto; color: #d6e9ec; }
+.battle-screen .ready-banner { grid-template-columns: minmax(0, 1fr) auto; }
+.battle-screen .ready-banner > button { white-space: nowrap; }
+.enemy-card .board { filter: none; }
+.primary-button:disabled { opacity: .5; cursor: not-allowed; }
+@media (max-width: 640px) { .battle-screen .ready-banner { grid-template-columns: minmax(0, 1fr); } }

@@ -4,6 +4,8 @@ Phạm vi: một server, hai client terminal, một trận. Types, Board, Rules,
 
 ## Transport C-02 và điều phối C-03/C-04 hiện tại
 
+Nhánh tích hợp `frontend-ui` bổ sung client React qua cầu WebSocket–TCP trên localhost; server và giao dịch STM dưới đây tiếp tục dùng cùng lõi luật. Kiến trúc, lệnh chạy và test GUI được ghi tại [frontend_integration.md](frontend_integration.md).
+
 ServerMain đọc port rồi gọi `Server.runServer`; bind IPv4 loopback `127.0.0.1` và accept theo thứ tự P1/P2. Hai socket tồn tại trong bracket lồng nhau với reader và writer riêng có withAsync/link. Sau khi đủ hai slot, acceptor tiếp tục nhận để gửi `ERROR SERVER_FULL` và đóng ngay socket thứ ba. Một client không gửi dữ liệu không chặn việc nhận client tiếp theo.
 
 Coordinator giữ đúng một TVar GameState và hai TQueue (Maybe ByteString). Server gọi atomically cho mỗi submitPayload/submitCommand: đọc state, parse/gọi step, encode toàn bộ batch, ghi state nếu Right của luật và xếp frame theo người nhận trong cùng giao dịch. Parser/luật lỗi không writeTVar, chỉ xếp lỗi actor-only. Encode lỗi trả Left ProtocolError mà không ghi state hoặc queue. Hai transaction tranh TVar phải chạy lại theo state đã commit, không cùng tiêu lượt cũ. Không dùng unsafeIOToSTM hoặc socket IO trong giao dịch.

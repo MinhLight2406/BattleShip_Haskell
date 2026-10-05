@@ -8,13 +8,15 @@ import {
   useState,
 } from 'react'
 
-const GRID_SIZE = 10
-const ROW_LABELS = 'ABCDEFGHIJ'.split('')
+import {
+  GRID_SIZE, COLUMN_LABELS, SHIP_SPECS, createFleet, cellsFor, coordinateKey,
+  canPlace, placeShip, autoPlaceFleet, shipAt, wireCoord, encodeFleet,
+  parseFrame, applyFrame, emptyView, canFire, statusText, outcomeText,
+  type ShipState, type ShipId, type Orientation, type Coordinate, type PlayerView, type Outcome,
+} from './game.ts'
 
 type Screen = 'landing' | 'mode' | 'placement' | 'battle'
 type GameMode = 'classic' | 'advanced'
-type Orientation = 'horizontal' | 'vertical'
-type ShipId = 'carrier' | 'battleship' | 'cruiser' | 'submarine' | 'destroyer'
 type IconName =
   | 'anchor'
   | 'arrow-right'
@@ -30,105 +32,6 @@ type IconName =
   | 'sound-off'
   | 'sound-on'
   | 'trash'
-
-type Coordinate = { row: number; col: number }
-type Placement = Coordinate & { orientation: Orientation }
-type ShipSpec = { id: ShipId; name: string; code: string; length: number }
-type ShipState = ShipSpec & { orientation: Orientation; placement?: Placement }
-
-const SHIP_SPECS: readonly ShipSpec[] = [
-  { id: 'carrier', name: 'Hàng không mẫu hạm', code: 'CV-01', length: 5 },
-  { id: 'battleship', name: 'Thiết giáp hạm', code: 'BB-07', length: 4 },
-  { id: 'cruiser', name: 'Tuần dương hạm', code: 'CG-12', length: 3 },
-  { id: 'submarine', name: 'Tàu ngầm', code: 'SS-24', length: 3 },
-  { id: 'destroyer', name: 'Khu trục hạm', code: 'DD-31', length: 2 },
-]
-
-const createFleet = (): ShipState[] =>
-  SHIP_SPECS.map((ship) => ({ ...ship, orientation: 'horizontal' }))
-
-const cellsFor = (
-  ship: Pick<ShipState, 'length'> & { placement: Placement },
-): Coordinate[] =>
-  Array.from({ length: ship.length }, (_, index) => ({
-    row:
-      ship.placement.row +
-      (ship.placement.orientation === 'vertical' ? index : 0),
-    col:
-      ship.placement.col +
-      (ship.placement.orientation === 'horizontal' ? index : 0),
-  }))
-
-const coordinateKey = ({ row, col }: Coordinate) => `${row}:${col}`
-
-const isInsideBoard = ({ row, col }: Coordinate) =>
-  row >= 0 && row < GRID_SIZE && col >= 0 && col < GRID_SIZE
-
-const canPlace = (
-  fleet: ShipState[],
-  shipId: ShipId,
-  placement: Placement,
-) => {
-  const ship = fleet.find((item) => item.id === shipId)
-  if (!ship) return false
-
-  const candidate = cellsFor({ ...ship, placement })
-  if (!candidate.every(isInsideBoard)) return false
-
-  const occupied = new Set(
-    fleet
-      .filter((item) => item.id !== shipId && item.placement)
-      .flatMap((item) => cellsFor(item as ShipState & { placement: Placement }))
-      .map(coordinateKey),
-  )
-
-  return candidate.every((cell) => !occupied.has(coordinateKey(cell)))
-}
-
-const placeShip = (
-  fleet: ShipState[],
-  shipId: ShipId,
-  placement: Placement,
-) =>
-  canPlace(fleet, shipId, placement)
-    ? fleet.map((ship) =>
-        ship.id === shipId
-          ? { ...ship, orientation: placement.orientation, placement }
-          : ship,
-      )
-    : null
-
-const autoPlaceFleet = (source: ShipState[], random = Math.random) => {
-  let fleet: ShipState[] = source.map((ship) => ({ ...ship, placement: undefined }))
-
-  for (const ship of fleet) {
-    let placed = false
-    for (let attempt = 0; attempt < 400 && !placed; attempt += 1) {
-      const orientation: Orientation = random() > 0.5 ? 'horizontal' : 'vertical'
-      const row = Math.floor(random() * GRID_SIZE)
-      const col = Math.floor(random() * GRID_SIZE)
-      const next = placeShip(fleet, ship.id, { row, col, orientation })
-      if (next) {
-        fleet = next
-        placed = true
-      }
-    }
-    if (!placed) return source
-  }
-
-  return fleet
-}
-
-const shipAt = (fleet: ShipState[], row: number, col: number) => {
-  for (const ship of fleet) {
-    if (!ship.placement) continue
-    const index = cellsFor(ship as ShipState & { placement: Placement }).findIndex(
-      (cell) => cell.row === row && cell.col === col,
-    )
-    if (index >= 0) return { ship, index }
-  }
-  return null
-}
 
 function Icon({ name, size = 22 }: { name: IconName; size?: number }) {
   const paths: Record<IconName, ReactNode> = {
@@ -273,14 +176,10 @@ function Brand({ onClick }: { onClick: () => void }) {
 }
 
 function Header({
-  soundOn,
-  onToggleSound,
   onHelp,
   onFullscreen,
   onHome,
 }: {
-  soundOn: boolean
-  onToggleSound: () => void
   onHelp: () => void
   onFullscreen: () => void
   onHome: () => void
@@ -289,12 +188,6 @@ function Header({
     <header className="topbar">
       <Brand onClick={onHome} />
       <nav aria-label="Công cụ trò chơi" className="topbar-actions">
-        <IconButton
-          icon={soundOn ? 'sound-on' : 'sound-off'}
-          label={soundOn ? 'Tắt âm thanh giao diện' : 'Bật âm thanh giao diện'}
-          onClick={onToggleSound}
-          pressed={soundOn}
-        />
         <IconButton icon="help" label="Mở hướng dẫn" onClick={onHelp} />
         <IconButton
           icon="fullscreen"
@@ -335,7 +228,7 @@ function Landing({ onStart, onHelp }: { onStart: () => void; onHelp: () => void 
           <div><dt>01</dt><dd>Nhiệm vụ</dd></div>
         </dl>
       </div>
-      <p className="hero-footnote">PROTOTYPE GIAO DIỆN • REACT + TYPESCRIPT</p>
+      <p className="hero-footnote">BATTLESHIP • ĐỐI ĐẦU HAI NGƯỜI</p>
     </section>
   )
 }
@@ -371,7 +264,7 @@ function ModeSelect({
         <div className="section-heading">
           <p className="eyebrow"><span /> BƯỚC 01 / 03</p>
           <h1>Chọn chế độ tác chiến</h1>
-          <p>Chọn cấu hình phù hợp. Cả hai chế độ cùng dẫn tới bàn bố trí hạm đội.</p>
+          <p>Chế độ Cổ điển: hai người chơi trên cùng một máy chủ.</p>
         </div>
         <div className="mode-grid">
           <article className="mode-card">
@@ -391,18 +284,18 @@ function ModeSelect({
             </div>
           </article>
           <article className="mode-card featured">
-            <span className="mode-badge">MỞ RỘNG</span>
+            <span className="mode-badge">CHƯA HỖ TRỢ</span>
             <ModeVisual advanced />
             <div className="mode-card-body">
               <span className="mode-index">02</span>
               <p className="mode-kicker">TÁC CHIẾN NÂNG CAO</p>
               <h2>Trinh sát</h2>
-              <p>Giao diện sẵn sàng cho radar và khí tài do Haskell cung cấp sau này.</p>
+              <p>Chế độ này chưa có trong luật chơi hiện tại.</p>
               <ul>
-                <li><Icon name="check" size={18} /> Giữ nguyên luồng bố trí</li>
-                <li><Icon name="check" size={18} /> Có điểm nối cho tính năng nâng cao</li>
+                <li><Icon name="check" size={18} /> Chưa mở để chơi</li>
+                <li><Icon name="check" size={18} /> Chọn Cổ điển để vào trận</li>
               </ul>
-              <button className="primary-button" onClick={() => onSelect('advanced')} type="button">
+              <button className="primary-button" disabled type="button">
                 Chọn Trinh sát <Icon name="arrow-right" />
               </button>
             </div>
@@ -421,6 +314,7 @@ function Board({
   selectedShipId,
   preview,
   enemy = false,
+  shots = {},
   onCellClick,
   onCellDrop,
   onCellHover,
@@ -431,6 +325,7 @@ function Board({
   selectedShipId?: ShipId
   preview?: BoardPreview
   enemy?: boolean
+  shots?: Record<string, Outcome>
   onCellClick?: (row: number, col: number) => void
   onCellDrop?: (shipId: ShipId, row: number, col: number) => void
   onCellHover?: (row: number, col: number) => void
@@ -442,18 +337,21 @@ function Board({
     <div className={`board ${enemy ? 'enemy-board' : ''}`} onMouseLeave={onLeave}>
       <span className="board-corner" />
       {Array.from({ length: GRID_SIZE }, (_, col) => (
-        <span className="board-label column-label" key={`column-${col}`}>{col + 1}</span>
+        <span className="board-label column-label" key={`column-${col}`}>{COLUMN_LABELS[col]}</span>
       ))}
       {Array.from({ length: GRID_SIZE }, (_, row) => (
         <div className="board-row" key={`row-${row}`}>
-          <span className="board-label row-label">{ROW_LABELS[row]}</span>
+          <span className="board-label row-label">{row + 1}</span>
           {Array.from({ length: GRID_SIZE }, (_, col) => {
             const occupied = shipAt(fleet, row, col)
+            const coord = wireCoord({ row, col })
+            const result = shots[coord]
             const isPreview = previewKeys.has(coordinateKey({ row, col }))
             const classes = [
               'board-cell',
+              result ? `shot-${result.split(' ')[0].toLowerCase()}` : '',
               occupied ? 'occupied' : '',
-              occupied?.ship.id === selectedShipId ? 'selected' : '',
+              selectedShipId !== undefined && occupied?.ship.id === selectedShipId ? 'selected' : '',
               occupied ? occupied.ship.orientation : '',
               occupied?.index === 0 ? 'segment-first' : '',
               occupied && occupied.index === occupied.ship.length - 1 ? 'segment-last' : '',
@@ -462,9 +360,11 @@ function Board({
 
             return (
               <button
-                aria-label={`${ROW_LABELS[row]}${col + 1}${occupied ? `, ${occupied.ship.name}` : ', ô trống'}`}
+                aria-label={`${coord}${enemy ? (result ? '' : ', chưa bắn') : occupied ? `, ${occupied.ship.name}` : ', ô trống'}${result ? `, ${outcomeText(result)}` : ''}`}
+                data-coordinate={coord}
+                data-outcome={result}
                 className={classes}
-                disabled={!interactive}
+                disabled={!interactive || (enemy && Boolean(result))}
                 key={`${row}-${col}`}
                 onClick={() => onCellClick?.(row, col)}
                 onDragOver={(event) => {
@@ -481,7 +381,8 @@ function Board({
                 type="button"
               >
                 {occupied && <span className="ship-segment" aria-hidden="true" />}
-                {enemy && <span className="enemy-dot" aria-hidden="true" />}
+                {enemy && !result && <span className="enemy-dot" aria-hidden="true" />}
+                {result && <span className="shot-marker" aria-hidden="true">{result === 'MISS' ? '•' : '×'}</span>}
               </button>
             )
           })}
@@ -530,7 +431,7 @@ function Placement({
       return
     }
     setFleet(next)
-    setStatus(`${ship.name} đã vào vị trí ${ROW_LABELS[row]}${col + 1}.`)
+    setStatus(`${ship.name} đã vào vị trí ${wireCoord({ row, col })}.`)
   }
 
   const handleCellClick = (row: number, col: number) => {
@@ -704,63 +605,38 @@ function Placement({
   )
 }
 
-function BattleReady({
-  fleet,
-  mode,
-  onBack,
-  onHome,
-}: {
-  fleet: ShipState[]
-  mode: GameMode
-  onBack: () => void
-  onHome: () => void
+function Battle({ fleet, view, pending, onFire, onHome }: {
+  fleet: ShipState[]; view: PlayerView; pending: boolean
+  onFire: (row: number, col: number) => void; onHome: () => void
 }) {
+  const ready = view.phase === 'playing' && view.player === view.turn && !pending
   return (
     <section className="screen battle-screen">
       <div className="tactical-backdrop battle-backdrop" aria-hidden="true" />
       <div className="page-container battle-container">
         <div className="battle-heading">
-          <div>
-            <p className="eyebrow"><span /> BƯỚC 03 / 03 • HỆ THỐNG SẴN SÀNG</p>
-            <h1>Phòng chiến đấu</h1>
-          </div>
-          <div className="connection-pill"><span /> Chờ máy chủ Haskell</div>
+          <div><p className="eyebrow"><span /> CỔ ĐIỂN • {view.player ?? 'ĐANG KẾT NỐI'}</p><h1>Phòng chiến đấu</h1></div>
+          <div className="connection-pill"><span />{view.player ? 'Người chơi ' + view.player : 'Kết nối máy chủ'}</div>
         </div>
+        <div className="game-status" role="status">{statusText(view, pending)}</div>
+        {view.error && <p className="game-error" role="alert">{view.error}</p>}
         <div className="battle-boards">
-          <article className="battle-board-card">
-            <div className="battle-board-title">
-              <div><small>LƯỚI PHÒNG THỦ</small><h2>Hạm đội của bạn</h2></div>
-              <span>5 TÀU</span>
-            </div>
-            <Board fleet={fleet} />
+          <article className="battle-board-card" aria-label="Bàn phòng thủ">
+            <div className="battle-board-title"><div><small>LƯỚI PHÒNG THỦ</small><h2>Hạm đội của bạn</h2></div><span>{view.accepted ? 'ĐÃ XÁC NHẬN' : 'ĐỘI HÌNH ĐÃ CHỌN'}</span></div>
+            <Board fleet={fleet} shots={view.incoming} />
           </article>
-          <article className="battle-board-card enemy-card">
-            <div className="battle-board-title">
-              <div><small>LƯỚI TẤN CÔNG</small><h2>Vùng biển đối phương</h2></div>
-              <span>ẨN DANH</span>
-            </div>
-            <div className="enemy-lock">
-              <Icon name="lock" size={32} />
-              <strong>Chưa nhận dữ liệu trận đấu</strong>
-              <p>Khi backend Haskell kết nối, tọa độ tác chiến sẽ được kích hoạt tại đây.</p>
-            </div>
-            <Board enemy fleet={[]} />
+          <article className="battle-board-card enemy-card" aria-label="Bàn mục tiêu">
+            <div className="battle-board-title"><div><small>LƯỚI TẤN CÔNG</small><h2>Vùng biển đối phương</h2></div><span>{ready ? 'CHỌN Ô BẮN' : 'CHỜ'}</span></div>
+            <Board enemy fleet={[]} interactive={ready} shots={view.outgoing} onCellClick={onFire} />
           </article>
         </div>
         <div className="ready-banner">
-          <div className="ready-icon"><Icon name="check" size={28} /></div>
-          <div>
-            <p className="eyebrow"><span /> PROTOTYPE HOÀN TẤT</p>
-            <h2>Hạm đội đã sẵn sàng xuất kích</h2>
-            <p>
-              Chế độ {mode === 'classic' ? 'Cổ điển' : 'Trinh sát'} đã được cấu hình.
-              Phần bắn, lượt chơi và kết quả sẽ do luồng xử lý Haskell đảm nhiệm.
-            </p>
+          <div><h2>{view.phase === 'finished' ? 'Trận đấu kết thúc' : 'Nhật ký tác chiến'}</h2>
+            <p>• Trượt: chuyển lượt. × Trúng/chìm: giữ lượt. Chỉ các ô đã bắn được hiển thị.</p>
+            <ol className="shot-log" aria-label="Kết quả bắn">{Object.entries(view.outgoing).map(([coord, result]) => <li key={coord}>{coord}: {outcomeText(result)}</li>)}</ol>
+            {view.phase === 'finished' && <p>Máy chủ hiện phục vụ một trận. Khởi động lại server Haskell trước trận mới.</p>}
           </div>
-          <div className="ready-actions">
-            <button className="secondary-button" onClick={onBack} type="button">Chỉnh đội hình</button>
-            <button className="text-button" onClick={onHome} type="button">Về trang đầu</button>
-          </div>
+          <button className="secondary-button" onClick={onHome} type="button">{['finished', 'disconnected'].includes(view.phase) ? 'Về trang đầu' : 'Rời trận (bỏ cuộc)'}</button>
         </div>
       </div>
     </section>
@@ -768,9 +644,26 @@ function BattleReady({
 }
 
 function HelpDialog({ onClose }: { onClose: () => void }) {
+  const dialogRef = useRef<HTMLElement>(null)
+  useEffect(() => {
+    const previous = document.activeElement as HTMLElement | null
+    const buttons = dialogRef.current?.querySelectorAll<HTMLButtonElement>('button')
+    buttons?.[0]?.focus()
+    const trap = (event: KeyboardEvent) => {
+      if (event.key !== 'Tab' || !buttons?.length) return
+      if (event.shiftKey && document.activeElement === buttons[0]) {
+        event.preventDefault(); buttons[buttons.length - 1].focus()
+      } else if (!event.shiftKey && document.activeElement === buttons[buttons.length - 1]) {
+        event.preventDefault(); buttons[0].focus()
+      }
+    }
+    document.addEventListener('keydown', trap)
+    return () => { document.removeEventListener('keydown', trap); previous?.focus() }
+  }, [])
   return (
     <div className="dialog-backdrop" onMouseDown={onClose} role="presentation">
       <section
+        ref={dialogRef}
         aria-labelledby="help-title"
         aria-modal="true"
         className="help-dialog"
@@ -783,9 +676,9 @@ function HelpDialog({ onClose }: { onClose: () => void }) {
         <p className="eyebrow"><span /> HƯỚNG DẪN NHANH</p>
         <h2 id="help-title">Ba bước vào trận</h2>
         <ol className="help-steps">
-          <li><span>01</span><div><strong>Chọn chế độ</strong><p>Cổ điển hoặc Trinh sát đều dẫn tới bàn bố trí.</p></div></li>
+          <li><span>01</span><div><strong>Chọn chế độ</strong><p>Chọn Cổ điển. Mở hai tab trình duyệt cho hai người chơi.</p></div></li>
           <li><span>02</span><div><strong>Bố trí hạm đội</strong><p>Kéo tàu lên lưới, xoay hướng và tránh chồng lấn.</p></div></li>
-          <li><span>03</span><div><strong>Bàn giao cho Haskell</strong><p>Sau “Bắt đầu trận”, prototype dừng tại điểm tích hợp backend.</p></div></li>
+          <li><span>03</span><div><strong>Vào trận</strong><p>Nhấn “Bắt đầu trận” để xác nhận tàu. Đợi đủ hai người, rồi bấm ô đối phương khi đến lượt. Trúng/chìm giữ lượt; trượt chuyển lượt. Rời hoặc đóng tab là bỏ cuộc.</p></div></li>
         </ol>
         <button className="primary-button dialog-button" onClick={onClose} type="button">Đã hiểu</button>
       </section>
@@ -797,76 +690,115 @@ export default function App() {
   const [screen, setScreen] = useState<Screen>('landing')
   const [mode, setMode] = useState<GameMode>('classic')
   const [fleet, setFleet] = useState<ShipState[]>(createFleet)
-  const [soundOn, setSoundOn] = useState(true)
   const [helpOpen, setHelpOpen] = useState(false)
+  const [view, setView] = useState<PlayerView>(emptyView)
+  const [pending, setPending] = useState(false)
+  const [notice, setNotice] = useState('')
+  const viewRef = useRef(view)
+  const pendingRef = useRef(false)
+  const socketRef = useRef<WebSocket | null>(null)
+  const timerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
   const mainRef = useRef<HTMLDivElement>(null)
 
+  const updateView = (next: PlayerView) => { viewRef.current = next; setView(next) }
+  const releasePending = () => {
+    clearTimeout(timerRef.current)
+    pendingRef.current = false
+    setPending(false)
+  }
+  const closeSession = () => {
+    clearTimeout(timerRef.current)
+    const socket = socketRef.current
+    socketRef.current = null
+    socket?.close() // EOF is Quit in the Haskell coordinator.
+  }
   useEffect(() => {
-    mainRef.current?.focus()
-  }, [screen])
-
+    const leave = () => socketRef.current?.close()
+    window.addEventListener('pagehide', leave)
+    return () => { window.removeEventListener('pagehide', leave); closeSession() }
+  }, [])
+  useEffect(() => { mainRef.current?.focus() }, [screen])
   useEffect(() => {
     if (!helpOpen) return
-    const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setHelpOpen(false)
-    }
-    window.addEventListener('keydown', closeOnEscape)
-    return () => window.removeEventListener('keydown', closeOnEscape)
+    const escape = (event: KeyboardEvent) => { if (event.key === 'Escape') setHelpOpen(false) }
+    window.addEventListener('keydown', escape)
+    return () => window.removeEventListener('keydown', escape)
   }, [helpOpen])
 
   const goHome = () => {
-    setScreen('landing')
-    setHelpOpen(false)
+    if (socketRef.current && !['finished', 'disconnected'].includes(viewRef.current.phase) &&
+        !window.confirm('Rời trận sẽ tính là bỏ cuộc. Bạn muốn rời?')) return
+    closeSession(); releasePending(); updateView(emptyView())
+    setScreen('landing'); setHelpOpen(false); setNotice('')
   }
-
-  const selectMode = (nextMode: GameMode) => {
-    setMode(nextMode)
-    setFleet(createFleet())
-    setScreen('placement')
-  }
-
-  const toggleFullscreen = async () => {
-    if (document.fullscreenElement) {
-      await document.exitFullscreen()
-    } else {
-      await document.documentElement.requestFullscreen()
+  const start = () => {
+    if (socketRef.current) return
+    let command: string
+    try { command = encodeFleet(fleet) }
+    catch (error) { setNotice((error as Error).message); return }
+    updateView(emptyView()); releasePending(); setScreen('battle'); setNotice('')
+    const socket = new WebSocket(`${location.protocol === 'https:' ? 'wss:' : 'ws:'}//${location.host}/play`)
+    socketRef.current = socket
+    const current = () => socketRef.current === socket
+    const timedOut = () => {
+      if (!current()) return
+      updateView({ ...viewRef.current, phase: 'disconnected', error: 'Máy chủ không phản hồi. Kiểm tra server Haskell và cầu WebSocket.' })
+      releasePending(); socket.close()
+    }
+    timerRef.current = setTimeout(timedOut, 10000)
+    socket.onmessage = (message) => {
+      if (!current()) return
+      try {
+        const frame = parseFrame(String(message.data))
+        if (frame.kind === 'WELCOME' && viewRef.current.player !== null) throw new Error('Máy chủ gửi danh tính lặp.')
+        updateView(applyFrame(viewRef.current, frame))
+        if (frame.kind === 'WELCOME') socket.send(command)
+        if (['OK', 'TURN', 'ERROR', 'GAME_OVER'].includes(frame.kind)) releasePending()
+        if (frame.kind === 'ERROR' && !viewRef.current.accepted) socket.close()
+      } catch (error) {
+        updateView({ ...viewRef.current, phase: 'disconnected', error: (error as Error).message })
+        releasePending(); socket.close()
+      }
+    }
+    socket.onclose = (event) => {
+      if (!current()) return
+      releasePending()
+      if (viewRef.current.phase !== 'finished') updateView({ ...viewRef.current, phase: 'disconnected',
+        error: viewRef.current.error ?? (event.code === 1011 ? 'Không kết nối được server Haskell. Hãy chạy server trước.' : 'Kết nối kết thúc trước khi nhận kết quả trận.') })
+    }
+    socket.onerror = () => {
+      if (current()) updateView({ ...viewRef.current, error: 'Không kết nối được cầu WebSocket. Kiểm tra lệnh pnpm start.' })
     }
   }
-
+  const fire = (row: number, col: number) => {
+    const coord = wireCoord({ row, col })
+    const socket = socketRef.current
+    if (!canFire(viewRef.current, coord, pendingRef.current) || socket?.readyState !== WebSocket.OPEN) return
+    pendingRef.current = true; setPending(true)
+    socket.send(`FIRE ${coord}`)
+    timerRef.current = setTimeout(() => {
+      updateView({ ...viewRef.current, phase: 'disconnected', error: 'Quá thời gian chờ kết quả. Trận đã ngắt để tránh dùng lượt cũ.' })
+      releasePending(); socket.close()
+    }, 10000)
+  }
+  const toggleFullscreen = async () => {
+    try {
+      if (document.fullscreenElement) await document.exitFullscreen()
+      else await document.documentElement.requestFullscreen()
+    } catch { setNotice('Trình duyệt chưa cho phép mở toàn màn hình.') }
+  }
   return (
     <div className="app-shell">
       <a className="skip-link" href="#main-content">Bỏ qua thanh công cụ</a>
-      <Header
-        onFullscreen={() => void toggleFullscreen()}
-        onHelp={() => setHelpOpen(true)}
-        onHome={goHome}
-        onToggleSound={() => setSoundOn((value) => !value)}
-        soundOn={soundOn}
-      />
+      <Header onFullscreen={() => void toggleFullscreen()} onHelp={() => setHelpOpen(true)} onHome={goHome} />
+      {notice && <p className="game-error" role="alert">{notice}</p>}
       <div id="main-content" ref={mainRef} tabIndex={-1}>
-        {screen === 'landing' && (
-          <Landing onHelp={() => setHelpOpen(true)} onStart={() => setScreen('mode')} />
-        )}
-        {screen === 'mode' && (
-          <ModeSelect onBack={() => setScreen('landing')} onSelect={selectMode} />
-        )}
-        {screen === 'placement' && (
-          <Placement
-            fleet={fleet}
-            mode={mode}
-            onBack={() => setScreen('mode')}
-            onStart={() => setScreen('battle')}
-            setFleet={setFleet}
-          />
-        )}
-        {screen === 'battle' && (
-          <BattleReady
-            fleet={fleet}
-            mode={mode}
-            onBack={() => setScreen('placement')}
-            onHome={goHome}
-          />
-        )}
+        {screen === 'landing' && <Landing onHelp={() => setHelpOpen(true)} onStart={() => setScreen('mode')} />}
+        {screen === 'mode' && <ModeSelect onBack={() => setScreen('landing')} onSelect={(next) => {
+          setMode(next); setFleet(createFleet()); setScreen('placement')
+        }} />}
+        {screen === 'placement' && <Placement fleet={fleet} mode={mode} onBack={() => setScreen('mode')} onStart={start} setFleet={setFleet} />}
+        {screen === 'battle' && <Battle fleet={fleet} view={view} pending={pending} onFire={fire} onHome={goHome} />}
       </div>
       {helpOpen && <HelpDialog onClose={() => setHelpOpen(false)} />}
     </div>
