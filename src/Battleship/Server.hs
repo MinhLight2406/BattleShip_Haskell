@@ -2,14 +2,14 @@
 module Battleship.Server (runServer, runServerWith) where
 
 import Battleship.Coordinator
-  ( Coordinator, newCoordinator, nextFrame, readGameState, submitCommand,
+  ( Coordinator, newCoordinator, nextFrame, readGameState, isSlowClient, submitCommand,
     submitPayload, submitTooLong, welcomePlayer )
 import Battleship.Types
 import Battleship.Protocol
 import qualified Battleship.Rules as Rules
 import Control.Concurrent (threadDelay)
 import Control.Concurrent.Async (link, race_, wait, withAsync)
-import Control.Concurrent.STM (atomically)
+import Control.Concurrent.STM (atomically, check)
 import Control.Concurrent.MVar
   ( MVar, modifyMVar, modifyMVar_, newEmptyMVar, newMVar, readMVar,
     tryPutMVar )
@@ -86,7 +86,7 @@ acceptClients core coordinator listener lobby finished available = case availabl
       when (not (null admitted)) (readMVar finished >>= either throwIO pure)
     else do
       readerDone <- newEmptyMVar
-      withAsync
+      withAsync (closeSlowClient coordinator actor connection) $ \_ -> withAsync
         (writeFrames core coordinator lobby finished actor connection readerDone
           `catch` reportFailure lobby finished) $ \writer -> do
         link writer
@@ -103,13 +103,21 @@ acceptClients core coordinator listener lobby finished available = case availabl
 -- commit together; no MVar serializes gameplay and no socket IO occurs in STM.
 handleFrame :: Step -> Coordinator -> PlayerId -> Maybe BS.ByteString -> IO Bool
 handleFrame core coordinator actor frame = case frame of
-  Nothing -> atomically (submitTooLong coordinator actor) >>= requireEncoded >> pure False
+  Nothing -> atomically (submitTooLong core coordinator actor) >>= requireEncoded >> pure False
   Just payload -> atomically (submitPayload core coordinator actor payload) >>= requireEncoded
 
 clientLeft :: Step -> Coordinator -> MVar Lobby -> PlayerId -> IO ()
 clientLeft core coordinator lobby actor = do
   running <- not . stopped <$> readMVar lobby
   when running $ void (atomically (submitCommand core coordinator actor Quit) >>= requireEncoded)
+
+-- The STM signal is independent of the FIFO, so a full queue or blocked send
+-- cannot delay closure. Existing reader/writer finalizers drain the bounded
+-- queue and acknowledge cleanup; their later Quit cannot overwrite Finished.
+closeSlowClient :: Coordinator -> PlayerId -> Socket -> IO ()
+closeSlowClient coordinator actor connection = do
+  atomically (isSlowClient coordinator actor >>= check)
+  closeConnection connection `catch` ignoreIOException
 
 -- Exactly one writer consumes each player's FIFO. A failed send submits Quit
 -- for that socket's actor and drains/discards its queue until the end marker;

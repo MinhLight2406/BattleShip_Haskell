@@ -102,7 +102,7 @@ stack exec -- node --test frontend/test/browser.test.mjs
 
 Test clock tăng tốc kiểm tra đúng mốc 299.999/300.000 ms với socket và Haskell thật; test ngắt kết nối dùng hạn ngắn được truyền vào fixture, không đổi hạn 5 phút của CLI production. Test trình duyệt kiểm tra tải lại, chuyển origin bằng mã, riêng tư, tiếp tục bắn và kết quả thua khi quay lại muộn.
 
-**Trạng thái hiện tại:** đã có C-01, A-01, D-01, Board A-02/A-03/A-04, Rules B-01/B-02/B-04, View B-03, server C-02/C-05, codec/client D-02, Coordinator C-03/C-04 và client tương tác D-03/D-04/D-05. Server thực thi PLACE/FIRE/QUIT qua Rules thật; một TVar giữ GameState, STM commit trạng thái/phản hồi cùng lúc và hai writer gửi từ TQueue riêng. Client hướng dẫn nhập/sửa năm tàu, nhập bắn theo lượt, cập nhật hai bàn từ dữ liệu riêng tư và hiển thị kết quả đến thắng/thua.
+**Trạng thái hiện tại:** đã có C-01, A-01, D-01, Board A-02/A-03/A-04/A-06, Rules B-01/B-02/B-04, View B-03/B-06, server C-02/C-05/C-07, codec/client D-02, Coordinator C-03/C-04/C-07 và client tương tác D-03/D-04/D-05. Server thực thi PLACE/FIRE/QUIT qua Rules thật; một TVar giữ GameState, STM commit trạng thái/phản hồi cùng lúc và hai writer gửi từ TBQueue riêng có giới hạn. Client hướng dẫn nhập/sửa năm tàu, nhập bắn theo lượt, cập nhật hai bàn từ dữ liệu riêng tư và hiển thị kết quả đến thắng/thua.
 
 **S-01:** bản hợp đồng chung v2 cập nhật A-02 ở [docs/shared_contract.md](docs/shared_contract.md). Chưa khóa mốc vì còn chờ xác nhận A/B/C/D; việc ẩn constructor Fleet, chủ sở hữu file và quy trình thay đổi được ghi tại đó.
 
@@ -256,7 +256,25 @@ fmap (take 1 . reverse . snd) game -- batch cuối gồm ShotResolved ... Win, G
 stack test --ghc-options=-Werror --test-arguments="--match C-04"
 ```
 
-Coordinator giữ một TVar GameState và hai TQueue cho P1/P2. Mỗi submit đọc state, gọi step, encode/lọc và ghi state + toàn bộ batch vào queue trong cùng atomically; lệnh lỗi chỉ xếp phản hồi actor-only, không ghi state. Writer riêng lấy frame từ queue và gửi socket ngoài giao dịch. GAME_OVER nằm trước marker kết thúc; server chờ mọi writer đã được admission drain xong rồi đóng. MVar chỉ giữ registry/cleanup, không giữ bản sao GameState. Test gồm 250 cuộc đua có barrier, rollback lỗi/retry, FIFO và commit khi queue chưa được đọc.
+Coordinator giữ một TVar GameState và hai TBQueue cho P1/P2. Mỗi submit đọc state, gọi step, encode/lọc, kiểm tra chỗ cho cả batch rồi ghi state + toàn bộ phản hồi trong cùng atomically. Lệnh lỗi chỉ xếp phản hồi actor-only và giữ state nếu queue đủ chỗ; quá tải áp dụng Quit như mục C-07. Writer riêng lấy frame từ queue và gửi socket ngoài giao dịch. GAME_OVER nằm trước marker kết thúc; server chờ mọi writer đã được admission dọn xong rồi đóng. MVar chỉ giữ registry/cleanup, không giữ bản sao GameState. Test C-04 gồm 250 cuộc đua có barrier, rollback lỗi/retry, FIFO và commit khi queue chưa được đọc.
+
+## Hàng đợi giới hạn và client chậm C-07
+
+Mỗi người có **128 phần tử** trong TBQueue: phản hồi thường tối đa **126**, dành **2 chỗ** cho `GAME_OVER` và marker kết thúc. Giới hạn áp dụng cho dữ liệu đang nằm trong queue; frame đang gửi và bộ đệm TCP của OS được tính riêng. Giới hạn dòng TCP vẫn là 256 byte payload.
+
+Coordinator kiểm tra toàn bộ batch cho cả hai người trong STM trước khi ghi. Nếu không đủ chỗ, lệnh gây tràn không ghi nước bắn/đội tàu hoặc một phần phản hồi; coordinator gọi `Rules.step overloadedPlayer Quit oldState` và chốt bỏ cuộc. Người bị ngắt là **người nhận có queue quá tải**, có thể khác người gửi lệnh. Nếu cả hai quá tải trong cùng batch, P1 bỏ cuộc trước, cả hai socket được đóng. Sau Finished, EOF/QUIT không đổi người thắng.
+
+Worker riêng đóng socket quá tải ngoài STM để đánh thức reader/writer; writer bỏ phần chưa gửi tới marker, không chờ client đó đọc. Đối thủ còn đọc nhận GAME_OVER đúng thứ tự. Watchdog gửi 2 giây và grace cleanup 200 ms giữ nguyên. Không có timeout nhập tàu/nước bắn mới. Khoảng nối lại **5 phút của phiên web** vẫn do bridge quản lý.
+
+```sh
+stack test --ghc-options=-Werror --test-arguments="--match=C-07"
+stack build
+stack test --ghc-options=-Werror
+```
+
+Test C-07 dùng queue 5/8 phần tử và cổng đồng bộ: kiểm tra giới hạn mặc định, thiếu một chỗ, rollback batch, đúng người quá tải, kết thúc khi đầy, 300 cuộc đua STM (100 lần/kịch bản), TCP không đọc và cleanup trong deadline 10 giây. Client đọc bình thường được thử gửi/đọc vượt 128 phản hồi theo thời gian; bộ test tích hợp vẫn chơi trọn trận.
+
+API coordinator thêm `newCoordinatorWithCapacity` (tối thiểu 5), `queuedFrameCount`, `isSlowClient`; `submitTooLong` thêm `Step` để đường Quit quá tải dùng đúng lõi. Cần nhóm review thay đổi API trước hợp nhất; chi tiết tại [hợp đồng chung](docs/shared_contract.md#giới-hạn-và-chính-sách-client-chậm-c-07). Không đổi luật R-01 hoặc wire v1.
 
 ## Chạy và kiểm tra server C-02/C-03/C-04
 
@@ -390,7 +408,7 @@ Có thể bỏ PORT để dùng 4000, ví dụ `stack exec battleship-client -- 
 
 `package.yaml` là nguồn cấu hình package; file `.cabal` được Stack/Hpack sinh tự động. Giữ `stack.yaml.lock` trong Git để chia sẻ cùng snapshot.
 
-`Types` dùng `containers` cho `Map`/`Set`; C-02/D-02 dùng `network` cho TCP, `bytestring` cho framing/codec theo byte, `async` cho vòng đời worker và deadline. C-04 dùng `stm` cho TVar/TQueue/atomically trong library và test; D-04 dùng queue cho Response đọc từ mạng. D-04 khai báo `Win32` chỉ khi `os(windows)`, dùng binding console sẵn trong GHC để nhận sự kiện khi đang nhập dở; CPP bỏ import/cài đặt Win32 trên nền tảng khác. Hai Main dùng PortNumber từ `network`; ClientMain dùng `bytestring` để đưa lệnh CLI vào parser. Test suite dùng Hspec, `network`/`async` để kiểm tra TCP thật, `process` để khởi chạy executable và `directory`/`filepath` để đối chiếu cây nguồn S-01 trên Windows/Linux. `docs/protocol.md` là data file để test đọc đúng tài liệu qua module Cabal tự sinh `Paths_battleship_haskell`. A-06/B-06 dùng QuickCheck trong test suite cho tính chất đội tàu và góc nhìn riêng; chưa cần thêm text.
+`Types` dùng `containers` cho `Map`/`Set`; C-02/D-02 dùng `network` cho TCP, `bytestring` cho framing/codec theo byte, `async` cho vòng đời worker và deadline. C-04/C-07 dùng `stm` cho TVar/TBQueue/atomically trong server và test; D-04 dùng TQueue cho Response đọc từ mạng. D-04 khai báo `Win32` chỉ khi `os(windows)`, dùng binding console sẵn trong GHC để nhận sự kiện khi đang nhập dở; CPP bỏ import/cài đặt Win32 trên nền tảng khác. Hai Main dùng PortNumber từ `network`; ClientMain dùng `bytestring` để đưa lệnh CLI vào parser. Test suite dùng Hspec, `network`/`async` để kiểm tra TCP thật, `process` để khởi chạy executable và `directory`/`filepath` để đối chiếu cây nguồn S-01 trên Windows/Linux. `docs/protocol.md` là data file để test đọc đúng tài liệu qua module Cabal tự sinh `Paths_battleship_haskell`. A-06/B-06 dùng QuickCheck trong test suite cho tính chất đội tàu và góc nhìn riêng; chưa cần thêm text.
 
 Thành viên A/B/D lấy nhánh nền đã chứa C-01 bằng `git fetch origin` và checkout/pull nhánh được nhóm thống nhất, rồi chạy hai lệnh trên trước khi thêm mã của mình.
 

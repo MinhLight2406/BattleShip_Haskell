@@ -24,6 +24,7 @@ spec = do
   c04Spec
   c05Spec
   c06Spec
+  c07Spec
 
 c03Spec :: Spec
 c03Spec = describe "C-03 Coordinator" $ do
@@ -330,7 +331,7 @@ c04Spec = describe "C-04 atomic STM coordinator" $ do
 
   it "queues LINE_TOO_LONG before Quit's terminal response without changing state on the error" $ do
     coordinator <- atomically (newCoordinator readyState)
-    atomically (submitTooLong coordinator P1) `shouldReturn` Right True
+    atomically (submitTooLong Rules.step coordinator P1) `shouldReturn` Right True
     atomically (readGameState coordinator) `shouldReturn` readyState
     atomically (submitCommand Rules.step coordinator P1 Quit) `shouldReturn` Right False
     let (finished, _) = either (error . show) id (Rules.step P1 Quit readyState)
@@ -396,7 +397,7 @@ c05Spec = describe "C-05 recipient queues and terminal delivery" $ do
         forM_ [P1, P2] $ \actor -> do
           atomically (submitCommand Rules.step coordinator actor Quit) `shouldReturn` Right False
           atomically (submitPayload Rules.step coordinator actor (b "FIRE J10")) `shouldReturn` Right False
-          atomically (submitTooLong coordinator actor) `shouldReturn` Right False
+          atomically (submitTooLong Rules.step coordinator actor) `shouldReturn` Right False
           atomically (welcomePlayer coordinator actor) `shouldReturn` Right False
         atomically (snapshot coordinator) `shouldReturn` (expected, [], [])
 
@@ -496,6 +497,175 @@ startMatch first second = do
   forM_ [first, second] $ \connection -> do
     expectLine connection "START P1"
     expectLine connection "TURN P1"
+
+c07Spec :: Spec
+c07Spec = describe "C-07 bounded atomic outboxes" $ do
+  it "rejects capacities that cannot hold the largest normal batch and two terminal entries" $
+    forM_ [0 .. 4] $ \capacity ->
+      atomically (newCoordinatorWithCapacity capacity initialGameState) `shouldThrow` anyException
+
+  it "holds exactly 126 normal frames, reserves two terminal slots and ignores later commands" $ do
+    coordinator <- atomically (newCoordinator readyState)
+    fillErrors coordinator P1 126
+    atomically (queuedFrameCount coordinator P1) `shouldReturn` 126
+    atomically (readGameState coordinator) `shouldReturn` readyState
+    await "overflow cannot retry on a full queue" (atomically (submitPayload Rules.step coordinator P1 (b "UNKNOWN")))
+      `shouldReturn` Right False
+    atomically (queuedFrameCount coordinator P1) `shouldReturn` 128
+    atomically (queuedFrameCount coordinator P2) `shouldReturn` 2
+    forM_ [1 :: Int .. 1000] $ \_ ->
+      atomically (submitCommand Rules.step coordinator P2 Quit) `shouldReturn` Right False
+    atomically (snapshot coordinator) `shouldReturn`
+      (quitState P1 readyState, replicate 126 errorFrame ++ endingFrames P2, endingFrames P2)
+
+  it "aborts PLACE entirely when its two-frame batch is one slot short" $ do
+    coordinator <- atomically (newCoordinatorWithCapacity 5 initialGameState)
+    fillErrors coordinator P1 2
+    atomically (submitCommand Rules.step coordinator P1 (PlaceFleet (placements 1))) `shouldReturn` Right False
+    atomically (snapshot coordinator) `shouldReturn`
+      (quitState P1 initialGameState, replicate 2 errorFrame ++ endingFrames P2, endingFrames P2)
+
+  it "disconnects the overflowing recipient rather than the sender and never commits the shot" $ do
+    coordinator <- atomically (newCoordinatorWithCapacity 5 readyState)
+    fillErrors coordinator P2 2
+    atomically (submitCommand Rules.step coordinator P1 (Fire (Coord 1 6))) `shouldReturn` Right False
+    atomically ((,) <$> isSlowClient coordinator P1 <*> isSlowClient coordinator P2) `shouldReturn` (False, True)
+    atomically (snapshot coordinator) `shouldReturn`
+      (quitState P2 readyState, endingFrames P1, replicate 2 errorFrame ++ endingFrames P1)
+
+  it "chooses P1 for a same-batch tie, marks both sockets and ends only once" $ do
+    coordinator <- atomically (newCoordinatorWithCapacity 5 readyState)
+    forM_ [P1, P2] $ \actor -> fillErrors coordinator actor 3
+    atomically (submitCommand Rules.step coordinator P1 (Fire (Coord 1 6))) `shouldReturn` Right False
+    atomically ((,) <$> isSlowClient coordinator P1 <*> isSlowClient coordinator P2) `shouldReturn` (True, True)
+    forM_ [P1, P2] $ \actor -> atomically (submitCommand Rules.step coordinator actor Quit) `shouldReturn` Right False
+    atomically (snapshot coordinator) `shouldReturn`
+      (quitState P1 readyState, replicate 3 errorFrame ++ endingFrames P2, replicate 3 errorFrame ++ endingFrames P2)
+
+  it "allows ordinary Quit at a full normal limit without marking either client slow" $ do
+    coordinator <- atomically (newCoordinatorWithCapacity 5 readyState)
+    forM_ [P1, P2] $ \actor -> fillErrors coordinator actor 3
+    await "reserved terminal slots" (atomically (submitCommand Rules.step coordinator P2 Quit)) `shouldReturn` Right False
+    atomically ((,) <$> isSlowClient coordinator P1 <*> isSlowClient coordinator P2) `shouldReturn` (False, False)
+    atomically (snapshot coordinator) `shouldReturn`
+      (quitState P2 readyState, replicate 3 errorFrame ++ endingFrames P1, replicate 3 errorFrame ++ endingFrames P1)
+
+  forM_ [P1, P2] $ \actor ->
+    it ("fits the final WIN batch exactly at capacity for " ++ show actor) $ do
+      let before = fixture (fst <$> Rules.step actor (Fire (Coord 2 10)) (nearWin actor))
+          (after, frames) = either (error . show) id (applyCommand Rules.step actor (Fire (Coord 5 6)) before)
+          expected player = replicate 5 errorFrame ++ [Just bytes | (recipient, bytes) <- frames, recipient == player] ++ [Nothing]
+      coordinator <- atomically (newCoordinatorWithCapacity 8 before)
+      forM_ [P1, P2] $ \player -> fillErrors coordinator player 5
+      atomically (submitCommand Rules.step coordinator actor (Fire (Coord 5 6))) `shouldReturn` Right False
+      forM_ [P1, P2] $ \player -> do
+        atomically (queuedFrameCount coordinator player) `shouldReturn` 8
+        atomically (isSlowClient coordinator player) `shouldReturn` False
+      atomically (snapshot coordinator) `shouldReturn` (after, expected P1, expected P2)
+
+  it "does not commit a winning shot when its normal frame cannot fit" $ do
+    let before = fixture (fst <$> Rules.step P1 (Fire (Coord 2 10)) (nearWin P1))
+    coordinator <- atomically (newCoordinatorWithCapacity 8 before)
+    forM_ [P1, P2] $ \actor -> fillErrors coordinator actor 6
+    atomically (submitCommand Rules.step coordinator P1 (Fire (Coord 5 6))) `shouldReturn` Right False
+    atomically (snapshot coordinator) `shouldReturn`
+      (quitState P1 before, replicate 6 errorFrame ++ endingFrames P2, replicate 6 errorFrame ++ endingFrames P2)
+
+  it "uses the injected core with the overloaded recipient and the exact pre-command state" $ do
+    coordinator <- atomically (newCoordinatorWithCapacity 5 readyState)
+    fillErrors coordinator P2 3
+    let core P2 Quit state | state == readyState =
+          Right (state { gamePhase = Finished P2 AllShipsSunk }, [GameEnded P2 AllShipsSunk])
+        core actor command state = Rules.step actor command state
+    atomically (submitCommand core coordinator P1 (Fire (Coord 1 6))) `shouldReturn` Right False
+    let final = [Just (b "GAME_OVER P2 ALL_SHIPS_SUNK\n"), Nothing]
+    atomically (snapshot coordinator) `shouldReturn`
+      (readyState { gamePhase = Finished P2 AllShipsSunk }, final, replicate 3 errorFrame ++ final)
+
+  it "handles an overlong-line rejection through the same nonblocking overflow policy" $ do
+    coordinator <- atomically (newCoordinatorWithCapacity 5 readyState)
+    fillErrors coordinator P1 3
+    await "overlong rejection at capacity" (atomically (submitTooLong Rules.step coordinator P1)) `shouldReturn` Right False
+    atomically (snapshot coordinator) `shouldReturn`
+      (quitState P1 readyState, replicate 3 errorFrame ++ endingFrames P2, endingFrames P2)
+
+  it "wakes a writer waiting on an empty opposing queue when overload ends the game" $ do
+    coordinator <- atomically (newCoordinatorWithCapacity 5 readyState)
+    atomically ((Just <$> nextFrame coordinator P2) `orElse` pure Nothing) `shouldReturn` Nothing
+    withAsync (atomically (nextFrame coordinator P2)) $ \writer -> do
+      fillErrors coordinator P1 3
+      atomically (submitPayload Rules.step coordinator P1 (b "UNKNOWN")) `shouldReturn` Right False
+      await "waiting writer wakes" (wait writer) `shouldReturn` Just (frame (GameOver P2 OpponentLeft))
+      atomically (nextFrame coordinator P2) `shouldReturn` Nothing
+
+  forM_ ["throws", "retries"] $ \mode ->
+    it ("rolls back state, all frames and slow flags when an outer transaction " ++ mode) $ do
+      coordinator <- atomically (newCoordinatorWithCapacity 5 readyState)
+      fillErrors coordinator P1 3
+      let overflow = submitPayload Rules.step coordinator P1 (b "UNKNOWN")
+      if mode == "throws" then
+        atomically (overflow >> throwSTM (AssertionFailed "rollback")) `shouldThrow` anyException
+      else atomically ((overflow >> retry) `orElse` pure ())
+      atomically ((,) <$> isSlowClient coordinator P1 <*> isSlowClient coordinator P2) `shouldReturn` (False, False)
+      atomically (snapshot coordinator) `shouldReturn` (readyState, replicate 3 errorFrame, [])
+
+  forM_ ["missing", "duplicate", "nonterminal", "refused"] $ \malformation ->
+    it ("rejects a " ++ malformation ++ " terminal core without consuming reserved slots") $ do
+      coordinator <- atomically (newCoordinatorWithCapacity 5 readyState)
+      fillErrors coordinator P1 3
+      let core _ Quit state = case malformation of
+            "missing" -> Right (state { gamePhase = Finished P2 OpponentLeft }, [])
+            "duplicate" -> Right (state { gamePhase = Finished P2 OpponentLeft }, replicate 2 (GameEnded P2 OpponentLeft))
+            "nonterminal" -> Right (state, [GameEnded P2 OpponentLeft])
+            _ -> Left FleetsNotReady
+          core actor command state = Rules.step actor command state
+      await "malformed fallback cannot fill queue" (atomically (submitPayload core coordinator P1 (b "UNKNOWN")))
+        `shouldReturn` Left InvalidMessage
+      atomically (isSlowClient coordinator P1) `shouldReturn` False
+      atomically (snapshot coordinator) `shouldReturn` (readyState, replicate 3 errorFrame, [])
+
+  forM_ [P1, P2] $ \actor ->
+    it ("serializes two near-limit hits without partial batches or duplicate endings for " ++ show actor ++ " (100 races)") $
+      forM_ [1 :: Int .. 100] $ \_ -> do
+        let before = if actor == P1 then readyState else fixture (fst <$> Rules.step P1 (Fire (Coord 10 10)) readyState)
+            row = if actor == P1 then 6 else 1
+            commands = [(actor, Fire (Coord column row)) | column <- [1, 2]]
+            expected command =
+              let (after, frames) = either (error . show) id (applyCommand Rules.step actor command before)
+                  own player = replicate 3 errorFrame ++ [Just bytes | (recipient, bytes) <- frames, recipient == player] ++ endingFrames P2
+              in (quitState P1 after, own P1, own P2)
+        coordinator <- atomically (newCoordinatorWithCapacity 8 before)
+        forM_ [P1, P2] $ \player -> fillErrors coordinator player 3
+        results <- concurrentlySubmit coordinator commands
+        sort (map (either (error . show) id) results) `shouldBe` [False, True]
+        forM_ [P1, P2] $ \player -> do
+          atomically (queuedFrameCount coordinator player) `shouldReturn` 7
+          atomically (isSlowClient coordinator player) `shouldReturn` True
+        actual <- atomically (snapshot coordinator)
+        actual `shouldSatisfy` (`elem` map (expected . snd) commands)
+
+  it "identifies P2 under concurrent near-limit commands from different players (100 races)" $
+    forM_ [1 :: Int .. 100] $ \_ -> do
+      coordinator <- atomically (newCoordinatorWithCapacity 8 readyState)
+      fillErrors coordinator P2 6
+      concurrentlySubmit coordinator [(P1, Fire (Coord 1 6)), (P2, Fire (Coord 1 1))]
+        `shouldReturn` [Right False, Right False]
+      atomically ((,) <$> isSlowClient coordinator P1 <*> isSlowClient coordinator P2) `shouldReturn` (False, True)
+      atomically (snapshot coordinator) `shouldReturn`
+        (quitState P2 readyState, endingFrames P1, replicate 6 errorFrame ++ endingFrames P1)
+
+fillErrors :: Coordinator -> PlayerId -> Int -> IO ()
+fillErrors coordinator actor count = forM_ [1 .. count] $ \_ ->
+  atomically (submitPayload Rules.step coordinator actor (b "UNKNOWN")) `shouldReturn` Right True
+
+errorFrame :: Maybe BSC.ByteString
+errorFrame = Just (frame (Rejected BadCommand))
+
+endingFrames :: PlayerId -> [Maybe BSC.ByteString]
+endingFrames winner = [Just (frame (GameOver winner OpponentLeft)), Nothing]
+
+quitState :: PlayerId -> GameState -> GameState
+quitState actor state = fixture (fst <$> Rules.step actor Quit state)
 
 -- Both workers reach the gate before it opens. No external gameplay lock is
 -- introduced: only STM serializes submissions, and network IO stays outside it.

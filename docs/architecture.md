@@ -1,6 +1,6 @@
 # Kiến trúc điều phối Battleship
 
-Phạm vi: một server, hai client terminal, một trận. Types, Board, Rules, View B-03, transport/Coordinator C-02/C-03/C-04/C-05, codec D-02 và client tương tác D-03/D-04/D-05 đã có cài đặt. Một TVar GameState là nguồn sự thật; hai TQueue đưa phản hồi đến hai writer riêng. Client xem trước fleet của mình, nhập bắn, hiển thị hai bàn riêng tư và kết quả/lượt/kết thúc bằng văn bản. Sơ đồ STM dưới đây mô tả cài đặt C-04 hiện tại.
+Phạm vi: một server, hai client terminal, một trận. Types, Board, Rules, View B-03, transport/Coordinator C-02/C-03/C-04/C-05/C-07, codec D-02 và client tương tác D-03/D-04/D-05 đã có cài đặt. Một TVar GameState là nguồn sự thật; hai TBQueue có giới hạn đưa phản hồi đến hai writer riêng. Client xem trước fleet của mình, nhập bắn, hiển thị hai bàn riêng tư và kết quả/lượt/kết thúc bằng văn bản. Sơ đồ STM dưới đây mô tả cài đặt C-04/C-07 hiện tại.
 
 ## Transport C-02 và điều phối C-03/C-04 hiện tại
 
@@ -8,7 +8,7 @@ Nhánh tích hợp `frontend-ui` bổ sung client React qua cầu WebSocket–TC
 
 ServerMain đọc port rồi gọi `Server.runServer`; bind IPv4 loopback `127.0.0.1` và accept theo thứ tự P1/P2. Hai socket tồn tại trong bracket lồng nhau với reader và writer riêng có withAsync/link. Sau khi đủ hai slot, acceptor tiếp tục nhận để gửi `ERROR SERVER_FULL` và đóng ngay socket thứ ba. Một client không gửi dữ liệu không chặn việc nhận client tiếp theo.
 
-Coordinator giữ đúng một TVar GameState và hai TQueue (Maybe ByteString). Server gọi atomically cho mỗi submitPayload/submitCommand: đọc state, parse/gọi step, encode toàn bộ batch, ghi state nếu Right của luật và xếp frame theo người nhận trong cùng giao dịch. Parser/luật lỗi không writeTVar, chỉ xếp lỗi actor-only. Encode lỗi trả Left ProtocolError mà không ghi state hoặc queue. Hai transaction tranh TVar phải chạy lại theo state đã commit, không cùng tiêu lượt cũ. Không dùng unsafeIOToSTM hoặc socket IO trong giao dịch.
+Coordinator giữ đúng một TVar GameState và hai TBQueue (Maybe ByteString). Server gọi atomically cho mỗi submitPayload/submitCommand: đọc state, parse/gọi step, encode toàn bộ batch, kiểm tra chỗ cho từng người rồi mới ghi state và xếp tất cả frame trong cùng giao dịch. Parser/luật lỗi chỉ xếp lỗi actor-only và giữ state nếu đủ chỗ; nếu queue quá tải, hủy batch gốc và áp dụng Quit theo C-07. Encode/hợp đồng batch lỗi trả Left ProtocolError mà không ghi state hoặc queue. Hai transaction tranh TVar phải chạy lại theo state đã commit, không cùng tiêu lượt cũ. Không dùng unsafeIOToSTM hoặc socket IO trong giao dịch.
 
 Reader dùng `Protocol.feedFrames`, giữ buffer tối đa 256 byte hoặc 257 nếu cuối là CR chờ LF; mỗi recv lấy tối đa phần còn lại của frame 258 byte. Frame đủ LF đi qua atomically submitPayload → parseCommand → step → encodeEvent. EOF bỏ tail và submitCommand Quit. Mỗi writer lấy một frame bằng atomically nextFrame, rồi sendAll ngoài STM; chỉ một writer ghi mỗi socket nên không xen byte. Send lỗi đóng đúng socket và submit Quit của actor đó; writer hỏng bỏ frame còn lại đến marker cuối, không cản writer kia.
 
@@ -18,7 +18,7 @@ WELCOME được xếp đầu kênh khi admission trong STM; frame trước đó
 
 C-05: khi writer gặp marker cuối, nó shutdown chiều gửi để gửi FIN sau batch cuối; reader hiện hữu đọc bỏ phần input còn lại bằng buffer 4096 byte, không parse/gọi step nữa. Writer chờ thông báo readerDone tối đa 200 ms rồi shutdown Both/close để đánh thức recv nếu peer vẫn giữ kết nối. Chỉ sau đó writer báo đã dọn xong. MVar readerDone chỉ đồng bộ vòng đời socket, không giữ trạng thái trận. Cách đóng này tránh reset do còn lệnh TCP chưa đọc làm mất GAME_OVER; test QUIT kèm 2.000 lệnh đã tái hiện lỗi trước sửa và xanh sau sửa. Send hỏng vẫn đóng ngay và xử lý Quit cho đúng actor.
 
-Mỗi send vẫn có deadline/watchdog 2 giây. Outbox TQueue chưa giới hạn dung lượng cho MVP; cần chính sách ngắt client chậm và queue có giới hạn nếu xử lý command flood lâu dài. Socket chậm không giữ TVar hoặc chặn writer đối thủ. C-04 thêm dependency stm cho library/test; không đổi R-01 hoặc wire v1.
+Mỗi send vẫn có deadline/watchdog 2 giây. C-07 giới hạn mỗi TBQueue ở 128 phần tử: tối đa 126 frame thường, dự trữ một GAME_OVER và một marker Nothing. Kiểm tra cả batch trước khi ghi, nên writeTBQueue không phải chờ writer lấy dữ liệu. Nếu thiếu chỗ, gọi cùng core với Quit cho người nhận quá tải từ state trước lệnh, hủy toàn bộ chuyển trạng thái/batch dự kiến. Nếu cả hai quá tải trong cùng batch, P1 Quit trước và đánh dấu cả hai socket. TVar cờ transport chỉ giữ danh tính cần ngắt; worker chờ cờ đóng socket ngoài STM, đánh thức IO và để writer bỏ phần FIFO còn lại đến marker. Socket chậm không giữ TVar hoặc chặn writer đối thủ; người còn đọc nhận GAME_OVER. Sau Finished, các finalizer không tạo kết quả mới. Không đổi R-01 hoặc wire v1; khoảng nối lại web 5 phút vẫn thuộc bridge. Dung lượng nhỏ cho test/API và chính sách đầy đủ tại [shared_contract.md](shared_contract.md#giới-hạn-và-chính-sách-client-chậm-c-07).
 
 ## Codec và client D-02 hiện tại
 
@@ -63,8 +63,13 @@ flowchart LR
     STEP --> BOARD["Board / Types"]
     STEP -->|"trạng thái mới + Event"| CO
     CO --> ROUTE["Event → wire theo D-01<br/>định tuyến riêng, lọc bí mật"]
-    ROUTE --> Q1["TQueue riêng P1"]
-    ROUTE --> Q2["TQueue riêng P2"]
+    ROUTE --> CHECK["Kiểm tra cả batch<br/>126 thường + 2 kết thúc"]
+    CHECK --> Q1["TBQueue riêng P1: 128"]
+    CHECK --> Q2["TBQueue riêng P2: 128"]
+    CHECK -->|"quá tải: hủy batch"| QUIT["step người quá tải Quit state cũ"]
+    QUIT -->|"GAME_OVER + marker"| Q1
+    QUIT -->|"GAME_OVER + marker"| Q2
+    QUIT --> CLOSE["Cờ STM → đóng socket ngoài STM"]
     Q1 --> W1["Writer P1"] --> P1
     Q2 --> W2["Writer P2"] --> P2
 ```
@@ -82,12 +87,12 @@ D-01 tại `docs/protocol.md` là hợp đồng wire v1: không gửi snapshot `
 
 B-02 đã cài luật thuần theo R-01/D-01: kiểm tra readiness → lượt → tọa độ → bắn lặp, tra ô trong fleet đối thủ để xác định Miss/Hit/Sunk/Win. Lịch sử lưu một lần ở playerShots của người bắn; `shotsReceived player state` đọc lịch sử người kia cho bàn của player. Thêm tọa độ mới vào tập ô đã bắn để kiểm tra tàu chìm/toàn bộ fleet; Win ưu tiên trước Sunk ở ô cuối cùng. Tàu chạm cạnh vẫn là các ShipId riêng, không gom theo vùng liên thông. Giữ các Outcome lịch sử, không sửa Hit cũ thành Sunk/Win.
 
-step chỉ đổi lịch sử người bắn và phase; giữ nguyên hai fleet và lịch sử bắn ra của đối thủ. Mỗi Right trả ShotResolved rồi TurnReady hoặc GameEnded. Lỗi trả Left, Coordinator giữ state cũ. C-03/C-04 đã nối lõi vào server; C-04 dùng STM và writer riêng theo luồng sau.
+step chỉ đổi lịch sử người bắn và phase; giữ nguyên hai fleet và lịch sử bắn ra của đối thủ. Mỗi Right trả ShotResolved rồi TurnReady hoặc GameEnded. Lỗi trả Left, Coordinator giữ state cũ nếu phản hồi đủ chỗ; quá tải kích hoạt chuyển trạng thái Quit riêng theo C-07. C-03/C-04 đã nối lõi vào server; C-04/C-07 dùng STM và writer riêng theo luồng sau.
 
 1. Client đang có lượt gửi `Fire Coord`.
 2. Trong một giao dịch STM, coordinator đọc trạng thái cũ, gọi `step`, ghi trạng thái mới và xếp thông báo vào kênh riêng. Socket writer gửi thông báo sau giao dịch.
 3. `Miss` chuyển lượt sang đối thủ. `Hit` và `Sunk` **giữ nguyên lượt của người bắn**. `Win` chuyển sang `Finished` ngay.
-4. Lệnh sai tạo `Error` cho người gửi, không ghi trạng thái và không đổi lượt. Hai lệnh đến gần như cùng lúc phải được xét trên các phiên bản trạng thái nhất quán.
+4. Lệnh sai tạo `Error` cho người gửi, không ghi trạng thái và không đổi lượt nếu queue đủ chỗ; nếu không, C-07 kết thúc bằng Quit của người quá tải. Hai lệnh đến gần như cùng lúc được xét trên các phiên bản trạng thái nhất quán.
 
 ## Ranh giới module
 

@@ -23,6 +23,7 @@ spec :: Spec
 spec = do
   c02Spec
   c05Spec
+  c07Spec
 
 c02Spec :: Spec
 c02Spec = describe "C-02 TCP server" $ do
@@ -260,7 +261,7 @@ c05Spec = describe "C-05 private delivery and disconnect cleanup" $ do
     withServer $ \port server -> withPair port $ \first second -> do
       -- Keep P1's socket open, stop receiving after WELCOME and force its send
       -- window to fill with actor-only errors. No Quit/EOF is sent by the test:
-      -- the server's failed-send watchdog must end this session itself.
+      -- queue overflow or the failed-send watchdog must end the session.
       setSocketOption first RecvBuffer 4096
       void (awaitSocket "C-05 slow reader flood" first
         (try (sendText first (concat (replicate 50000 "UNKNOWN\n"))) :: IO (Either IOException ())))
@@ -276,6 +277,57 @@ c05Spec = describe "C-05 private delivery and disconnect cleanup" $ do
         void (try (sendText first (concat (replicate 2000 "QUIT\n"))) :: IO (Either IOException ()))
         expectEnd [first, second] "P2"
         await "C-05 exit after pipelined terminal command" (wait server)
+
+c07Spec :: Spec
+c07Spec = describe "C-07 slow TCP clients" $ do
+  forM_ ["P1", "P2"] $ \actor ->
+    it ("ends when " ++ actor ++ " floods errors without reading; the opponent receives GAME_OVER") $
+      withServer $ \port server -> withPair port $ \first second -> do
+        let (slow, healthy, winner) = if actor == "P1" then (first, second, "P2") else (second, first, "P1")
+        setSocketOption slow RecvBuffer 4096
+        void (awaitSocket "C-07 flood without reading" slow (try (flood slow) :: IO (Either IOException ())))
+        expectEnd [healthy] winner
+        await "C-07 one slow client shutdown deadline" (wait server)
+        expectPeerReleased slow
+        expectListenerClosed port
+        expectCanRestart port
+
+  it "releases both nonreading clients, all workers and the listener within the deadline (10 sessions)" $
+    forM_ [1 :: Int .. 10] $ \_ ->
+      withServer $ \port server -> withPair port $ \first second -> do
+        forM_ [first, second] $ \connection -> setSocketOption connection RecvBuffer 4096
+        -- Both senders start together, neither receives after WELCOME. TCP
+        -- reset is allowed for the discarded slow socket, unlike a survivor.
+        await "C-07 two flooding senders" $ void $ mapConcurrently
+          (\connection -> awaitSocket "C-07 nonreader send" connection
+            (try (flood connection) :: IO (Either IOException ()))) [first, second]
+        await "C-07 both slow shutdown deadline" (wait server)
+        mapM_ expectPeerReleased [first, second]
+        expectListenerClosed port
+        expectCanRestart port
+
+  it "keeps normal readers usable beyond the queue capacity over time and preserves FIFO" $
+    withServer $ \port server -> withPair port $ \first second -> do
+      forM_ [1 :: Int .. 200] $ \_ ->
+        forM_ [first, second] $ \connection -> do
+          sendText connection "UNKNOWN\nFIRE A1\n"
+          expectLine connection "ERROR INVALID_COMMAND"
+          expectLine connection "ERROR FLEETS_NOT_READY"
+      quitAndWait second [first, second] "P1" server
+
+flood :: Socket -> IO ()
+flood connection = sendText connection (concat (replicate 50000 "UNKNOWN\n"))
+
+-- Already-buffered errors may precede FIN; a reset is also valid after the
+-- overload monitor closes a socket with unread input. Neither may hang.
+expectPeerReleased :: Socket -> Expectation
+expectPeerReleased connection = do
+  result <- awaitSocket "C-07 peer socket released" connection (try drain :: IO (Either IOException ()))
+  result `shouldSatisfy` either (const True) (== ())
+  where
+    drain = do
+      bytes <- recv connection 4096
+      if BS.null bytes then pure () else drain
 
 placementLine :: Int -> String
 placementLine row = "PLACE " ++ concat
