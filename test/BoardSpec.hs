@@ -15,6 +15,9 @@ import System.Exit (ExitCode (ExitFailure, ExitSuccess))
 import System.IO (hClose, hPutStr, openTempFile)
 import System.Process (readProcessWithExitCode)
 import Test.Hspec (Spec, describe, expectationFailure, it, shouldBe, shouldSatisfy)
+import Test.Hspec.QuickCheck (modifyMaxSuccess)
+import qualified Test.QuickCheck as QC
+import TestSupport.Generators
 
 spec :: Spec
 spec = do
@@ -22,6 +25,7 @@ spec = do
   a03Spec
   a04Spec
   a05Spec
+  a06Spec
 
 a02Spec :: Spec
 a02Spec = describe "A-02 board and checked fleet" $ do
@@ -356,6 +360,74 @@ a05Spec = describe "A-05 parsed placement boundary regression" $
         placeFleet placements `shouldBe` Left (ShipOutOfBounds Destroyer (Coord 9 11))
       other -> expectationFailure ("Unexpected vertical parse: " ++ show other)
 
+a06Spec :: Spec
+a06Spec = describe "A-06 QuickCheck fleet properties" $ modifyMaxSuccess (max 1000) $ do
+  it "accepts independently generated valid placements" $
+    QC.forAll genValidFleet $ \placements ->
+      QC.counterexample "Generator violated the independent input contract" (validGeneratedFleet placements)
+        QC..&&. case placeFleet placements of
+          Left fault -> QC.counterexample ("Valid fleet rejected: " ++ show fault) False
+          Right _ -> QC.property True
+
+  it "preserves all five ship IDs, their fixed lengths and exactly 17 cells" $
+    forPlacedFleet $ \fleet ->
+      QC.conjoin
+        [ Map.map Set.size (fleetShips fleet) QC.=== Map.fromList shipSizes
+        , length (returnedCells fleet) QC.=== 17 ]
+
+  it "keeps every returned cell inside the independently specified 10x10 board" $
+    forPlacedFleet $ \fleet ->
+      QC.counterexample ("Returned cells: " ++ show (returnedCells fleet)) $
+        all (`elem` legalBoardCells) (returnedCells fleet)
+
+  it "assigns each occupied cell to exactly one ship" $
+    forPlacedFleet $ \fleet ->
+      let counts = Map.fromListWith (+) [(cell, 1 :: Int) | cell <- returnedCells fleet]
+      in Map.elems counts QC.=== replicate 17 1
+
+  it "normalizes a random input permutation to the same fleet" $
+    QC.forAll genValidFleet $ \placements ->
+      QC.forAll (QC.shuffle placements) $ \permuted ->
+        case placeFleet placements of
+          Left fault -> QC.counterexample ("Original fleet rejected: " ++ show fault) False
+          Right fleet -> placeFleet permuted QC.=== Right fleet
+
+  it "covers each edge/corner, mixed directions, contact and varied carrier locations" $
+    QC.checkCoverage $ QC.forAll genValidFleet $ \placements ->
+      let cells = concatMap referenceCells placements
+          touches predicate = any predicate cells
+          carrier = [placementStart placement | placement <- placements, placementShip placement == Carrier]
+          contact = or
+            [ abs (coordColumn a - coordColumn b) + abs (coordRow a - coordRow b) == 1
+            | first <- placements, second <- placements
+            , placementShip first < placementShip second
+            , a <- referenceCells first, b <- referenceCells second ]
+          covers = [(20, touches ((== 1) . coordColumn), "left edge"),
+                    (20, touches ((== 10) . coordColumn), "right edge"),
+                    (20, touches ((== 1) . coordRow), "top edge"),
+                    (20, touches ((== 10) . coordRow), "bottom edge"),
+                    (1, Coord 1 1 `elem` cells, "A1 corner"),
+                    (1, Coord 10 1 `elem` cells, "J1 corner"),
+                    (1, Coord 1 10 `elem` cells, "A10 corner"),
+                    (1, Coord 10 10 `elem` cells, "J10 corner"),
+                    (90, mixedDirections placements, "mixed directions"),
+                    (20, contact, "legal side contact"),
+                    (10, any ((<= 5) . coordColumn) carrier, "carrier starts in left half"),
+                    (10, any ((> 5) . coordColumn) carrier, "carrier starts in right half"),
+                    (10, any ((<= 5) . coordRow) carrier, "carrier starts in top half"),
+                    (10, any ((> 5) . coordRow) carrier, "carrier starts in bottom half")]
+      in foldr (\(percentage, present, label) -> QC.cover percentage present label)
+           (QC.property (validGeneratedFleet placements)) covers
+
+returnedCells :: Fleet -> [Coord]
+returnedCells = concatMap Set.toList . Map.elems . fleetShips
+
+forPlacedFleet :: (Fleet -> QC.Property) -> QC.Property
+forPlacedFleet assertion = QC.forAll genValidFleet $ \placements ->
+  case placeFleet placements of
+    Left fault -> QC.counterexample ("Valid fleet rejected: " ++ show fault) False
+    Right fleet -> assertion fleet
+
 -- Deliberately specified layouts: all four corners, and a 6x6 packing containing
 -- both orientations plus legal end/side contact. No unchecked Fleet is built.
 fourCornerFleet, mixedFleet :: FleetPlacement
@@ -426,10 +498,6 @@ compileProbe body = do
       readProcessWithExitCode "ghc"
         ["-fno-code", "-fforce-recomp", "-hide-all-packages", "-package", "base",
          "-package", "containers", "-package", "battleship-haskell", "-i", path] ""
-
--- Independently specified R-01 lengths, not derived from the implementation.
-shipSizes :: [(ShipId, Int)]
-shipSizes = [(Carrier, 5), (Battleship, 4), (Cruiser, 3), (Submarine, 3), (Destroyer, 2)]
 
 horizontalFleet :: FleetPlacement
 horizontalFleet =

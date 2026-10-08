@@ -223,6 +223,7 @@ app/ServerMain.hs C
 app/ClientMain.hs D
 test/TypesSpec.hs A
 test/BoardSpec.hs A
+test/TestSupport/Generators.hs A
 test/RulesSpec.hs B
 test/ViewSpec.hs B
 test/CoordinatorSpec.hs C
@@ -254,6 +255,7 @@ stack test --test-arguments="--match S-01"
 - ProtocolSpec D-01/D-02: gọi API production với golden vectors/transcript D-01, framing byte, lỗi, định tuyến và round-trip; giữ Coord/Command của Types.
 - RulesSpec B-01/B-02: chữ ký step thực tế, đủ Command/Phase cho hai actor/turn/winner/reason, Board thật, bắt đầu P1 một lần, rollback hợp đồng Left, readiness/sai lượt/tọa độ/bắn lặp, Quit/EOF lặp; mọi kết quả bắn, lịch sử/shot nhận, tàu chạm cạnh/ngang/dọc, mọi thứ tự bắn từng tàu và ván thuần cho cả hai winner.
 - ViewSpec B-03: chữ ký viewFor thuần; đúng chủ fleet/history/readiness, toàn ván Miss/Hit/Sunk/Win cho cả hai winner, soát mọi ô đối thủ chưa bắn và đối chiếu toàn PlayerView; 72 layout bí mật cho mỗi viewer, bí mật sau Quit, tọa độ trùng giữa hai bàn và frame/errors actor-only qua Coordinator production. Không đổi PlayerView hoặc wire v1; Server dùng sự kiện đã lọc.
+- QuickCheck A-06/B-06: generator dùng chung do A phụ trách, A/B cùng review. Mỗi property chạy tối thiểu 1.000 trường hợp; BoardSpec kiểm tra đội tàu và độ bao phủ mép/góc, ViewSpec tạo trạng thái qua step và đối chiếu hai trận có bí mật khác nhau nhưng cùng sự kiện công khai. Bao phủ Placing/Turn/Finished, Sunk và cả hai lý do kết thúc; Hspec in seed và phản ví dụ để tái hiện.
 - SharedContractSpec: API nguồn khớp bản chụp, chỉ Types định nghĩa Coord/Command, Fleet abstract và chỉ Board/Types truy cập representation private, danh sách chủ sở hữu đủ/không trùng, hai điểm vào Main có main :: IO (). Test đọc src/app/test trong repository; chạy test binary riêng cần đặt working directory ở gốc repo.
 - ServerSpec C-02: TCP thật qua server library; slot/third client, QUIT/EOF, race kết nối/bỏ cuộc, framing byte và cleanup khi cancel/lỗi startup, dừng rồi bind lại cùng port.
 - CoordinatorSpec C-03: unit test ranh giới parse/step/state/encode và TCP thật với stub/lõi thật; transcript, rollback, concurrent PLACE/FIRE, lỗi nội bộ, Sunk/Win và EOF giữ winner.

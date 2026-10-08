@@ -185,6 +185,15 @@ stack test --ghc-options=-Werror --test-arguments="--match A-03"
 
 BoardSpec gồm test thuần cho đúng năm ID/17 ô, mép A1/J10, tàu dài 3 trùng ID, tàu chạm cạnh và không đặt lại qua Rules.step. Năm test biên dịch chạy GHC có sẵn trong môi trường Stack trên probe tạm: API public hợp lệ phải biên dịch, constructor/record update/coerce/import private phải bị từ chối đúng nguyên nhân. Probe chỉ dùng package đã build, được xóa sau test; không cần dependency mới.
 
+Chạy riêng QuickCheck A-06/B-06 (mỗi property tối thiểu 1.000 trường hợp):
+
+```sh
+stack test --ghc-options=-Werror --test-arguments="--match=A-06"
+stack test --ghc-options=-Werror --test-arguments="--match=B-06"
+```
+
+Hai bộ test dùng chung generator trong `test/TestSupport/Generators.hs`, độc lập với các hàm kiểm tra của Board. B-06 tạo trạng thái qua `step`, đối chiếu view với sự kiện quan sát được và so sánh hai trận có ô bí mật khác nhau nhưng cùng sự kiện công khai, kể cả Sunk và kết thúc. Khi lỗi, Hspec in phản ví dụ và lệnh chạy lại có seed; ví dụ thêm `--seed=20261009` vào `--test-arguments`. Giữ nguyên code và phiên bản dependency khi tái hiện seed. Test ngẫu nhiên không thay thế chứng minh bất biến.
+
 Chạy riêng luật B-01/B-02:
 
 ```sh
@@ -381,7 +390,7 @@ Có thể bỏ PORT để dùng 4000, ví dụ `stack exec battleship-client -- 
 
 `package.yaml` là nguồn cấu hình package; file `.cabal` được Stack/Hpack sinh tự động. Giữ `stack.yaml.lock` trong Git để chia sẻ cùng snapshot.
 
-`Types` dùng `containers` cho `Map`/`Set`; C-02/D-02 dùng `network` cho TCP, `bytestring` cho framing/codec theo byte, `async` cho vòng đời worker và deadline. C-04 dùng `stm` cho TVar/TQueue/atomically trong library và test; D-04 dùng queue cho Response đọc từ mạng. D-04 khai báo `Win32` chỉ khi `os(windows)`, dùng binding console sẵn trong GHC để nhận sự kiện khi đang nhập dở; CPP bỏ import/cài đặt Win32 trên nền tảng khác. Hai Main dùng PortNumber từ `network`; ClientMain dùng `bytestring` để đưa lệnh CLI vào parser. Test suite dùng Hspec, `network`/`async` để kiểm tra TCP thật, `process` để khởi chạy executable và `directory`/`filepath` để đối chiếu cây nguồn S-01 trên Windows/Linux. `docs/protocol.md` là data file để test đọc đúng tài liệu qua module Cabal tự sinh `Paths_battleship_haskell`. Chưa cần thêm QuickCheck hoặc text.
+`Types` dùng `containers` cho `Map`/`Set`; C-02/D-02 dùng `network` cho TCP, `bytestring` cho framing/codec theo byte, `async` cho vòng đời worker và deadline. C-04 dùng `stm` cho TVar/TQueue/atomically trong library và test; D-04 dùng queue cho Response đọc từ mạng. D-04 khai báo `Win32` chỉ khi `os(windows)`, dùng binding console sẵn trong GHC để nhận sự kiện khi đang nhập dở; CPP bỏ import/cài đặt Win32 trên nền tảng khác. Hai Main dùng PortNumber từ `network`; ClientMain dùng `bytestring` để đưa lệnh CLI vào parser. Test suite dùng Hspec, `network`/`async` để kiểm tra TCP thật, `process` để khởi chạy executable và `directory`/`filepath` để đối chiếu cây nguồn S-01 trên Windows/Linux. `docs/protocol.md` là data file để test đọc đúng tài liệu qua module Cabal tự sinh `Paths_battleship_haskell`. A-06/B-06 dùng QuickCheck trong test suite cho tính chất đội tàu và góc nhìn riêng; chưa cần thêm text.
 
 Thành viên A/B/D lấy nhánh nền đã chứa C-01 bằng `git fetch origin` và checkout/pull nhánh được nhóm thống nhất, rồi chạy hai lệnh trên trước khi thêm mã của mình.
 
