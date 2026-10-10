@@ -3,7 +3,7 @@
 Ngày lập: **2026-10-10**. Nhánh: `Update_using_docker`, nền `0a7c250`.
 Chủ trì: R. C/D review cấu hình, healthcheck và vòng đời phiên trước hợp nhất.
 
-**Trạng thái: hợp đồng kỹ thuật để triển khai; chưa có xác nhận C/D.** DK-01 tạo tài liệu, `.env.example` và test tự động kiểm tra hai artifact này. DK-02 đã thêm BATTLESHIP_BIND_HOST/BATTLESHIP_READY_FILE, API listener tương thích và test Haskell. DK-03 đã thêm TCP host, public port, kiểm tra Origin/Host, reader file LAN và healthcheck bridge. Dockerfile, Compose, helper LAN và test Docker runtime thuộc DK-04..DK-08; chưa thể dùng mẫu này để chạy Docker ngay. Không coi tài liệu này là bằng chứng Docker đã build/chạy xanh.
+**Trạng thái: hợp đồng kỹ thuật để triển khai; chưa có xác nhận C/D.** DK-01 tạo tài liệu, `.env.example` và test tự động kiểm tra hai artifact này. DK-02 đã thêm BATTLESHIP_BIND_HOST/BATTLESHIP_READY_FILE, API listener tương thích và test Haskell. DK-03 đã thêm TCP host, public port, kiểm tra Origin/Host, reader file LAN và healthcheck bridge. DK-04 đã nghiệm thu [image Haskell và runner runtime](../docker/README.md) trên Linux amd64 ngày 2026-10-10: build thành công, 908 ví dụ Haskell với `-Werror` và 5/5 test runtime xanh. Web image, Compose, helper LAN và test hai service thuộc DK-05..DK-08; chưa thể dùng mẫu này để chạy Compose ngay. Kết quả DK-04 không thay thế nghiệm thu deployment hai service.
 
 Nguồn phải giữ đúng: [luật R-01](game_spec.md), [wire v1](protocol.md), [hợp đồng chung](shared_contract.md), [bridge và GUI hiện tại](frontend_integration.md). Không đổi Types, luật, người nhận sự kiện hoặc nguồn sự thật `TVar GameState` để phục vụ Docker.
 

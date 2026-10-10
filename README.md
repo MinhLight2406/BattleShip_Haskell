@@ -53,7 +53,7 @@ Remove-Item Env:BATTLESHIP_BIND_HOST, Env:BATTLESHIP_READY_FILE -ErrorAction Sil
 stack test --ghc-options=-Werror --test-arguments="--match DK-02"
 ```
 
-Hợp đồng hai service, mapping cổng và cập nhật IP LAN: [docs/docker_deployment.md](docs/docker_deployment.md). DK-02/DK-03 đã triển khai listener Haskell và cấu hình bridge; Dockerfile/Compose thuộc các task tiếp theo.
+Hợp đồng hai service, mapping cổng và cập nhật IP LAN: [docs/docker_deployment.md](docs/docker_deployment.md). DK-02/DK-03 đã triển khai listener Haskell và cấu hình bridge; DK-04 đã kiểm thử image Haskell trên Linux. Web image và Compose thuộc các task tiếp theo.
 
 ### Cấu hình bridge — DK-03
 
@@ -75,6 +75,10 @@ Các biến này chỉ cấu hình ứng dụng; chúng **không tự publish/fo
 Bind `0.0.0.0` cho phép công bố localhost hoặc IP LAN cụ thể. Handshake vẫn yêu cầu Origin nằm trong danh sách cho phép và Host cùng authority với Origin. Khi đặt `WEB_PUBLIC_PORT`, origin nội bộ và origin Vite `:5173` không được tự cho phép. `GET /healthz` trả `{"status":"ok"}` mà không kết nối Haskell hoặc chiếm P1/P2; endpoint này chỉ kiểm tra bridge.
 
 Để cập nhật IP host trong container, dùng `LAN_ORIGINS_FILE` thay cho `PUBLIC_ORIGIN`. Bridge đọc file trước khi listen và mỗi 2 giây; file lỗi/quá hạn sẽ bỏ origin LAN, giữ localhost và các phiên hiện có. Schema, giới hạn và TTL nằm trong hợp đồng Docker. Reader đã có ở DK-03; helper tạo/cập nhật file thuộc DK-06.
+
+### Image Haskell — DK-04
+
+Đã có `docker/haskell.Dockerfile` với stage build/test/runtime và `.dockerignore`. Ngày 2026-10-10, build Linux amd64 với lts-24.59 / GHC 9.10.3 thành công; toàn bộ `stack test --ghc-options=-Werror` qua **908 ví dụ, 0 lỗi**. Image runtime chạy bằng UID/GID 10001, không thiếu dependency động; **5/5 test runtime** qua với server thật, WELCOME, cấu hình, healthcheck marker và SIGTERM. Lệnh chạy và minh chứng nằm trong [docker/README.md](docker/README.md). Web image và Compose thuộc DK-05/DK-07.
 
 Test giao diện và tích hợp (chạy từ gốc repository sau khi build):
 
