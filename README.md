@@ -53,7 +53,28 @@ Remove-Item Env:BATTLESHIP_BIND_HOST, Env:BATTLESHIP_READY_FILE -ErrorAction Sil
 stack test --ghc-options=-Werror --test-arguments="--match DK-02"
 ```
 
-Hợp đồng hai service, mapping cổng và cập nhật IP LAN: [docs/docker_deployment.md](docs/docker_deployment.md). Dockerfile/Compose và cấu hình bridge dành cho container thuộc các task tiếp theo; DK-02 mới triển khai phần listener Haskell.
+Hợp đồng hai service, mapping cổng và cập nhật IP LAN: [docs/docker_deployment.md](docs/docker_deployment.md). DK-02/DK-03 đã triển khai listener Haskell và cấu hình bridge; Dockerfile/Compose thuộc các task tiếp theo.
+
+### Cấu hình bridge — DK-03
+
+`BATTLESHIP_TCP_HOST` mặc định `127.0.0.1`, nhận IPv4 canonical hoặc tên DNS như `localhost`, `haskell`; không nhận URL, port kèm host hoặc chuỗi rỗng. `BATTLESHIP_TCP_PORT` mặc định `4000`. Lỗi DNS/kết nối được log cùng endpoint và đóng WebSocket với mã 1011; bridge tiếp tục chạy và nhận kết nối mới khi backend sẵn sàng.
+
+`HOST`/`PORT` là listener của bridge. `WEB_PUBLIC_PORT` là cổng bên ngoài mà người chơi truy cập; `PUBLIC_ORIGIN` phải dùng cổng này nếu được khai báo. Ví dụ cấu hình dành cho mapping **host 8081 → container 8080**:
+
+```dotenv
+HOST=0.0.0.0
+PORT=8080
+WEB_PUBLIC_PORT=8081
+PUBLIC_ORIGIN=http://localhost:8081
+BATTLESHIP_TCP_HOST=haskell
+BATTLESHIP_TCP_PORT=4000
+```
+
+Các biến này chỉ cấu hình ứng dụng; chúng **không tự publish/forward cổng**. Compose ở DK-07 phải tạo mapping `8081:8080` và mạng có service `haskell`. Chạy trực tiếp không có mapping thì bỏ `WEB_PUBLIC_PORT`, dùng `PUBLIC_ORIGIN` cùng cổng `PORT`, và để TCP host mặc định.
+
+Bind `0.0.0.0` cho phép công bố localhost hoặc IP LAN cụ thể. Handshake vẫn yêu cầu Origin nằm trong danh sách cho phép và Host cùng authority với Origin. Khi đặt `WEB_PUBLIC_PORT`, origin nội bộ và origin Vite `:5173` không được tự cho phép. `GET /healthz` trả `{"status":"ok"}` mà không kết nối Haskell hoặc chiếm P1/P2; endpoint này chỉ kiểm tra bridge.
+
+Để cập nhật IP host trong container, dùng `LAN_ORIGINS_FILE` thay cho `PUBLIC_ORIGIN`. Bridge đọc file trước khi listen và mỗi 2 giây; file lỗi/quá hạn sẽ bỏ origin LAN, giữ localhost và các phiên hiện có. Schema, giới hạn và TTL nằm trong hợp đồng Docker. Reader đã có ở DK-03; helper tạo/cập nhật file thuộc DK-06.
 
 Test giao diện và tích hợp (chạy từ gốc repository sau khi build):
 
@@ -74,7 +95,7 @@ Trên nhánh `Updata_Connecting_LAN`, cầu mặc định lắng nghe IPv4 tại
 Nếu đã dùng cấu hình IP thủ công ở terminal trước, xóa nó trước khi chạy tự động:
 
 ```powershell
-Remove-Item Env:HOST, Env:PUBLIC_ORIGIN -ErrorAction SilentlyContinue
+Remove-Item Env:HOST, Env:PUBLIC_ORIGIN, Env:WEB_PUBLIC_PORT, Env:LAN_ORIGINS_FILE -ErrorAction SilentlyContinue
 $env:PORT = '8081'
 node frontend/bridge.mjs
 ```
@@ -105,7 +126,7 @@ node frontend/bridge.mjs
 
 Hai thiết bị cùng LAN mở đúng URL trong `PUBLIC_ORIGIN`; log khởi động cũng in URL này. TCP tới Haskell vẫn là `127.0.0.1:4000` mặc định. Có thể đặt `HOST='0.0.0.0'` để lắng nghe trên mọi giao diện IPv4, nhưng vẫn phải đặt `PUBLIC_ORIGIN` bằng IP LAN thật, không dùng `0.0.0.0` trong URL người chơi.
 
-`HOST` nhận IPv4 hoặc `localhost`; `PUBLIC_ORIGIN` nhận HTTP với IPv4/localhost, có port trùng `PORT`, không có đường dẫn/query/credentials. Cấu hình rõ `HOST='127.0.0.1'` để chỉ chạy localhost. Xóa cả HOST/PUBLIC_ORIGIN để dùng tự nhận LAN; đặt IP thủ công thì IP đó không tự đổi khi Wi-Fi đổi.
+`HOST` nhận IPv4 hoặc `localhost`; `PUBLIC_ORIGIN` nhận HTTP với IPv4/localhost, có port trùng `PORT` khi không khai báo `WEB_PUBLIC_PORT`, không có đường dẫn/query/credentials. Cấu hình rõ `HOST='127.0.0.1'` để chỉ chạy localhost. Xóa HOST/PUBLIC_ORIGIN/WEB_PUBLIC_PORT/LAN_ORIGINS_FILE để dùng tự nhận LAN; đặt IP thủ công thì IP đó không tự đổi khi Wi-Fi đổi.
 
 Thiết bị ngoài máy chủ cần được mạng Wi-Fi và firewall cho phép truy cập cổng web đã chọn. Quy tắc firewall và nghiệm thu hai thiết bị thật thuộc LAN-05/LAN-06.
 

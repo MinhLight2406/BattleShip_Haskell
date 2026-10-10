@@ -3,7 +3,7 @@
 Ngày lập: **2026-10-10**. Nhánh: `Update_using_docker`, nền `0a7c250`.
 Chủ trì: R. C/D review cấu hình, healthcheck và vòng đời phiên trước hợp nhất.
 
-**Trạng thái: hợp đồng kỹ thuật để triển khai; chưa có xác nhận C/D.** DK-01 tạo tài liệu, `.env.example` và test tự động kiểm tra hai artifact này. DK-02 đã thêm BATTLESHIP_BIND_HOST/BATTLESHIP_READY_FILE, API listener tương thích và test Haskell. Cấu hình bridge mới, Dockerfile, Compose, helper LAN và test Docker runtime thuộc DK-03..DK-08; chưa thể dùng mẫu này để chạy Docker ngay. Không coi tài liệu này là bằng chứng Docker đã build/chạy xanh.
+**Trạng thái: hợp đồng kỹ thuật để triển khai; chưa có xác nhận C/D.** DK-01 tạo tài liệu, `.env.example` và test tự động kiểm tra hai artifact này. DK-02 đã thêm BATTLESHIP_BIND_HOST/BATTLESHIP_READY_FILE, API listener tương thích và test Haskell. DK-03 đã thêm TCP host, public port, kiểm tra Origin/Host, reader file LAN và healthcheck bridge. Dockerfile, Compose, helper LAN và test Docker runtime thuộc DK-04..DK-08; chưa thể dùng mẫu này để chạy Docker ngay. Không coi tài liệu này là bằng chứng Docker đã build/chạy xanh.
 
 Nguồn phải giữ đúng: [luật R-01](game_spec.md), [wire v1](protocol.md), [hợp đồng chung](shared_contract.md), [bridge và GUI hiện tại](frontend_integration.md). Không đổi Types, luật, người nhận sự kiện hoặc nguồn sự thật `TVar GameState` để phục vụ Docker.
 
@@ -258,9 +258,30 @@ Log cục bộ: `.stack-work/dk02/build-final.log`, `targeted-fixed.log`, `full-
 
 Windows dùng [SO_EXCLUSIVEADDRUSE](https://learn.microsoft.com/en-us/windows/win32/winsock/so-exclusiveaddruse) trước bind để tránh listener wildcard/loopback tranh cổng; không chỉ bỏ ReuseAddr. Linux thêm handler [SIGTERM qua System.Posix.Signals](https://hackage-content.haskell.org/package/unix-2.8.1.0/docs/System-Posix-Signals.html) để owner thread chạy finalizer. Test SIGTERM chỉ được biên dịch/chạy trên Unix, **chưa được chạy ở workspace Windows này**; máy hiện chưa có WSL/Docker. DK-04/DK-08 phải chạy gate Linux/container, gồm test này, trước nghiệm thu Docker. Không dùng kết quả wildcard native để khẳng định hai container đã kết nối được.
 
+### Kết quả triển khai bridge DK-03
+
+Nhánh `Bridge_connect_server_URL` tách từ `Cho_Haskell_cau_hinh_lang_nghe` tại `761f29c`. Kiểm tra trên Windows ngày **2026-10-10**, Node **v24.19.0**:
+
+| Lệnh | Kết quả thực tế |
+|---|---|
+| `pnpm --dir frontend test` | 36/36 test qua; gồm 22 test bridge và 6 test artifact DK-01 |
+| `pnpm --dir frontend build` | Qua TypeScript và Vite, exit 0 |
+| `stack build` | Qua, exit 0 |
+| `stack test --ghc-options=-Werror` | 907 ví dụ, 0 lỗi |
+| `stack exec -- node --test frontend/test/integration.test.mjs frontend/test/reconnect.test.mjs` | 11/11 test qua, không bỏ qua |
+| `stack exec -- node --test frontend/test/lan.test.mjs` với `BATTLESHIP_LAN_TEST_HOST` là IP LAN hiện tại | 8/8 test qua, không bỏ qua |
+
+Log cục bộ ở `.stack-work/dk03/`: `frontend-test.log`, `frontend-build.log`, `integration-reconnect.log`, `lan-test-final.log`, `haskell-test.log`. Test kiểm tra host TCP/URL sai, public port khác listener, Origin đúng nhưng Host sai, origin chưa cấu hình, DNS ENOTFOUND và ECONNREFUSED, phục hồi khi backend chạy lại. Healthcheck được gọi 100 lần trước khi P1/P2 kết nối mà không chiếm slot. Test LAN chơi một trận thật đến thắng qua hai cổng khác nhau; TCP forwarder giữ nguyên Host/Origin mô phỏng mapping cổng, không thay luật hoặc response Haskell.
+
+Tên service `haskell` được kiểm tra bằng resolver điều khiển trong test và socket TCP thật; CLI kiểm tra DNS `localhost` với Haskell thật. **Chưa chạy DNS của mạng Docker hoặc hai container.** Test qua `192.168.1.126` dùng IP LAN của chính máy chủ tại thời điểm chạy, không thay nghiệm thu từ hai thiết bị vật lý. Reader file LAN được kiểm tra đổi IP, file sai/quá hạn/xóa, phục hồi allowlist và resume qua origin mới; giữ TCP, lịch sử riêng và deadline 300.000 ms. Đây là thay đổi file/clock kiểm soát trong test, không phải đổi Wi-Fi vật lý.
+
+Không đổi Haskell, API luật hoặc giao thức v1 ở DK-03. Bộ reconnect kiểm tra ranh giới 299.999/300.000 ms vẫn xanh. Dockerfile/Compose và helper xuất file LAN chưa triển khai; DK-06/DK-07/DK-08 cần hoàn thiện và chạy gate container trước nghiệm thu.
+
+Rà soát DK-03 phát hiện Host có dấu `/` cuối được parser URL chuẩn hóa và chấp nhận. Đã chặn `/` trong Host trước parse; regression test từ chối `localhost:8081/`, `localhost/`, `localhost:80/` trước khi tạo TCP, đồng thời vẫn nhận Host hợp lệ ở port 80. PUBLIC_ORIGIN cấu hình có dấu `/` cuối vẫn được chuẩn hóa theo hợp đồng.
+
 ## 9. Tác động và xác nhận
 
-Sau DK-02, `runServer`/`runServerWith` vẫn bind loopback; ServerMain có thể chọn IPv4/localhost qua BATTLESHIP_BIND_HOST và readiness qua BATTLESHIP_READY_FILE. Bridge hiện vẫn nối TCP loopback, PUBLIC_ORIGIN phải cùng PORT và tự dò IP của process; DK-03/DK-06 sẽ bổ sung cấu hình bridge/helper theo hợp đồng này. `.env.example` phải được cập nhật cùng hợp đồng khi biến/giá trị đổi.
+Sau DK-02, `runServer`/`runServerWith` vẫn bind loopback; ServerMain có thể chọn IPv4/localhost qua BATTLESHIP_BIND_HOST và readiness qua BATTLESHIP_READY_FILE. DK-03 giữ TCP host mặc định loopback, cho phép chọn BATTLESHIP_TCP_HOST; PUBLIC_ORIGIN dùng WEB_PUBLIC_PORT nếu có, nếu không dùng PORT. Chạy native mặc định tiếp tục tự dò IP của process; container dùng PUBLIC_ORIGIN cố định hoặc LAN_ORIGINS_FILE được helper DK-06 cập nhật. Hai chế độ này không được khai báo cùng lúc. Các biến ứng dụng không tự tạo mapping cổng; Compose DK-07 phải publish cổng tương ứng. `.env.example` phải được cập nhật cùng hợp đồng khi biến/giá trị đổi.
 
 Tiêu chí kỹ thuật DK-01: service/port/mapping, precedence/validation, hai chế độ origin, schema/freshness LAN, hot update, restart và healthcheck đã xác định; C/D có vector test và phân công để triển khai độc lập. Chưa ghi tên/chữ ký hoặc chứng nhận review thay người phụ trách.
 

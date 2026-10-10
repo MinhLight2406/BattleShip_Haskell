@@ -1,6 +1,7 @@
 import http from 'node:http'
 import net from 'node:net'
 import { readFile } from 'node:fs/promises'
+import { openSync, readSync, closeSync, fstatSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { networkInterfaces } from 'node:os'
@@ -16,7 +17,8 @@ export function lanAddresses(interfaces = networkInterfaces(), selected) {
     .filter(([name]) => !selected || name === selected)
     .flatMap(([, entries]) => entries ?? [])
     .filter(({ family, internal, address }) => (family === 'IPv4' || family === 4) && !internal &&
-      net.isIP(address) === 4 && !address.startsWith('127.') && !address.startsWith('169.254.'))
+      net.isIP(address) === 4 && !address.startsWith('127.') && !address.startsWith('169.254.') &&
+      !['0.0.0.0', '255.255.255.255'].includes(address))
     .map(({ address }) => address))]
 }
 
@@ -29,42 +31,100 @@ export function readBridgeConfig(env = process.env) {
   }
   const port = readPort('PORT', 8080)
   const tcpPort = readPort('BATTLESHIP_TCP_PORT', 4000)
-  const autoLan = env.HOST === undefined && env.PUBLIC_ORIGIN === undefined
-  const host = env.HOST === 'localhost' ? '127.0.0.1' : (env.HOST ?? (autoLan ? '0.0.0.0' : '127.0.0.1'))
+  const tcpHost = env.BATTLESHIP_TCP_HOST ?? '127.0.0.1'
+  const labels = tcpHost.split('.')
+  if (net.isIP(tcpHost) !== 4 && (/^[0-9.]+$/.test(tcpHost) || tcpHost.length > 253 ||
+      !labels.every((label) => /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/i.test(label))))
+    throw new Error('BATTLESHIP_TCP_HOST must be a canonical IPv4 address or DNS hostname (no URL, port or whitespace)')
+  const publicPort = env.WEB_PUBLIC_PORT === undefined ? undefined : readPort('WEB_PUBLIC_PORT', port)
+  const originSetting = env.PUBLIC_ORIGIN || undefined
+  const lanOriginsFile = env.LAN_ORIGINS_FILE || undefined
+  if (lanOriginsFile && (!path.isAbsolute(lanOriginsFile) || lanOriginsFile.includes('\0')))
+    throw new Error('LAN_ORIGINS_FILE must be an absolute file path')
+  if (originSetting && lanOriginsFile) throw new Error('PUBLIC_ORIGIN and LAN_ORIGINS_FILE are mutually exclusive')
+  if (publicPort !== undefined && !originSetting && !lanOriginsFile)
+    throw new Error('PUBLIC_ORIGIN or LAN_ORIGINS_FILE is required with WEB_PUBLIC_PORT')
+  const autoLan = publicPort === undefined && !lanOriginsFile && env.HOST === undefined && !originSetting
+  const host = env.HOST === 'localhost' ? '127.0.0.1' : (env.HOST ?? (autoLan || lanOriginsFile ? '0.0.0.0' : '127.0.0.1'))
   if (net.isIP(host) !== 4) throw new Error('HOST must be an IPv4 address or localhost')
   const local = host.startsWith('127.')
   let publicOrigin
-  if (env.PUBLIC_ORIGIN !== undefined) {
-    let url
-    try { url = new URL(env.PUBLIC_ORIGIN) }
-    catch { throw new Error('PUBLIC_ORIGIN must be an HTTP origin, e.g. http://192.168.1.10:8080') }
-    if (url.protocol !== 'http:' || url.username || url.password || url.search || url.hash ||
-        url.pathname !== '/' || !/^http:\/\/[^/?#@\\\s]+\/?$/i.test(env.PUBLIC_ORIGIN) ||
-        !(net.isIP(url.hostname) === 4 || url.hostname === 'localhost') ||
-        ['0.0.0.0', '255.255.255.255'].includes(url.hostname))
-      throw new Error('PUBLIC_ORIGIN must be a bare HTTP origin with an IPv4 address or localhost; no path, query or credentials')
-    if (Number(url.port || 80) !== port) throw new Error('PUBLIC_ORIGIN port must match PORT')
+  if (originSetting) {
+    const url = parseHttpOrigin(originSetting, 'PUBLIC_ORIGIN')
+    if (Number(url.port || 80) !== (publicPort ?? port))
+      throw new Error(`PUBLIC_ORIGIN port must match ${publicPort === undefined ? 'PORT' : 'WEB_PUBLIC_PORT'}`)
     const originLocal = url.hostname === 'localhost' || url.hostname.startsWith('127.')
-    if (local !== originLocal || (host !== '0.0.0.0' && url.hostname !== host && !(host === '127.0.0.1' && url.hostname === 'localhost')))
+    if (host !== '0.0.0.0' && (local !== originLocal ||
+        (url.hostname !== host && !(host === '127.0.0.1' && url.hostname === 'localhost'))))
       throw new Error('PUBLIC_ORIGIN address must match HOST; use HOST=0.0.0.0 with your LAN IP for all IPv4 interfaces')
     publicOrigin = url.origin
   }
-  if (!local && !publicOrigin && !autoLan) throw new Error('PUBLIC_ORIGIN is required when HOST listens beyond localhost')
-  return { host, port, tcpPort, publicOrigin, autoLan, lanInterface: env.LAN_INTERFACE }
+  if (!local && !publicOrigin && !autoLan && !lanOriginsFile)
+    throw new Error('PUBLIC_ORIGIN is required when HOST listens beyond localhost')
+  return { host, port, tcpHost, tcpPort, publicPort, publicOrigin, autoLan, lanOriginsFile, lanInterface: env.LAN_INTERFACE || undefined }
+}
+
+function parseHttpOrigin(value, label) {
+  // Validate raw authority too: URL otherwise accepts shortened/hex IPv4 forms.
+  const match = typeof value === 'string' && /^http:\/\/(localhost|[0-9.]+)(?::([1-9][0-9]{0,4}))?\/?$/i.exec(value)
+  if (!match || (match[1].toLowerCase() !== 'localhost' && net.isIP(match[1]) !== 4) ||
+      (match[2] && Number(match[2]) > 65535) || ['0.0.0.0', '255.255.255.255'].includes(match[1]))
+    throw new Error(`${label} must be a bare HTTP origin with canonical IPv4 or localhost; no path, query or credentials`)
+  return new URL(value)
+}
+
+export function parseLanOrigins(bytes, publicPort, now = Date.now()) {
+  if (bytes.length > 8192) throw new Error('LAN_ORIGINS_FILE exceeds 8 KiB')
+  let data
+  try { data = JSON.parse(new TextDecoder('utf-8', { fatal: true, ignoreBOM: true }).decode(bytes)) }
+  catch { throw new Error('LAN_ORIGINS_FILE must contain UTF-8 JSON without BOM') }
+  if (!data || Array.isArray(data) || Object.keys(data).sort().join(',') !== 'origins,updatedAt,version' ||
+      data.version !== 1 || !Number.isSafeInteger(data.updatedAt) || data.updatedAt < 0 ||
+      !Array.isArray(data.origins) || data.origins.length > 16)
+    throw new Error('LAN_ORIGINS_FILE has an invalid version/updatedAt/origins schema')
+  if (now - data.updatedAt < -2000 || now - data.updatedAt >= 10000)
+    throw new Error('LAN_ORIGINS_FILE is stale or has a future timestamp')
+  const origins = data.origins.map((value) => {
+    const url = parseHttpOrigin(value, 'LAN_ORIGINS_FILE origin')
+    if (url.origin !== value || net.isIP(url.hostname) !== 4 || url.hostname.startsWith('127.') ||
+        url.hostname.startsWith('169.254.') || Number(url.port || 80) !== publicPort)
+      throw new Error('LAN_ORIGINS_FILE origins must be canonical LAN IPv4 origins at WEB_PUBLIC_PORT')
+    return url.origin
+  })
+  return [...new Set(origins)]
+}
+
+function readLanOriginsFile(filename, publicPort) {
+  const descriptor = openSync(filename, 'r')
+  try {
+    if (!fstatSync(descriptor).isFile()) throw new Error('LAN_ORIGINS_FILE must be a regular file')
+    const bytes = Buffer.alloc(8193)
+    let count = 0, received
+    do { received = readSync(descriptor, bytes, count, bytes.length - count); count += received }
+    while (received && count < bytes.length)
+    return parseLanOrigins(bytes.subarray(0, count), publicPort)
+  } finally { closeSync(descriptor) }
 }
 
 // One resumable browser session = one TCP player. Haskell owns every game rule.
-export function createBridge({ tcpPort = 4000, devOrigin = 'http://127.0.0.1:5173', host = '127.0.0.1', port = 8080,
-  publicOrigin, autoLan = false, lanInterface, reconnectGraceMs = RECONNECT_GRACE_MS, heartbeatMs = 10000,
+export function createBridge({ tcpHost = '127.0.0.1', tcpPort = 4000, devOrigin = 'http://127.0.0.1:5173', host = '127.0.0.1', port = 8080,
+  publicPort, publicOrigin, lanOriginsFile, autoLan = false, lanInterface, reconnectGraceMs = RECONNECT_GRACE_MS, heartbeatMs = 10000,
   addresses = () => lanAddresses(networkInterfaces(), lanInterface) } = {}) {
   const config = readBridgeConfig({ HOST: autoLan ? undefined : host, PORT: String(port),
-    BATTLESHIP_TCP_PORT: String(tcpPort), PUBLIC_ORIGIN: publicOrigin })
+    BATTLESHIP_TCP_HOST: tcpHost, BATTLESHIP_TCP_PORT: String(tcpPort), PUBLIC_ORIGIN: publicOrigin,
+    WEB_PUBLIC_PORT: publicPort === undefined ? undefined : String(publicPort), LAN_ORIGINS_FILE: lanOriginsFile })
+  let lanOrigins = config.lanOriginsFile ? readLanOriginsFile(config.lanOriginsFile, config.publicPort ?? config.port) : []
   const sessions = new Map()
   let stopping = false
   const server = http.createServer(async (request, response) => {
-    if (!['GET', 'HEAD'].includes(request.method)) { response.writeHead(405).end(); return }
     try {
       const pathname = decodeURIComponent(new URL(request.url, 'http://localhost').pathname)
+      if (pathname === '/healthz') {
+        if (request.method !== 'GET') { response.writeHead(405, { Allow: 'GET' }).end(); return }
+        response.writeHead(200, { 'Content-Type': 'application/json' }).end('{"status":"ok"}')
+        return
+      }
+      if (!['GET', 'HEAD'].includes(request.method)) { response.writeHead(405).end(); return }
       const filename = path.resolve(root, '.' + (pathname === '/' ? '/index.html' : pathname))
       if (!filename.startsWith(root + path.sep)) { response.writeHead(403).end(); return }
       const bytes = await readFile(filename)
@@ -72,16 +132,44 @@ export function createBridge({ tcpPort = 4000, devOrigin = 'http://127.0.0.1:517
       response.end(request.method === 'HEAD' ? undefined : bytes)
     } catch { response.writeHead(404).end('Build the UI first: pnpm build') }
   })
+  let lanError
+  const lanMonitor = config.lanOriginsFile ? setInterval(() => {
+    const previous = lanOrigins.join(',')
+    try {
+      lanOrigins = readLanOriginsFile(config.lanOriginsFile, config.publicPort ?? config.port)
+      lanError = undefined
+    } catch (error) {
+      lanOrigins = []
+      if (lanError !== error.message) console.error(`Battleship bridge LAN origins: ${error.message}`)
+      lanError = error.message
+    }
+    if (previous !== lanOrigins.join(',')) server.emit('originsChanged')
+  }, 2000) : undefined
+  lanMonitor?.unref()
+  server.once('close', () => clearInterval(lanMonitor))
+  const originPort = () => config.publicPort ?? server.address()?.port ?? config.port
+  const playerOrigins = () => config.lanOriginsFile ? [...lanOrigins] : config.autoLan
+    ? addresses().map((ip) => parseHttpOrigin(`http://${ip}:${originPort()}`, 'LAN address').origin)
+    : [config.publicOrigin ?? new URL(`http://${config.host === '0.0.0.0' ? '127.0.0.1' : config.host}:${originPort()}`).origin]
   const sockets = new Set()
   const websocket = new WebSocketServer({
     server, path: '/play', maxPayload: 256,
     verifyClient: ({ origin, req }) => {
-      const actualPort = server.address()?.port
-      const origins = [`http://127.0.0.1:${actualPort}`, `http://localhost:${actualPort}`, devOrigin]
-      if (config.host.startsWith('127.')) origins.push(`http://${config.host}:${actualPort}`)
-      if (config.publicOrigin && actualPort === config.port) origins.push(config.publicOrigin)
-      if (config.autoLan) origins.push(...addresses().map((ip) => new URL(`http://${ip}:${actualPort}`).origin))
-      return origins.some((allowed) => new URL(allowed).origin === origin) && new URL(origin).host === req.headers.host
+      try {
+        for (const name of ['origin', 'host'])
+          if (req.rawHeaders.filter((_, index) => index % 2 === 0 && req.rawHeaders[index].toLowerCase() === name).length !== 1) return false
+        if (typeof req.headers.host !== 'string' || req.headers.host.includes('/')) return false
+        const url = parseHttpOrigin(origin, 'Origin')
+        if (url.origin !== origin || parseHttpOrigin(`http://${req.headers.host}`, 'Host').origin !== origin) return false
+        const origins = [`http://127.0.0.1:${originPort()}`, `http://localhost:${originPort()}`].map((value) => new URL(value).origin)
+        if (config.publicPort === undefined && !config.lanOriginsFile) {
+          if (devOrigin) origins.push(parseHttpOrigin(devOrigin, 'devOrigin').origin)
+          if (config.host.startsWith('127.')) origins.push(new URL(`http://${config.host}:${originPort()}`).origin)
+        }
+        if (config.publicPort !== undefined || config.lanOriginsFile || config.autoLan || server.address()?.port === config.port)
+          origins.push(...playerOrigins())
+        return origins.includes(origin)
+      } catch { return false }
     },
   })
   // ws mirrors listener errors; the caller handles them on the HTTP server.
@@ -164,7 +252,7 @@ export function createBridge({ tcpPort = 4000, devOrigin = 'http://127.0.0.1:517
       if (session.ended) ws.close(1000, 'Match closed')
       return
     }
-    const tcp = net.createConnection({ host: '127.0.0.1', port: tcpPort })
+    const tcp = net.createConnection({ host: config.tcpHost, port: config.tcpPort })
     sockets.add(tcp)
     const token = randomBytes(32).toString('hex')
     const session = { tcp, token, ws: null, player: null, fleet: null, frames: [], commands: [], deadline: null, ended: false }
@@ -211,14 +299,19 @@ export function createBridge({ tcpPort = 4000, devOrigin = 'http://127.0.0.1:517
       if (buffer.length > 257) tcp.destroy(new Error('Server line too long'))
     })
     tcp.on('end', () => { cleanup(); session.ws?.close(buffer.length ? 1011 : 1000, buffer.length ? 'Incomplete server frame' : 'Match closed') })
-    tcp.on('error', () => { cleanup(); session.ws?.close(1011, 'Haskell server unavailable') })
+    tcp.on('error', (error) => {
+      console.error(`Battleship bridge TCP ${config.tcpHost}:${config.tcpPort}: ${error.code ?? error.message}`)
+      cleanup(); session.ws?.close(1011, 'Haskell server unavailable')
+    })
     tcp.on('close', () => { cleanup(); session.ws?.close() })
   })
   return {
     server,
+    playerOrigins,
     close: async () => {
       stopping = true
       clearInterval(heartbeat)
+      clearInterval(lanMonitor)
       for (const session of sessions.values()) clearTimeout(session.grace)
       for (const ws of websocket.clients) ws.terminate()
       for (const socket of sockets) socket.destroy()
@@ -230,32 +323,32 @@ export function createBridge({ tcpPort = 4000, devOrigin = 'http://127.0.0.1:517
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  let config
+  let config, bridge
   try {
     config = readBridgeConfig()
     if (config.autoLan && config.lanInterface && !networkInterfaces()[config.lanInterface])
       throw new Error(`LAN_INTERFACE does not exist or has no active address: ${config.lanInterface}`)
+    bridge = createBridge(config)
   }
   catch (error) {
     console.error(`Battleship bridge configuration: ${error.message}`)
     process.exit(1)
   }
-  const bridge = createBridge(config)
   bridge.server.on('error', (error) => { console.error(`Battleship bridge listen (${config.host}:${config.port}): ${error.message}`); process.exitCode = 1 })
   bridge.server.listen(config.port, config.host, () => {
     let previous
     const logAddresses = () => {
-      const links = config.autoLan ? lanAddresses(networkInterfaces(), config.lanInterface)
-        .map((ip) => `http://${ip}:${config.port}`) : [config.publicOrigin ?? `http://${config.host}:${config.port}`]
+      const links = bridge.playerOrigins()
       const signature = links.join(',')
       if (signature === previous) return
       previous = signature
-      console.log(`Battleship UI → TCP 127.0.0.1:${config.tcpPort}; reconnect grace: 5 minutes`)
+      console.log(`Battleship UI → TCP ${config.tcpHost}:${config.tcpPort}; reconnect grace: 5 minutes`)
       console.log(`Listening on ${config.host}:${config.port}.`)
       for (const address of links) console.log(`Open ${address} on each player device.`)
-      if (!links.length) console.log(`No LAN IPv4 yet. Local UI: http://127.0.0.1:${config.port}`)
+      if (!links.length) console.log(`No LAN IPv4 yet. Local UI: http://127.0.0.1:${config.publicPort ?? config.port}`)
     }
     logAddresses()
+    bridge.server.on('originsChanged', logAddresses)
     if (config.autoLan) {
       const monitor = setInterval(logAddresses, 2000)
       monitor.unref()

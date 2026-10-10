@@ -25,11 +25,11 @@ flowchart LR
   SR --> CO[Coordinator: atomically]
   CO <--> GS[(Một TVar GameState)]
   CO --> RL[Rules.step / Board: hàm thuần]
-  CO --> Q[Hai TQueue riêng]
+  CO --> Q[Hai TBQueue riêng: 128 phần tử]
   Q --> SR
 ```
 
-Trình duyệt không mở được TCP trực tiếp. Cầu dùng `node:http`, `node:net` và `ws`, phục vụ bản build Vite cùng origin với `/play`; mỗi phiên người chơi tạo một TCP tới localhost. WebSocket nối lại bằng mã của phiên sẽ dùng lại TCP đó. Server Haskell vẫn gán P1/P2, nhận hai người, từ chối người thứ ba và quyết định luật. Cầu ghép frame TCP bị chia chunk, bỏ CR trong CRLF, thêm đúng một LF vào lệnh, giới hạn 256 byte và chặn newline/binary/origin ngoài ứng dụng. Không ghi IO vào STM hoặc thêm bản sao GameState/luật thắng thua trong Node. Mất WebSocket giữ TCP 5 phút; hết hạn gửi QUIT. Dừng process cầu hoặc TCP kết thúc sẽ dọn socket.
+Trình duyệt không mở được TCP trực tiếp. Cầu dùng `node:http`, `node:net` và `ws`, phục vụ bản build Vite cùng origin với `/play`; mỗi phiên người chơi tạo một TCP tới `BATTLESHIP_TCP_HOST` (mặc định `127.0.0.1`, Compose dùng `haskell`). WebSocket nối lại bằng mã của phiên sẽ dùng lại TCP đó. Server Haskell vẫn gán P1/P2, nhận hai người, từ chối người thứ ba và quyết định luật. Cầu ghép frame TCP bị chia chunk, bỏ CR trong CRLF, thêm đúng một LF vào lệnh, giới hạn 256 byte và chặn newline/binary/origin ngoài ứng dụng. Không ghi IO vào STM hoặc thêm bản sao GameState/luật thắng thua trong Node. Mất WebSocket giữ TCP 5 phút; hết hạn gửi QUIT. Dừng process cầu hoặc TCP kết thúc sẽ dọn socket.
 
 `game.ts` chứa thao tác đội tàu nháp, encoder PLACE, parser wire v1 và phép cập nhật góc nhìn công khai. Kiểm tra đặt tàu ở UI giúp sửa input sớm; Haskell vẫn kiểm tra lại qua Board/Rules trước chấp nhận. Đội tàu hoàn chỉnh chỉ gửi sau WELCOME. START chưa cấp quyền bắn: UI đợi TURN đúng danh tính. Ref khóa phát bắn ngay trong handler, tránh hai click dùng cùng lượt; ERROR không thêm kết quả vào lịch sử. GAME_OVER giữ kết quả khi socket đóng sau đó.
 

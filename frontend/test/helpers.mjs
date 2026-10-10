@@ -14,7 +14,7 @@ export async function listen(server) {
   return server.address().port
 }
 export async function peer(port, host = '127.0.0.1', token = '', options = {}) {
-  const ws = new WebSocket(`ws://${host}:${port}/play${token ? '?resume=' + token : ''}`, { ...options, origin: `http://${host}:${port}` })
+  const ws = new WebSocket(`ws://${host}:${port}/play${token ? '?resume=' + token : ''}`, { origin: `http://${host}:${port}`, ...options })
   const frames = [], queue = [], waiters = []
   const closed = once(ws, 'close')
   ws.on('message', (bytes) => {
