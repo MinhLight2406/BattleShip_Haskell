@@ -80,6 +80,10 @@ Bind `0.0.0.0` cho phép công bố localhost hoặc IP LAN cụ thể. Handshak
 
 Đã có `docker/haskell.Dockerfile` với stage build/test/runtime và `.dockerignore`. Ngày 2026-10-10, build Linux amd64 với lts-24.59 / GHC 9.10.3 thành công; toàn bộ `stack test --ghc-options=-Werror` qua **908 ví dụ, 0 lỗi**. Image runtime chạy bằng UID/GID 10001, không thiếu dependency động; **5/5 test runtime** qua với server thật, WELCOME, cấu hình, healthcheck marker và SIGTERM. Lệnh chạy và minh chứng nằm trong [docker/README.md](docker/README.md). Web image và Compose thuộc DK-05/DK-07.
 
+### Image web — DK-05
+
+`docker/web.Dockerfile` ghim Node 24.21.0 bằng digest và pnpm 11.25.0, cài bằng `pnpm-lock.yaml` với `--frozen-lockfile`. Stage test chạy TypeScript, Vite và 36 unit test; runtime chỉ chứa bridge, `dist` và dependency production, chạy user `node` (UID/GID 1000), bridge làm PID 1. Đã nghiệm thu Linux amd64: **36/36 unit test, 6/6 test runtime xanh**; HTML/JS/CSS/PNG hoạt động, cấu hình sai báo lỗi, SIGTERM/SIGINT dọn HTTP/WebSocket/TCP thật. Lệnh build/demo và test ở [docker/README.md](docker/README.md#image-web--dk-05). Compose và helper cập nhật IP host thuộc DK-06/DK-07.
+
 Test giao diện và tích hợp (chạy từ gốc repository sau khi build):
 
 ```sh

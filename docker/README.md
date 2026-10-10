@@ -1,4 +1,6 @@
-# Image Haskell — DK-04
+# Images Docker — DK-04 / DK-05
+
+## Image Haskell — DK-04
 
 Nhánh `Dong_goi_kiem_thu`, nền `c8f02e5`. Chỉ đóng gói server Haskell; web image và Compose thuộc DK-05/DK-07. Không đổi luật hoặc cơ chế một trận/process.
 
@@ -94,3 +96,71 @@ Log thật trong `.stack-work/dk04/` (ignored): `linux-test-build.log`, `linux-r
 Phạm vi đã kiểm chứng là **server Haskell trong container Linux amd64**. Chưa kiểm chứng arm64, web image hoặc deployment Compose hai service; các bước đó thuộc task tiếp theo.
 
 Nguồn cơ chế stage/context: [Docker multi-stage build](https://docs.docker.com/build/building/multi-stage/), [.dockerignore và build context](https://docs.docker.com/build/concepts/context/#dockerignore-files).
+
+## Image web — DK-05
+
+Nhánh `Dong_goi_kiem_thu_web`, nền `23f9fc5`. Dockerfile: `docker/web.Dockerfile`; runtime runner: `docker/test/web-runtime.test.mjs`. Không đổi frontend, API bridge, luật hoặc thời hạn reconnect 5 phút.
+
+### Toolchain và stage
+
+- Image chính thức [Node](https://hub.docker.com/_/node): `node:24.21.0-bookworm-slim@sha256:d6aa754f16b3197301076f047b5def2f02ea1dbbc2ca920407d46d7ec7f87b20`, xác minh registry ngày 2026-10-10. Node 24 đáp ứng `engines.node >=24` và chạy các test TypeScript hiện có.
+- Stage `toolchain` cài chính xác `pnpm@11.25.0` và kiểm tra version Node/pnpm, khớp `packageManager`. Dependency frontend giữ nguyên theo lockfile; không cập nhật package hoặc lockfile.
+- Stage `production` chạy `pnpm install --prod --frozen-lockfile`; stage `test` cài cả dev dependency bằng `--frozen-lockfile`, chạy `pnpm build` (TypeScript + Vite) rồi `pnpm test`. Lockfile lệch package sẽ làm build thất bại. Stage test có `.env.example` và `docs/` vì các test đọc hợp đồng Docker và transcript giao thức.
+- Stage `runtime` bắt đầu lại từ Node base, lấy `dist`/bridge từ stage test và `node_modules` từ stage production. Không copy source React/TypeScript, test, tài liệu, pnpm hoặc cache build từ toolchain. `/app` chỉ có `bridge.mjs`, `dist`, `node_modules`.
+- Dependency thực sự được cài ở runtime: `react@19.3.0`, `react-dom@19.3.0`, `scheduler@0.28.0`, `ws@8.22.0`. React được bundle vào JS để browser chạy; bridge sử dụng `ws`. Không có TypeScript, Vite, Playwright hoặc các package `@types` trong cây dependency runtime.
+- `.dockerignore` bổ sung `.pnpm-store`, `.vite`, `coverage`; giữ các loại trừ Git, `.env`, node_modules, dist, log/cache Windows từ DK-04. Build phải tạo lại dist và dependency Linux.
+
+`USER node` (UID/GID 1000) có quyền đọc các file ứng dụng. `ENTRYPOINT ["node", "bridge.mjs"]` chạy bridge trực tiếp làm PID 1; không thông qua npm/pnpm/shell. `STOPSIGNAL SIGTERM` gọi handler shutdown bridge hiện có, đóng HTTP/WS/TCP và hủy timer. Healthcheck dùng Node gọi `/healthz`, có timeout; không mở TCP tới Haskell và không tạo player slot.
+
+Mặc định image: `HOST=0.0.0.0`, `PORT=8080`, `WEB_PUBLIC_PORT=8081`, `PUBLIC_ORIGIN=http://localhost:8081`, `BATTLESHIP_TCP_HOST=haskell`, `BATTLESHIP_TCP_PORT=4000`. Cổng nội bộ khác cổng public; giữ kiểm tra Origin/Host DK-03. Image không tự biết IP Wi-Fi của host. Với origin file động, phải override `PUBLIC_ORIGIN` bằng chuỗi rỗng và cấu hình `LAN_ORIGINS_FILE`/mount đúng hợp đồng; helper ghi file thuộc DK-06.
+
+### Build và test
+
+Từ root repository, Docker Engine Linux đang chạy:
+
+```sh
+docker build --platform linux/amd64 --progress=plain -f docker/web.Dockerfile --target runtime -t battleship-web:dk05 .
+pnpm --dir frontend install --frozen-lockfile
+node --test docker/test/web-runtime.test.mjs
+```
+
+Build runtime bắt buộc đi qua stage test. Có thể build riêng `--target test -t battleship-web-test:dk05`; image test chứa toolchain/source để kiểm tra, không dùng phục vụ production. Runner trên host cần Node >=24, dependency frontend đã cài và hai image `battleship-web:dk05` / `battleship-haskell:dk04` (build Haskell theo DK-04). **Build/unit của web không cần Haskell image**; runner dùng Haskell thật để kiểm chứng cleanup TCP. Nhận các biến test tùy chọn `BATTLESHIP_DOCKER_CLI`, `BATTLESHIP_WEB_IMAGE`, `BATTLESHIP_HASKELL_IMAGE`. Trên Windows per-user, đặt Docker CLI như hướng dẫn DK-04.
+
+Sáu test runtime kiểm tra:
+
+1. Node đúng version, non-root, entrypoint trực tiếp, không có source build/dev dependency.
+2. HTML tham chiếu JS/CSS đã build; tải đúng MIME/nosniff và ảnh PNG thật từ CSS; source/package không được public.
+3. Port, bind host, TCP host và public origin sai: exit 1, báo tên cấu hình, chưa log listen.
+4. DNS backend không tồn tại: WebSocket đóng 1011, log lỗi rõ, HTTP/health vẫn dùng được.
+5. SIGTERM: hai player nhận WELCOME qua DNS `haskell`, 100 health probe không chiếm slot; P1 mất WS rồi resume cùng token, deadline 300.000 ms; bridge PID 1 đóng HTTP keep-alive/WS và TCP tới Haskell, cả hai container exit 0.
+6. SIGINT: cùng đường dọn HTTP/WS/TCP thật, exit 0 trong deadline.
+
+Runner tạo network riêng bằng UUID, Haskell chỉ trên mạng nội bộ, web publish cổng ngẫu nhiên ở loopback. Health tối đa 20 giây, thao tác mạng/thoát tối đa 10 giây và Docker command tối đa 30 giây. Dọn đúng container/network của test, không prune resource khác. Thiếu Engine/image là lỗi thật, không skip.
+
+### Demo local hai image, chưa dùng Compose
+
+```sh
+docker network create battleship-dk05-demo
+docker run -d --name battleship-haskell-demo --network battleship-dk05-demo --network-alias haskell battleship-haskell:dk04
+docker run --rm --name battleship-web-demo --network battleship-dk05-demo -p 127.0.0.1:8081:8080 battleship-web:dk05
+```
+
+Sau Haskell healthy, mở `http://localhost:8081` trong hai browser/profile độc lập. Ctrl+C ở terminal web gửi tín hiệu dừng bridge. Một trận kết thúc thì Haskell Exited theo hợp đồng; `docker start battleship-haskell-demo` tạo trận mới, dùng phiên mới. Cleanup sau demo: dừng web, `docker rm -f battleship-haskell-demo`, rồi `docker network rm battleship-dk05-demo`.
+
+Demo trên chỉ publish loopback. Muốn truy cập LAN, publish `8081:8080` và override `PUBLIC_ORIGIN=http://<IPv4-host>:8081`; giữ `WEB_PUBLIC_PORT=8081`. Không sử dụng IP container làm URL cho người chơi. Compose/helper IP/LAN hai thiết bị thuộc DK-06..DK-08.
+
+### Kết quả nghiệm thu DK-05
+
+Ngày **2026-10-10**, Docker Desktop 4.94.0 / Engine 29.8.2, Linux amd64:
+
+| Gate | Kết quả |
+|---|---|
+| Frozen install production + development | Qua; dependency và lockfile không đổi |
+| `pnpm build` trong Linux | TypeScript qua; Vite tạo HTML, JS, CSS, PNG |
+| `pnpm test` trong stage test | **36/36 qua, 0 skip** |
+| `node --test docker/test/web-runtime.test.mjs` | **6/6 qua, 0 skip**, khoảng 46 giây |
+| Runtime production/non-root | `/app` chỉ có dist/bridge/node_modules; UID/GID 1000; không có dev dependency |
+| Tín hiệu/vòng đời | SIGTERM và SIGINT tới Node PID 1, HTTP/WS/TCP thật được dọn; backend Haskell exit 0 |
+| Cleanup | Không còn container/network tiền tố `battleship-dk05-` sau test |
+
+Log ignored ở `.stack-work/dk05/linux-web-build.log` và `web-runtime-test.log`. Lần build đầu phát hiện stage test thiếu `docs/protocol.md`; đã bổ sung `docs/` và build/test lại xanh. Không cần sửa logic bridge để chạy trong container. Chưa chạy browser automation hoặc nghiệm thu gameplay/LAN đầy đủ DK-08; chưa nghiệm thu arm64 hoặc Compose. Cần D review trước hợp nhất, không ghi xác nhận thay thành viên.

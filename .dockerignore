@@ -15,6 +15,9 @@
 **/.cache
 **/dist-newstyle
 **/node_modules
+**/.pnpm-store
+**/.vite
+**/coverage
 frontend/dist
 frontend/test-results
 battleship-haskell.cabal
