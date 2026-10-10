@@ -1,6 +1,6 @@
 # Luật chơi Battleship
 
-Tài liệu này là nguồn thống nhất cho phần cài đặt và kiểm thử. Phiên bản đầu có đúng **một trận giữa hai người**, mỗi người dùng một client terminal. Server quyết định mọi lệnh hợp lệ và giữ kín đội tàu của từng người.
+Tài liệu này là nguồn luật R-01 thống nhất cho cài đặt/kiểm thử. Bản hiện hành (đối chiếu `8bd7da9`, 2026-10-10) có đúng **một trận giữa hai người mỗi lần chạy Haskell**, qua terminal TCP hoặc giao diện web/bridge, native hoặc Docker. Server quyết định lệnh hợp lệ và giữ kín đội tàu. UI/LAN/Docker bổ sung sau không đổi quy tắc fleet/lượt/thắng dưới đây.
 
 ## 1. Bàn và đội tàu
 
@@ -32,7 +32,7 @@ Tài liệu này là nguồn thống nhất cho phần cài đặt và kiểm th
 
 Các trường hợp sau trả lỗi: tọa độ ngoài bàn hoặc sai cú pháp; bắn trước khi cả hai đã đặt tàu; bắn khi không phải lượt của mình; bắn lại một tọa độ đã bắn; đặt tàu lần hai; gửi lệnh sau khi trận kết thúc.
 
-**Bất biến bắt buộc:** lệnh không hợp lệ **không đổi bàn, số phát bắn, giai đoạn hay người đang có lượt**. Người gửi có thể sửa lệnh và thử lại.
+**Bất biến lõi:** lệnh không hợp lệ **không đổi bàn, số phát bắn, giai đoạn hay người đang có lượt**. Người gửi có thể sửa lệnh/thử lại. Coordinator giữ state khi đủ chỗ gửi lỗi; nếu outbox quá tải, C-07 xử lý bằng hành động Quit riêng của người nhận chậm từ state trước lệnh, không chấp nhận lệnh sai hoặc nước gây tràn.
 
 ## 5. Thông tin được phép thấy
 
@@ -43,7 +43,13 @@ Các trường hợp sau trả lỗi: tọa độ ngoài bàn hoặc sai cú ph�
 
 ## 6. Kết thúc bất thường và phạm vi
 
-Nếu một client ngắt kết nối trong lúc chờ hoặc đang chơi, server kết thúc trận do người đó bỏ cuộc và thông báo cho người còn lại. Phiên bản đầu không có kết nối lại, chơi với máy, nhiều phòng hoặc lưu trận. Kết thúc hòa không xảy ra theo các luật trên.
+Lõi Haskell kết thúc khi nhận Quit hoặc TCP client EOF/lỗi socket trong lúc chờ/đang chơi: đối thủ thắng OPPONENT_LEFT. Không có người thay thế vào slot đã dùng. Finished không có lệnh làm đổi kết quả.
+
+**Terminal/TCP trực tiếp:** ngắt kết nối thành Quit ngay, không có resume terminal. **Web:** bridge giữ TCP/phiên khi WebSocket mất, cho 300.000 ms nối lại đúng token; deadline bắt đầu khi bridge phát hiện mất kết nối. Trong khi thiếu người, bridge chặn PLACE/FIRE của các phiên web, QUIT vẫn được gửi. Resume dùng TCP cũ, không slot mới; hết hạn bridge gửi Quit đúng phiên để core xử lý. Rời trận chủ động khi kết nối gửi Quit ngay. Đây là policy transport, không thay luật step hoặc thêm Phase.
+
+**Quá tải:** C-07 có thể Quit client có queue không đủ chỗ; không commit một phần nước/batch. Nếu hai queue cùng quá tải trong một batch, xử lý P1 trước và đánh dấu cả hai socket để đóng; sau Finished không kết thúc lần hai. Chi tiết capacity/chính sách ở shared_contract.
+
+**Restart/mất host:** state/token trong RAM; restart core/bridge, dừng Docker hoặc máy chủ tắt không phục hồi ván. Trận mới cần chạy lại core rồi tạo phiên mới. Không có hòa, AI, nhiều phòng, lưu trận hoặc chế độ Trinh sát trong MVP. UI web/LAN/resume là các yêu cầu bổ sung đã triển khai; không giữ mô tả “không có kết nối lại” của bản terminal cũ làm hiện trạng web.
 
 ## 7. Ca kiểm thử nghiệm thu
 

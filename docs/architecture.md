@@ -1,12 +1,12 @@
 # Kiến trúc điều phối Battleship
 
-Phạm vi: một server, hai client terminal, một trận. Types, Board, Rules, View B-03, transport/Coordinator C-02/C-03/C-04/C-05/C-07, codec D-02 và client tương tác D-03/D-04/D-05 đã có cài đặt. Một TVar GameState là nguồn sự thật; hai TBQueue có giới hạn đưa phản hồi đến hai writer riêng. Client xem trước fleet của mình, nhập bắn, hiển thị hai bàn riêng tư và kết quả/lượt/kết thúc bằng văn bản. Sơ đồ STM dưới đây mô tả cài đặt C-04/C-07 hiện tại.
+Hiện trạng đối chiếu ngày 2026-10-10, source nền `8bd7da9`: một core Haskell, hai người, một trận/lần chạy core. Có client terminal trực tiếp và client React qua Node bridge, native hoặc Docker hai service. Một TVar GameState là nguồn sự thật, hai TBQueue hữu hạn đến writer riêng; bridge giữ phiên web/replay riêng và cấu hình LAN, không quyết định luật. Các mục lõi dưới đây mô tả cài đặt C-04/C-07; phần cuối bổ sung UI/LAN/Docker hiện hành. Lý do/đánh đổi xem [design_decisions.md](design_decisions.md), tổng thể xem [report_final.md](report_final.md).
 
 ## Transport C-02 và điều phối C-03/C-04 hiện tại
 
-Nhánh tích hợp `frontend-ui` bổ sung client React qua cầu WebSocket–TCP trên localhost; server và giao dịch STM dưới đây tiếp tục dùng cùng lõi luật. Kiến trúc, lệnh chạy và test GUI được ghi tại [frontend_integration.md](frontend_integration.md).
+Đợt tích hợp từ `frontend-ui` bổ sung React qua WebSocket–TCP; sau đó có LAN, resume 5 phút và Docker. Server/giao dịch STM tiếp tục cùng lõi luật. Hồ sơ theo thời điểm ở [frontend_integration.md](frontend_integration.md), cấu hình hiện hành ở [docker_deployment.md](docker_deployment.md).
 
-ServerMain đọc port rồi gọi `Server.runServer`; bind IPv4 loopback `127.0.0.1` và accept theo thứ tự P1/P2. Hai socket tồn tại trong bracket lồng nhau với reader và writer riêng có withAsync/link. Sau khi đủ hai slot, acceptor tiếp tục nhận để gửi `ERROR SERVER_FULL` và đóng ngay socket thứ ba. Một client không gửi dữ liệu không chặn việc nhận client tiếp theo.
+ServerMain đọc port/môi trường, dùng `parseServerConfig` rồi gọi `runServerConfigured`. Native mặc định `127.0.0.1`; Docker cấu hình `0.0.0.0`. `runServer`/`runServerWith` vẫn giữ API loopback cho test/caller cũ; callback sau listen báo port thực. Readiness marker tùy chọn được ghi nguyên tử sau listen và xóa khi cleanup. Accept theo P1/P2; socket/reader/writer trong bracket/withAsync/link. Đủ hai slot thì acceptor gửi `ERROR SERVER_FULL`, đóng socket thứ ba. Một client không gửi dữ liệu không chặn nhận client tiếp theo.
 
 Coordinator giữ đúng một TVar GameState và hai TBQueue (Maybe ByteString). Server gọi atomically cho mỗi submitPayload/submitCommand: đọc state, parse/gọi step, encode toàn bộ batch, kiểm tra chỗ cho từng người rồi mới ghi state và xếp tất cả frame trong cùng giao dịch. Parser/luật lỗi chỉ xếp lỗi actor-only và giữ state nếu đủ chỗ; nếu queue quá tải, hủy batch gốc và áp dụng Quit theo C-07. Encode/hợp đồng batch lỗi trả Left ProtocolError mà không ghi state hoặc queue. Hai transaction tranh TVar phải chạy lại theo state đã commit, không cùng tiêu lượt cũ. Không dùng unsafeIOToSTM hoặc socket IO trong giao dịch.
 
@@ -134,3 +134,92 @@ viewFor :: PlayerId -> GameState -> PlayerView
 Luật R-01 giữ nguyên: đủ hai đội tàu thì `Turn P1`; `Miss` đổi lượt, `Hit`/`Sunk` giữ lượt; `Win` kết thúc ngay. BoardSpec A-02/A-03 kiểm tra đặt tàu; RulesSpec B-01/B-02/S-02 kiểm tra đặt tàu/bắt đầu/bỏ cuộc, mọi kết quả bắn và các nhánh lỗi giữ state. ViewSpec B-03 kiểm tra projection và bí mật; fixture chơi hợp lệ đi qua Rules/Board production theo S-02.
 
 Trạng thái review chung tại [shared_contract.md](shared_contract.md), S-01 v2 cập nhật A-02: đã đối chiếu Types, Board, giao thức và hai Main; chưa có đủ xác nhận A/B/C/D để khóa mốc. Bảng chủ sở hữu tại S-01 gồm cả app/test/YAML và module private; bảng module ở đây chỉ là tóm tắt kiến trúc.
+
+## Kiến trúc web, LAN và Docker hiện hành
+
+### Phụ thuộc và nguồn dữ liệu
+
+```mermaid
+flowchart TD
+  IF[Internal.Fleet private] --> TY[Types]
+  TY --> BO[Board]
+  BO --> RU[Rules]
+  TY --> VI[View]
+  TY --> PR[Protocol]
+  PR --> CO[Coordinator]
+  RU --> SE[Server: core mặc định]
+  CO --> SE
+  BO --> CL[Client terminal]
+  PR --> CL
+  SE --> SM[ServerMain]
+  CL --> CM[ClientMain]
+  SE <-->|TCP v1| BR[Node bridge]
+  BR <-->|WS và metadata| UI[React]
+  HP[Windows host helper] -->|JSON read-only mount| BR
+```
+
+Mũi tên phụ thuộc thể hiện module nền được lớp phía sau sử dụng; không có Rules→Server/Coordinator hoặc Board→IO. Internal.Fleet dùng tham số kiểu để không import Types ngược lại. `View` là public projection thuần; production transport hiện gửi event đã lọc, không gửi snapshot view.
+
+| Trạng thái | Nơi sở hữu | Ai được thay đổi? |
+|---|---|---|
+| Hai fleet/history/phase/winner | GameState trong một TVar ở Haskell | Coordinator commit kết quả Rules.step |
+| FIFO/thông báo end/slow flags | Coordinator | Một transaction submit; writer chỉ lấy frame |
+| Socket registry/drained/readerDone | Server MVar/lifecycle | Worker/supervisor IO, không tự quyết luật |
+| Đội hình nháp | Terminal/UI | Người chơi trước xác nhận |
+| Public view/pending | Terminal/UI | Fold response; own fleet từ request đã OK |
+| Token/TCP/own PLACE/private frames/deadline | Bridge RAM | Bridge attach/disconnect/cleanup; Quit đi core |
+| Origin LAN hiện tại/heartbeat | Windows JSON + bridge allowlist | Helper duy nhất ghi; bridge validate/poll |
+
+Hai container không chia sẻ TVar. Bridge session không phải bản sao GameState: nó biết TCP/player và dữ liệu phiên được phép thấy, không chứa fleet đối thủ hay tự tính outcome.
+
+### State machine và dữ liệu không bị lộ
+
+```mermaid
+stateDiagram-v2
+  [*] --> Placing
+  Placing --> Placing: PLACE một người hợp lệ
+  Placing --> TurnP1: cả hai fleet hợp lệ
+  TurnP1 --> TurnP2: P1 MISS
+  TurnP2 --> TurnP1: P2 MISS
+  TurnP1 --> TurnP1: P1 HIT hoặc SUNK
+  TurnP2 --> TurnP2: P2 HIT hoặc SUNK
+  Placing --> Finished: Quit
+  TurnP1 --> Finished: WIN hoặc Quit
+  TurnP2 --> Finished: WIN hoặc Quit
+  Finished --> [*]
+```
+
+Lệnh lỗi giữ node/state cũ; lệnh sau Finished bị từ chối. Web missing/connecting/pending là trạng thái giao diện/transport, không node mới của GameState. Queue quá tải tạo Quit riêng, không ghi nước gây tràn.
+
+React `Board enemy fleet={[]}` chỉ dùng `view.outgoing`; own Board dùng own fleet + incoming. `game.ts` đổi UI `(row,col)` zero-based sang cột A..J/hàng 1..10 ở wire; Haskell Coord one-based. `connection.ts` validate metadata/replay/own PLACE; App ref khóa click ngay, đợi TURN để cho thao tác tiếp. Nháp không được chỉnh sau server đã chấp nhận.
+
+### WebSocket và resume
+
+HTTP phục vụ `frontend/dist`, `GET /healthz` chỉ kiểm tra HTTP, WS `/play` kiểm tra Origin/Host trước tạo TCP. TCP v1 không đổi. Bridge thêm SESSION/CONNECTION/RESUME_ERROR JSON chỉ ở WS, `connection.ts` xử lý riêng với parser frame.
+
+Một session = một TCP player + token 32 byte random + own PLACE đã OK + FIFO lịch sử frame riêng (≤4096). WS mới không có token tạo TCP mới; resume hợp lệ gắn TCP đang giữ. WebSocket close/heartbeat mất tạo deadline 5 phút; timer cũ hủy khi resume; hết hạn QUIT. GAME_OVER có thể replay để xem kết quả trong thời gian giữ phiên sau kết thúc, không hồi sinh ván. Bridge restart/TCP bị core đóng thì không phục hồi state mới từ phiên cũ.
+
+Bridge còn kiểm tra max WS payload 256 byte, pending TCP writable buffer/WS bufferedAmount ngưỡng 65.536 byte và pending commands 256. Đây là giới hạn ở các tầng khác nhau, không phải capacity TBQueue; threshold buffer được kiểm tra khi send/nhận command và có thể vượt ngưỡng một frame trước lượt kiểm tra tiếp theo. Không claim toàn RAM đã giới hạn ở 128 phần tử.
+
+### Native và container network
+
+| Thành phần | Native mặc định | Compose mặc định |
+|---|---|---|
+| Haskell bind | 127.0.0.1:4000 | 0.0.0.0:4000, không publish host |
+| Bridge TCP đích | 127.0.0.1:4000 | haskell:4000 qua DNS mạng Compose |
+| Bridge HTTP bind | Chạy CLI không setting: Auto LAN 0.0.0.0:8080 | 0.0.0.0:8080 |
+| URL localhost người chơi | http://127.0.0.1:8080 | http://localhost:8081 |
+| LAN IP source | node:os trên native host | Helper PowerShell Windows host, JSON mount |
+| Terminal CLI | 127.0.0.1, port tùy chọn | Không được expose cổng core ra host để CLI vào |
+
+Library Client có HostName parameter; ClientMain hiện chưa có flag remote host. LAN sản phẩm dùng UI web. `runServer` API library giữ loopback; `runServerConfigured` chọn bind validated. PUBLIC_ORIGIN/WEB_PUBLIC_PORT mô tả URL bên ngoài, không tự tạo forwarding; Compose ports tạo mapping.
+
+### IP cập nhật và vòng đời deploy
+
+Host helper lọc IPv4/up/nonloopback, loại 127/link-local/IPv6, cho chọn tên adapter. Không tự nhận VPN là sai nếu nó còn IPv4: chọn Wi-Fi/Ethernet để giới hạn đúng mạng. Một writer lock, temp+flush+atomic rename, heartbeat 2 giây. Bridge poll 2 giây, schema/file/port/TTL kiểm tra; origin cũ bị loại khi file đổi/lỗi/quá hạn, origin mới được phép nhưng Host phải trùng Origin. Phiên/TCP/deadline giữ nguyên khi hot reload allowlist.
+
+Compose có đúng hai service, dependency healthy khi start, healthcheck không mở game TCP. Haskell nhận SIGTERM để unwinding bracket; Node bridge PID1 xử lý SIGTERM/SIGINT đóng WS/TCP/HTTP/timers. Stop grace 10 giây; restart no. Không volume lưu trận, không secret state trong health/log. Host tắt/Engine dừng làm cả dịch vụ dừng.
+
+## Điểm kiểm chứng khi thay kiến trúc
+
+API/ownership có fixture trong SharedContractSpec; wire transcript trong ProtocolSpec/frontend; fleet/view/rules có unit/property; TVar/batch/queue có CoordinatorSpec; worker/EOF/readiness có ServerSpec; mapped origin/resume/stop/new-match có bridge/runtime/Compose tests. Test xanh không thay nhóm review khi đổi contract. Chi tiết chọn phương án, rủi ro/giới hạn và lệnh ở design_decisions/testing/Docker contract.

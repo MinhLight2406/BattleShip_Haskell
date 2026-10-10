@@ -1,5 +1,7 @@
 # Images Docker — DK-04 / DK-05
 
+Lý do chọn multi-stage/non-root/digest/health/restart và đánh đổi ở [design_decisions](../docs/design_decisions.md); kiến trúc toàn hệ thống ở [architecture](../docs/architecture.md), test gate/cách đọc số liệu ở [testing](../docs/testing.md). Kết quả ngày chạy bên dưới là hồ sơ lịch sử; không coi mọi lần sửa docs đã build lại image.
+
 **Chạy sản phẩm:** dùng [hướng dẫn chuẩn Docker DK-09](../README.md#chạy-bằng-docker--hướng-dẫn-chuẩn-dk-09) cho build/start/log/stop/trận mới, localhost/LAN/chọn adapter/đổi cổng. [Hồ sơ bàn giao DK-09](../docs/dk09_handover.md) tập hợp bằng chứng và mục chờ review. Các mục DK-04..DK-07 dưới đây là cấu trúc image, test chuyên biệt và kết quả lịch sử; không cần chạy từng demo image riêng để chơi bằng Compose.
 
 ## Image Haskell — DK-04

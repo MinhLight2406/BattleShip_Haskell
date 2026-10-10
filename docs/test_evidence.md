@@ -1,5 +1,23 @@
 # Minh chứng kiểm thử
 
+## Chỉ mục hiện hành và cách đọc — 2026-10-10
+
+Các mục C-01..S-04 bên dưới là **kết quả lịch sử 2026-10-04/05**, giữ nguyên số test, working tree, giới hạn và lỗi tại thời điểm chạy. TQueue/unverified Linux trong đoạn cũ không mô tả hiện trạng sau C-07/Docker. Báo cáo hiện hành xem [report_final.md](report_final.md); phương pháp/lệnh/seed/coverage xem [testing.md](testing.md).
+
+| Đợt bổ sung | Code/test liên quan | Bằng chứng hiện có |
+|---|---|---|
+| UI và native LAN/resume | frontend/test, bridge/connection/game | [frontend_integration.md](frontend_integration.md), [log UI](demo/frontend/test-evidence.log) theo ngày |
+| A-06/B-06 | BoardSpec/ViewSpec/Generators; QuickCheck ≥1.000/property/coverage | Có trong full suite Linux **908 ví dụ** ở DK-08/09; không coi 908 là số random case |
+| C-07 | CoordinatorSpec/ServerSpec; 128/126/2, batch/capacity/slow/races | Full suite Linux + DK-08 TCP nonreader; [contract](shared_contract.md) ghi policy |
+| DK-04/DK-05 | Linux image test/runtime | [docker/README](../docker/README.md): 908 Haskell, 36 frontend, runtime 5/5 và 6/6 tại mốc tương ứng |
+| DK-06/DK-07/DK-08 | Helper/mount/Compose/readiness/IP/resume/lifecycle | [DK-08](dk08_acceptance.md), [19-ca log](demo/dk08/automated-results.txt) |
+| DK-08 UI | Chrome/Edge hai process/profile, cùng host qua LAN IP | [log browser](demo/dk08/two-browsers-results.txt), ảnh/log trong DK-08; không phải hai thiết bị |
+| DK-09 | Build/test/lệnh README/helper/trận mới/stop/down | [DK-09](dk09_handover.md), [kết quả](demo/dk09/results.txt), [runtime](demo/dk09/runtime-handover.txt) |
+
+Source bàn giao đã commit: `8bd7da92c083bcf9d8119f5c786342f9496c6cd7`. Hồ sơ DK-08/09 chạy trên working tree trước commit này, không gán cho lần chạy docs mới. Review cùng SHA và thiết bị thật vẫn chờ. Các hash/path trong log cũ phản ánh source/log cũ, không cần bằng hash docs đang được chỉnh.
+
+Các gate chạy cho nhánh hoàn thiện docs được ghi tại [docs_review.md](docs_review.md) sau khi thực hiện; không điền kết quả chưa chạy.
+
 ## C-01 và A-01 — 2026-10-04
 
 Môi trường: Windows, Stack 3.11.1, snapshot LTS 24.59, GHC 9.10.3.
@@ -389,7 +407,7 @@ Sau OK PLACE, client giữ kết nối nhận WAITING/START/TURN/INCOMING/GAME_O
 Căn cứ slide: ADT/pattern matching với Maybe/Either cho input/hủy/lỗi; hàm thuần, Map/Set và module dùng lại Board/Protocol; Hspec describe/it/shouldBe (Chap8); Network.Socket/bracket và framing TCP (Chap11); async/deadline/cleanup (Chap7). Không thêm dependency, kiểu miền, lệnh wire hoặc logic thắng thua. Giới hạn D-03: chưa nhập FIRE/render diễn biến hai bàn; Ctrl+C rời trận, không có reconnect hoặc sửa fleet đã OK trên server. D-03 đạt yêu cầu nhập đủ năm tàu theo hướng dẫn terminal, xem trước/sửa và gửi PLACE hợp lệ.
 ## S-02 — Nghiệm thu lõi luật thuần (2026-10-05)
 
-Hồ sơ chi tiết, chuỗi 25 lệnh và kết quả miền đã đối chiếu: [report_final.md](report_final.md). Bản kiểm tra là working tree trên `Luong_nhap_gui_dat_tau`, nền `4eea8b544a4da77995d451a137dd98b8f0a574c3`; chưa commit thay đổi S-02.
+Hồ sơ chi tiết, chuỗi 25 lệnh và kết quả miền đã đối chiếu: [s02_acceptance.md](s02_acceptance.md) (tên file trước đây report_final.md). Bản kiểm tra là working tree trên `Luong_nhap_gui_dat_tau`, nền `4eea8b544a4da77995d451a137dd98b8f0a574c3`; chưa commit thay đổi S-02 tại thời điểm chạy.
 
 ```text
 stack test --ghc-options=-Werror --test-arguments="--match S-02"

@@ -1,5 +1,7 @@
 # S-03 — Nghiệm thu trận đầu cuối hai terminal
 
+**Hồ sơ lịch sử terminal**, kết quả/giới hạn thuộc ngày chạy bên dưới. Hiện trạng UI/LAN/Docker và bằng chứng mới ở [report_final.md](report_final.md), DK-08/DK-09; vẫn giữ vấn đề 80 cột và xác nhận nhóm như hồ sơ đã ghi.
+
 **Kỹ thuật: ĐẠT với một vấn đề trình bày P3 đã ghi Đợt 9. Xác nhận nhóm: CHỜ A/B/C/D và R.**
 
 Ngày chạy 2026-10-05, Windows/PowerShell, Stack 3.11.1, snapshot lts-24.59, GHC 9.10.3. Codex thực hiện thao tác và lưu hồ sơ theo yêu cầu; kết quả tự động không thay xác nhận của người phụ trách.
@@ -86,4 +88,4 @@ Không phát hiện lỗi gameplay, lộ tàu hoặc ngắt kết nối chặn v
 
 Mẫu: `<vai trò> — <tên/GitHub>, <ngày>: đã xem hồ sơ S-03 và bộ source SHA-256 kèm theo; xác nhận <phần phụ trách>; nhận xét/lỗi: <nội dung>.` Khi chốt trên commit cần ghi SHA thực sự chứa bộ mã đã duyệt; SHA nền riêng lẻ không đủ. Chỉ ghi xác nhận được chính thành viên cung cấp, không suy ra từ test xanh hoặc tác giả commit.
 
-S-02 còn chờ A/B trong `report_final.md`; S-01 còn chờ các chữ ký hợp đồng chung. **S-03 chưa đạt toàn bộ tiêu chí xong vì thiếu xác nhận người phụ trách**, dù build sạch, ván production và hồ sơ kỹ thuật đã hoàn tất.
+S-02 còn chờ A/B trong [s02_acceptance.md](s02_acceptance.md) (hồ sơ trước đây tên report_final.md); S-01 còn chờ các chữ ký hợp đồng chung. **S-03 chưa đạt toàn bộ tiêu chí xong vì thiếu xác nhận người phụ trách**, dù build sạch, ván production và hồ sơ kỹ thuật đã hoàn tất.

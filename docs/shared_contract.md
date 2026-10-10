@@ -2,6 +2,8 @@
 
 Ngày đối chiếu kỹ thuật: 2026-10-10. Chủ trì tài liệu: R.
 
+**Hướng dẫn đọc hiện hành:** [chỉ mục docs](README.md), [kiến trúc](architecture.md), [rationale/đánh đổi](design_decisions.md), [slide mapping](slide_mapping.md) và [test](testing.md). Nhánh `Update_docs_report` dựa trên `8bd7da9` chỉ bổ sung/đồng bộ mô tả; không đổi fixture API/ownership, luật/wire hoặc ghi xác nhận thay nhóm. Mốc lập S-01 bên dưới là lịch sử, phần Docker đến DK-09 là hợp đồng đã bổ sung để nhóm duyệt.
+
 **Trạng thái: đã lập bản hợp đồng để duyệt; CHƯA KHÓA vì chưa có xác nhận A/B/C/D.** Build/test xanh chỉ là bằng chứng kỹ thuật, không thay thế xác nhận của người phụ trách.
 
 Nhánh thực hiện: `Minh-Connect_Type_and_Main`, tách từ `Minh-Giao_thuc_lenh_va_event` tại `62ef6018a9d6167bda9909b04fce4a3c370ed936`. Bản nền này chứa C-01, A-01 và D-01; không đổi luật R-01.

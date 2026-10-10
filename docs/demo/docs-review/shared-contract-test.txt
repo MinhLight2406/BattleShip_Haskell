@@ -1,0 +1,54 @@
+battleship-haskell-0.1.0.0: unregistering (dependencies changed)
+battleship-haskell> configure (lib + exe + test)
+Configuring battleship-haskell-0.1.0.0...
+battleship-haskell> build (lib + exe + test) with ghc-9.10.3
+Preprocessing library for battleship-haskell-0.1.0.0...
+Building library for battleship-haskell-0.1.0.0...
+[1 of 9] Compiling Battleship.Internal.Fleet
+[2 of 9] Compiling Battleship.Types
+[3 of 9] Compiling Battleship.Protocol
+[4 of 9] Compiling Battleship.Coordinator
+[5 of 9] Compiling Battleship.Board
+[6 of 9] Compiling Battleship.Rules
+[7 of 9] Compiling Battleship.Server
+[8 of 9] Compiling Battleship.Client
+[9 of 9] Compiling Battleship.View
+Preprocessing executable 'battleship-server' for battleship-haskell-0.1.0.0...
+Building executable 'battleship-server' for battleship-haskell-0.1.0.0...
+[1 of 1] Compiling Main
+[2 of 2] Linking C:\\Users\\nhatm\\Downloads\\Laa\\Project\\BattleShip_Haskell\\.stack-work\\dist\\1a191874\\build\\battleship-server\\battleship-server.exe [Objects changed]
+Preprocessing executable 'battleship-client' for battleship-haskell-0.1.0.0...
+Building executable 'battleship-client' for battleship-haskell-0.1.0.0...
+[1 of 1] Compiling Main
+[2 of 2] Linking C:\\Users\\nhatm\\Downloads\\Laa\\Project\\BattleShip_Haskell\\.stack-work\\dist\\1a191874\\build\\battleship-client\\battleship-client.exe [Objects changed]
+Preprocessing test suite 'battleship-test' for battleship-haskell-0.1.0.0...
+Building test suite 'battleship-test' for battleship-haskell-0.1.0.0...
+battleship-haskell> copy/register
+Installing library in C:\Users\nhatm\Downloads\Laa\Project\BattleShip_Haskell\.stack-work\install\f817aa4e\lib\x86_64-windows-ghc-9.10.3-b42a\battleship-haskell-0.1.0.0-KHKuifTm9uwIpqWthmTFHM
+Installing executable battleship-server in C:\Users\nhatm\Downloads\Laa\Project\BattleShip_Haskell\.stack-work\install\f817aa4e\bin
+Installing executable battleship-client in C:\Users\nhatm\Downloads\Laa\Project\BattleShip_Haskell\.stack-work\install\f817aa4e\bin
+Registering library for battleship-haskell-0.1.0.0...
+battleship-haskell> test (suite: battleship-test, args: --match S-01)
+
+
+S-01 shared contract
+  source declaration check
+    finds data, newtype and aliases including multiline declarations [v]
+    ignores line comments, nested block comments and string/character literals [v]
+    does not confuse references, signatures or longer names with declarations [v]
+    also detects a family declaration under the shared type name [v]
+  repository matches the review document
+    keeps all domain constructors, fields and signature aliases in sync [v]
+    allows Coord only in Battleship.Types across src, app and test [v]
+    allows Command only in Battleship.Types across src, app and test [v]
+    keeps Fleet abstract and restricts private representation access to Board/Types [v]
+    lists every Haskell source and build configuration exactly once with an owner [v]
+    keeps the two IO entry points in separate Main components [v]
+
+Finished in 0.1589 seconds
+10 examples, 0 failures
+
+
+
+battleship-haskell> Test suite battleship-test passed
+Completed 2 action(s).

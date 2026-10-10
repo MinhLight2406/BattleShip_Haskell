@@ -1,5 +1,7 @@
 # Tích hợp giao diện frontend-ui
 
+**Cách đọc:** đây là hồ sơ tích hợp/UI và các lần kiểm tra 2026-10-05; các bảng số test giữ ngày/phạm vi lịch sử. Hiện trạng sau QuickCheck/C-07/Docker (nền `8bd7da9`, 2026-10-10) xem [architecture.md](architecture.md), [docker_deployment.md](docker_deployment.md), [DK-08](dk08_acceptance.md), [DK-09](dk09_handover.md). Lý do chọn bridge/pending/replay/allowlist ở [design_decisions.md](design_decisions.md); số test frontend gate mới nhất được ghi ở DK-09.
+
 ## Phạm vi và nhánh
 
 - Nhánh gốc của thành viên: `frontend-ui`, commit `a6ca31f` (Add frontend UI).
