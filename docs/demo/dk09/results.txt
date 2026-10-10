@@ -1,0 +1,26 @@
+DK-09 handover verification — 2026-10-10, Asia/Saigon
+Branch: Test_2_container_va_LAN; base 17928c0; verification ran on the working tree before commit.
+Use git log -1 --format=%H on this branch to identify the handover commit.
+Host: Windows x64, 25H2, build 26200.9457.
+Docker Desktop: 4.94.0.241994. Engine: 29.8.2. Compose: 5.5.1.
+Container engine: Linux x86_64; Debian Bookworm runtime images.
+Haskell: lts-24.59 / GHC 9.10.3. Web: Node 24.21.0 / pnpm 11.25.0.
+
+PASS docker compose --env-file .env.example -p battleship-dk09-build config --quiet
+PASS docker compose --env-file .env.example -p battleship-dk09-build build
+  Both runtime images built; stack build and stack test --ghc-options=-Werror ran in Linux.
+  908 Haskell examples, 0 failures; frontend 36 passed, 0 failed; TypeScript/Vite passed.
+PASS stack test --ghc-options=-Werror --test-arguments="--match S-01"
+  Windows native: 10 examples, 0 failures. Shared ADT/API/owners/Main match document.
+PASS pnpm --dir frontend test
+  Windows host: 36 passed, 0 failed, 0 skipped; includes 6 Docker artifact tests.
+PASS README runtime handover: 8 checks passed, see runtime-handover.txt.
+  Localhost + 8082:8080; P1/P2; complete 17-cell game; start haskell/new session;
+  logs; stop; Auto Wi-Fi helper + host IPv4; down/owned-resource cleanup.
+PASS git diff --check; 64 relative file-link targets exist in handover documents.
+
+Runtime projects/config dirs were isolated from the user's demo; same production helper/Compose.
+DK-09 uses two automated WebSocket clients on ONE host. DK-08 separately demonstrated
+Chrome + Edge UI on ONE host and recorded a 19-case Compose suite baseline.
+No claim of two physical Wi-Fi devices, real Wi-Fi switch or arm64 verification.
+Group A/B/C/D/R review/signatures are pending; tests and commit/push are not signatures.

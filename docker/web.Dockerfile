@@ -33,7 +33,7 @@ COPY --from=production /build/frontend/node_modules ./node_modules
 USER node
 EXPOSE 8080
 STOPSIGNAL SIGTERM
-HEALTHCHECK --interval=2s --timeout=3s --start-period=10s --retries=5 \
-    CMD ["node", "--input-type=module", "-e", "const r = await fetch('http://127.0.0.1:' + process.env.PORT + '/healthz', {signal: AbortSignal.timeout(2000)}); if (!r.ok || (await r.json()).status !== 'ok') process.exit(1)"]
+HEALTHCHECK --interval=2s --timeout=1s --start-period=10s --retries=5 \
+    CMD ["node", "--input-type=module", "-e", "const r = await fetch('http://127.0.0.1:' + process.env.PORT + '/healthz', {signal: AbortSignal.timeout(800)}); if (!r.ok || (await r.json()).status !== 'ok') process.exit(1)"]
 ENTRYPOINT ["node", "bridge.mjs"]
 CMD []

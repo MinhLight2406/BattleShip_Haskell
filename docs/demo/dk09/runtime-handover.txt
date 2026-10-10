@@ -1,0 +1,9 @@
+PASS README Localhost helper start: both healthy, HTML 200, public 8082 -> internal 8080
+PASS two real WebSocket clients P1/P2 place fleets, 17 hits/sinks/win, Haskell exits 0
+PASS README start haskell: new P1/P2 and token, web unchanged; Quit finishes correct player
+PASS README logs --tail 100: readable, no session token/fleet payload
+PASS README stop/down: exits 0, stop under 10s, containers/network removed
+PASS README Auto + selected Wi-Fi: http://192.168.1.126:8082, heartbeat, same effective env-file, P1/P2 and correct Quit
+PASS helper shutdown: watcher process exits before Compose down
+PASS final cleanup: down under 10s; no owned containers/network or helper remain
+SUMMARY 8 handover checks passed; ONE host, real two-service Compose, public port 8082.

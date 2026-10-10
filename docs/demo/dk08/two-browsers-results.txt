@@ -1,0 +1,10 @@
+✔ DK-08: two separate browser processes play the production React UI to victory without secret reveal (22710.2455ms)
+ℹ ONE Windows/Linux host; TWO separate browser processes: chrome 155.0.8059.39 / msedge 155.0.4283.45; origin http://192.168.1.126:54358. P1/P2, invalid placement, MISS/HIT/SUNK/WIN, reload after A6, privacy and exit 0 passed.
+ℹ tests 1
+ℹ suites 0
+ℹ pass 1
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 22818.3379

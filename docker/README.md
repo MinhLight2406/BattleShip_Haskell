@@ -1,5 +1,7 @@
 # Images Docker — DK-04 / DK-05
 
+**Chạy sản phẩm:** dùng [hướng dẫn chuẩn Docker DK-09](../README.md#chạy-bằng-docker--hướng-dẫn-chuẩn-dk-09) cho build/start/log/stop/trận mới, localhost/LAN/chọn adapter/đổi cổng. [Hồ sơ bàn giao DK-09](../docs/dk09_handover.md) tập hợp bằng chứng và mục chờ review. Các mục DK-04..DK-07 dưới đây là cấu trúc image, test chuyên biệt và kết quả lịch sử; không cần chạy từng demo image riêng để chơi bằng Compose.
+
 ## Image Haskell — DK-04
 
 Nhánh `Dong_goi_kiem_thu`, nền `c8f02e5`. Chỉ đóng gói server Haskell; web image và Compose thuộc DK-05/DK-07. Không đổi luật hoặc cơ chế một trận/process.
@@ -164,3 +166,48 @@ Ngày **2026-10-10**, Docker Desktop 4.94.0 / Engine 29.8.2, Linux amd64:
 | Cleanup | Không còn container/network tiền tố `battleship-dk05-` sau test |
 
 Log ignored ở `.stack-work/dk05/linux-web-build.log` và `web-runtime-test.log`. Lần build đầu phát hiện stage test thiếu `docs/protocol.md`; đã bổ sung `docs/` và build/test lại xanh. Không cần sửa logic bridge để chạy trong container. Chưa chạy browser automation hoặc nghiệm thu gameplay/LAN đầy đủ DK-08; chưa nghiệm thu arm64 hoặc Compose. Cần D review trước hợp nhất, không ghi xác nhận thay thành viên.
+
+## Compose — DK-07
+
+Nhánh `Ghep_compose_readiless_va_vong_doi`, nền `4726b1f`. `compose.yaml` dùng đúng hai runtime image build từ source, mạng riêng theo project, chỉ publish cổng web. Mẫu `.env.example` là localhost `8081:8080`, bridge gọi DNS `haskell:4000`; helper DK-06 tạo cấu hình LAN động và mount thư mục chỉ đọc. Xem [lệnh chuẩn trong README](../README.md#chạy-hai-service-bằng-compose--dk-07) và [hợp đồng readiness/vòng đời](../docs/docker_deployment.md#triển-khai-compose-dk-07).
+
+### Kiểm thử cấu hình và runtime Compose
+
+```sh
+docker compose --env-file .env.example -p battleship-build config --quiet
+docker compose --env-file .env.example -p battleship-build build
+node --test scripts/test-compose.mjs
+```
+
+Runner cần Docker Linux và hai image `battleship-haskell:local`/`battleship-web:local` vừa build; Node/dependency frontend của checkout để tạo WebSocket thật. Nếu CLI không trong PATH, đặt BATTLESHIP_DOCKER_CLI như các runner DK-04/05. Sau DK-08, runner còn cần Chromium (`pnpm --dir frontend exec playwright install chromium`), dùng project UUID `battleship-dk08-*` và thư mục `.stack-work/dk08/`; cổng do OS cấp, cleanup chỉ nhắm project/thư mục đó. Ca helper Windows chạy PowerShell 5.1 và helper production thật; ca này chỉ chạy trên Windows host.
+
+- Render Compose: đúng hai service, environment đúng nơi nhận, mapping riêng public/internal, backend không publish, mount chỉ đọc, required values thiếu/rỗng báo lỗi.
+- Gate trước listener: entrypoint test chờ file được test mở sau một healthcheck thất bại; web không chạy/không HTTP ready trước marker thật. Entry point production giữ nguyên PID 1 của executable.
+- Backend cấu hình sai: exit 1, không healthy, web không chạy, log lỗi không chứa dữ liệu phiên.
+- Chạy đúng lệnh healthcheck 100 lần mỗi service rồi kết nối: P1/P2 nhận đúng WELCOME; P3 nhận ERROR SERVER_FULL. Đặt tàu thật; log không chứa token hoặc payload đội tàu.
+- Stop khi đang chơi: WS, HTTP keep-alive, TCP được đóng, hai process exit 0, marker được xóa; không dùng SIGKILL cuối deadline để coi là thành công. Up lại cùng project/cổng nhận P1/P2 và token mới.
+- QUIT kết thúc một trận: Haskell exit 0/restart count 0; web còn HTTP để xem kết quả. Start haskell không restart web; down dọn container/network rồi up lại không tranh cổng.
+- Helper Auto thật: native PowerShell gọi Compose thật, file mới được heartbeat trong mount RW=false, hai người nhận đúng slot qua localhost; không cần Node/GHC bên trong host để khởi chạy sản phẩm.
+
+Stop/down có deadline kiểm thử tổng 10 giây ngoài cấu hình grace 10 giây cho mỗi service. Readiness startup tối đa 60 giây sau build; thao tác Docker khác tối đa 30 giây. `depends_on` giải quyết thứ tự startup, không giám sát backend suốt trận; web `/healthz` chỉ phản ánh HTTP/bridge, backend Exited sau GAME_OVER là bình thường.
+
+### Kết quả DK-07
+
+Ngày **2026-10-10**, Windows host, Docker Engine 29.8.2 / Compose 5.5.1, Linux amd64:
+
+| Gate | Kết quả |
+|---|---|
+| `docker compose --env-file .env.example config --quiet` | Qua |
+| `docker compose --env-file .env.example build` | Hai image runtime build thành công từ source; Haskell 908 ví dụ/0 lỗi với -Werror; frontend 36/36 và TypeScript/Vite qua |
+| `node --test scripts/test-compose.mjs` | 7/7 qua, 0 skip; gồm helper Auto Windows gọi Compose thật |
+| 100 healthcheck mỗi service | Hai slot còn nguyên, P1/P2 đúng; P3 nhận lỗi; không publish TCP Haskell; HTML và React bundle được phục vụ qua cổng web |
+| Stop/down và restart | Trong deadline 10 giây, process exit 0, marker được dọn, token mới ở trận mới; không tranh cổng sau stop/down |
+| Chính sách một trận | QUIT khiến backend exit 0, restart count 0; web còn HTTP; start haskell giữ nguyên thời điểm khởi động web |
+
+Log cục bộ ignored: `.stack-work/dk07/compose-build.log`, `compose-test.log`, `compose-ui-stop-test.log`, `frontend-test.log`. Ca health/stop được chạy lại sau khi bổ sung kiểm tra HTML/bundle và log ở cả stdout/stderr: 1/1 qua. Lần chạy test model đầu phát hiện Compose config xuất `$$` để escape khi render; test đã phân biệt model và runtime: healthcheck trong container nhận `$` đơn và chạy được. Không sửa API Haskell/bridge, luật, snapshot hoặc dependency. Build gate này chạy lại A-06/B-06/C-07 trên Linux. Chưa nghiệm thu trận đầy đủ bằng hai trình duyệt/hai thiết bị vật lý hoặc arm64; DK-08 và C/R review còn chờ.
+
+## Trận đầy đủ, hai container và LAN — DK-08
+
+Bộ `scripts/test-compose.mjs` hiện có 19 ca, gồm 7 ca DK-07 và 12 ca DK-08. Build source sạch chạy lại gate Linux của cả hai Dockerfile; các ca runtime dùng đúng hai service production, cổng web công bố khác cổng nội bộ. Test kiểm tra trận đủ 17 ô, riêng tư, resume/hết hạn 300.000 ms, restart web/Haskell, đồng thời, P1/P2/cả hai không đọc TCP, UI React desktop/mobile và LAN IPv4 của host Windows. Không sửa code production hoặc thêm dependency.
+
+Xem [hồ sơ DK-08](../docs/dk08_acceptance.md) để chuẩn bị Chromium, chạy lại và xem log/ảnh. Đã chạy thêm nghiệm thu một máy với Chrome/Edge riêng theo yêu cầu người dùng; có thể tái hiện bằng `BATTLESHIP_BROWSER_CHANNELS=chrome,msedge` nếu đã cài cả hai trình duyệt. Clock fixture thay đồng hồ trong entrypoint test và import bridge nguyên bản; TCP fixture dùng gate để chứng minh Haskell đã thoát trước khi client đọc lại. Kết quả một máy/hai trình duyệt không xác nhận hai thiết bị Wi-Fi. Kết quả DK-07 ở trên là lịch sử của commit nền; kết quả mới và phạm vi chưa kiểm chứng được ghi trong hồ sơ DK-08.

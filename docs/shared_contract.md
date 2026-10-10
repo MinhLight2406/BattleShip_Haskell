@@ -1,4 +1,4 @@
-# Hợp đồng chung S-01 v2 — cập nhật đến C-07/DK-02, chờ duyệt
+# Hợp đồng chung S-01 v2 — cập nhật đến Docker DK-09, chờ duyệt
 
 Ngày đối chiếu kỹ thuật: 2026-10-10. Chủ trì tài liệu: R.
 
@@ -319,3 +319,47 @@ Mẫu để mỗi thành viên ghi: `A — <tên/GitHub>: xác nhận S-01 v2 t�
 R chỉ chuyển trạng thái sang **ĐÃ KHÓA** khi đủ bốn xác nhận cho cùng nội dung và build/test xanh. Sau mốc khóa, mọi thay đổi cần A/B/C/D đồng ý trước khi hợp nhất. R ghi thay đổi, ảnh hưởng, bằng chứng test và bốn xác nhận; đổi hợp đồng thì tăng revision S-01, đổi wire không tương thích thì tăng phiên bản giao thức. Không tự sửa Types/transcript rồi coi test xanh là đã được nhóm đồng ý.
 
 Checklist nghiệm thu hiện tại: nội dung kỹ thuật được đối chiếu và có kiểm tra chạy được; xác nhận của bốn người còn thiếu, nên **S-01 chưa đạt toàn bộ tiêu chí xong**.
+
+## 7. Hợp đồng Docker và bàn giao DK-09
+
+Đây là phần bổ sung triển khai để nhóm review, không thay ADT/chữ ký lõi R-01 hoặc wire TCP v1. Nguồn cấu hình chi tiết: [docker_deployment.md](docker_deployment.md), `.env.example` và `compose.yaml`. Lệnh vận hành duy nhất cho bàn giao: [README — hướng dẫn chuẩn DK-09](../README.md#chạy-bằng-docker--hướng-dẫn-chuẩn-dk-09); [dk09_handover.md](dk09_handover.md) ghi môi trường, kết quả và danh sách review. Những mốc nhánh/SHA ở các mục trước là lịch sử, không phải commit chốt Docker mới.
+
+### Cấu hình, API và vòng đời cần duyệt
+
+| Phần | Thay đổi/hợp đồng hiện tại | Ảnh hưởng |
+|---|---|---|
+| Haskell DK-02 | ServerConfig/parseServerConfig/runServerConfigured và readiness callback/marker; giữ runServer/runServerWith cũ | Native vẫn loopback; Docker bind 0.0.0.0, health đọc marker sau listen, không chiếm slot |
+| Bridge DK-03 | BATTLESHIP_TCP_HOST/WEB_PUBLIC_PORT, PUBLIC_ORIGIN hoặc LAN_ORIGINS_FILE, `/healthz` HTTP | Compose gọi DNS haskell:4000; public 8081 khác internal 8080; Origin/Host chính xác |
+| Helper DK-06 | Windows IPv4 host, origin file nguyên tử/heartbeat 2 giây, env-file hiệu lực | Mount cả thư mục chỉ đọc; đổi IP không restart; file sai/quá hạn bỏ LAN allowlist, giữ phiên đang mở |
+| Compose DK-07 | Đúng haskell/web; chỉ publish web; service_healthy; restart no; SIGTERM/grace 10 giây | Một trận/lần chạy; start haskell sau GAME_OVER, không restart web; stop/down/restart mất trận |
+| C-07 | TBQueue 128/126/2, kiểm tra cả batch, Quit đúng người quá tải | Bảo toàn tính nguyên tử và riêng tư; không đợi client chậm trong STM |
+| Web session | Token riêng, grace 300.000 ms khi mất WS; cùng TCP/lõi khi resume hợp lệ | Đổi origin cần mã phiên; restart web/core hoặc tắt host không giữ thời hạn/phiên |
+
+DK-04/05 chỉ đóng gói image; DK-08 thêm test/fixture và minh chứng; DK-09 chỉ hoàn thiện tài liệu/hợp đồng. Không thêm database/lưu trận, nhiều phòng, AI hoặc giao thức công khai mới. C-07/DK-02 là thay đổi API đã nêu ở mục 3, vẫn cần review trước hợp nhất; Docker không tạo bản sao GameState hay serialize bí mật ra health/log.
+
+### Chủ sở hữu phần Docker
+
+Bảng này bổ sung triển khai ngoài Haskell; giữ nguyên block `contract:owners` phục vụ kiểm tra nguồn ở mục 4.
+
+| File/phần | Phụ trách | Review |
+|---|---|---|
+| docker/haskell.Dockerfile, .dockerignore | A | C |
+| docker/web.Dockerfile, frontend/bridge.mjs và frontend test | D | C |
+| scripts/Start-LanCompose.ps1, scripts/test/LanCompose.Tests.ps1 | C/D | R |
+| compose.yaml, .env.example | C | D/R |
+| scripts/test-compose.mjs, docker/test/*.mjs | B/C/D | R |
+| README.md, docs/, docker/README.md | R | A/B/C/D |
+
+### Bằng chứng và xác nhận trước hợp nhất
+
+Linux amd64 build thật dùng lts-24.59/GHC 9.10.3: **908 ví dụ Haskell/0 lỗi** với -Werror; frontend **36/36**; suite Compose nền **19/19, 0 skip**. Theo yêu cầu người dùng, nghiệm thu thay thế **một máy/Chrome và Edge riêng** qua IPv4 host đã đến thắng/thua, reload giữ trận, không lộ tàu; log/ảnh tại [dk08_acceptance.md](dk08_acceptance.md). Kết quả này không xác nhận hai thiết bị Wi-Fi, đổi Wi-Fi vật lý hoặc arm64. DK-09 đối chiếu lệnh và test tài liệu được ghi riêng trong hồ sơ bàn giao, không dùng số test cũ làm kết quả lần chạy mới.
+
+| Vai trò | Cần review | Commit/link xác nhận | Trạng thái |
+|---|---|---|---|
+| R | Hướng dẫn đủ để người khác làm lại, giới hạn/bằng chứng và commit bàn giao | Chưa được cung cấp | CHỜ |
+| A | Image Haskell/snapshot/Linux gate, không đổi Fleet/API miền | Chưa được cung cấp | CHỜ |
+| B | Riêng tư, luật thật, test đồng thời/client chậm và phạm vi nghiệm thu | Chưa được cung cấp | CHỜ |
+| C | Bind/readiness, queue/cleanup, Compose/helper và mở trận mới | Chưa được cung cấp | CHỜ |
+| D | Bridge DNS/public port, Origin/Host/resume và thao tác UI | Chưa được cung cấp | CHỜ |
+
+Mỗi thành viên ghi tên/GitHub, SHA **cùng bản bàn giao**, ngày và link bằng chứng; dùng mẫu: `<vai trò> — <tên>: đã review Docker DK-09 tại <SHA>, đồng ý hợp đồng triển khai và phạm vi nghiệm thu <link>`. Tra SHA bằng `git log -1 --format=%H` trên nhánh bàn giao. R chỉ đánh dấu chốt khi có đủ xác nhận; test xanh hoặc commit/push không thay chữ ký.

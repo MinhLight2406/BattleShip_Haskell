@@ -1,0 +1,60 @@
+services:
+  haskell:
+    image: battleship-haskell:local
+    build:
+      context: .
+      dockerfile: docker/haskell.Dockerfile
+      target: runtime
+    environment:
+      BATTLESHIP_BIND_HOST: ${BATTLESHIP_BIND_HOST:?Set BATTLESHIP_BIND_HOST in the env file}
+      BATTLESHIP_READY_FILE: ${BATTLESHIP_READY_FILE:?Set BATTLESHIP_READY_FILE in the env file}
+    command: ["${BATTLESHIP_TCP_PORT:?Set BATTLESHIP_TCP_PORT in the env file}"]
+    expose:
+      - "${BATTLESHIP_TCP_PORT:?Set BATTLESHIP_TCP_PORT in the env file}"
+    healthcheck:
+      # Read the callback marker; connecting to the game port would consume a player slot.
+      test: ["CMD-SHELL", 'test "$$(cat "$$BATTLESHIP_READY_FILE")" = ready']
+      interval: 2s
+      timeout: 1s
+      start_period: 10s
+      retries: 5
+    restart: "no"
+    stop_signal: SIGTERM
+    stop_grace_period: 10s
+
+  web:
+    image: battleship-web:local
+    build:
+      context: .
+      dockerfile: docker/web.Dockerfile
+      target: runtime
+    environment:
+      BATTLESHIP_TCP_HOST: ${BATTLESHIP_TCP_HOST:?Set BATTLESHIP_TCP_HOST in the env file}
+      BATTLESHIP_TCP_PORT: ${BATTLESHIP_TCP_PORT:?Set BATTLESHIP_TCP_PORT in the env file}
+      HOST: ${HOST:?Set HOST in the env file}
+      PORT: ${PORT:?Set PORT in the env file}
+      WEB_PUBLIC_PORT: ${WEB_PUBLIC_PORT:?Set WEB_PUBLIC_PORT in the env file}
+      PUBLIC_ORIGIN: ${PUBLIC_ORIGIN-}
+      LAN_ORIGINS_FILE: ${LAN_ORIGINS_FILE-}
+    ports:
+      - "${WEB_PUBLIC_PORT:?Set WEB_PUBLIC_PORT in the env file}:${PORT:?Set PORT in the env file}"
+    volumes:
+      - type: bind
+        source: ${LAN_CONFIG_DIR:?Set LAN_CONFIG_DIR in the env file}
+        target: /run/battleship-lan
+        read_only: true
+        bind:
+          create_host_path: false
+    depends_on:
+      haskell:
+        condition: service_healthy
+    healthcheck:
+      # HTTP only: does not create TCP sessions, tokens or player slots.
+      test: ["CMD", "node", "--input-type=module", "-e", "const r = await fetch('http://127.0.0.1:' + process.env.PORT + '/healthz', {signal: AbortSignal.timeout(800)}); if (!r.ok || (await r.json()).status !== 'ok') process.exit(1)"]
+      interval: 2s
+      timeout: 1s
+      start_period: 10s
+      retries: 5
+    restart: "no"
+    stop_signal: SIGTERM
+    stop_grace_period: 10s

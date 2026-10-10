@@ -3,7 +3,7 @@
 Ngày lập: **2026-10-10**. Nhánh: `Update_using_docker`, nền `0a7c250`.
 Chủ trì: R. C/D review cấu hình, healthcheck và vòng đời phiên trước hợp nhất.
 
-**Trạng thái: hợp đồng kỹ thuật để triển khai; chưa có xác nhận C/D.** DK-01 tạo tài liệu, `.env.example` và test tự động kiểm tra hai artifact này. DK-02 đã thêm BATTLESHIP_BIND_HOST/BATTLESHIP_READY_FILE, API listener tương thích và test Haskell. DK-03 đã thêm TCP host, public port, kiểm tra Origin/Host, reader file LAN và healthcheck bridge. DK-04 đã nghiệm thu [image Haskell và runner runtime](../docker/README.md) trên Linux amd64 ngày 2026-10-10: build thành công, 908 ví dụ Haskell với `-Werror` và 5/5 test runtime xanh. DK-05 đã nghiệm thu [image web](../docker/README.md#image-web--dk-05): TypeScript/build và 36 unit test qua trên Linux, 6/6 test runtime qua gồm asset và shutdown HTTP/WS/TCP với Haskell thật. Compose, helper LAN và nghiệm thu triển khai đầy đủ thuộc DK-06..DK-08; chưa thể dùng mẫu này để chạy Compose ngay. Smoke test hai image tại DK-05 không thay thế nghiệm thu gameplay/LAN DK-08.
+**Trạng thái: DK-01..DK-08 đã triển khai và kiểm thử kỹ thuật; DK-09 hoàn thiện hướng dẫn/bàn giao, chưa có xác nhận nhóm thay người phụ trách.** DK-01 tạo tài liệu, `.env.example` và test artifact. DK-02 thêm listener/readiness Haskell; DK-03 thêm TCP host, public port, kiểm tra Origin/Host, reader file LAN và healthcheck bridge. DK-04 nghiệm thu [image Haskell](../docker/README.md) Linux amd64: 908 ví dụ Haskell với `-Werror`, 5/5 test runtime. DK-05 nghiệm thu [image web](../docker/README.md#image-web--dk-05): TypeScript/build, 36 unit test và 6/6 test runtime. DK-06 triển khai helper Windows và kiểm thử producer/mount chỉ đọc/resume. DK-07 thêm Compose production và readiness/vòng đời. DK-08 có 19 ca Compose và, theo yêu cầu người dùng, nghiệm thu một máy/Chrome+Edge qua IP LAN; hai thiết bị vật lý chưa kiểm chứng. [Hướng dẫn chuẩn DK-09](../README.md#chạy-bằng-docker--hướng-dẫn-chuẩn-dk-09) dùng env-file hiệu lực của helper cho mọi lệnh; [hồ sơ bàn giao](dk09_handover.md) ghi kết quả, giới hạn và review.
 
 Nguồn phải giữ đúng: [luật R-01](game_spec.md), [wire v1](protocol.md), [hợp đồng chung](shared_contract.md), [bridge và GUI hiện tại](frontend_integration.md). Không đổi Types, luật, người nhận sự kiện hoặc nguồn sự thật `TVar GameState` để phục vụ Docker.
 
@@ -125,6 +125,42 @@ Khi kết nối thực sự mất vì Wi-Fi đổi, cơ chế hiện có tiếp 
 
 Manual mode không tự đổi IP. Đổi PUBLIC_ORIGIN bằng recreate/restart web trong lúc chơi sẽ mất phiên; dùng dynamic mode nếu muốn đổi mạng giữa trận. Port publish WEB_PUBLIC_PORT được chốt **trước trận**; đổi port mapping cần recreate service nên không thuộc cập nhật IP nóng. Nếu thay Wi-Fi làm Docker Engine/VM restart hoặc mất mạng giữa các container, đó là gián đoạn backend, không phải ca chỉ đổi IP host được bảo đảm resume.
 
+### DK-06: helper Windows đã triển khai
+
+Nhánh `Auto_update_IP_on_docker`, nền `4c8a05d`. `scripts/Start-LanCompose.ps1` hỗ trợ Windows PowerShell 5.1+; dùng [NetworkInterface.GetAllNetworkInterfaces](https://learn.microsoft.com/en-us/dotnet/api/system.net.networkinformation.networkinterface.getallnetworkinterfaces) của máy host, không gọi bridge để dò IP container và không cần CIM/admin. Loại adapter down/loopback, IPv6, link-local, IPv4 sai và trùng. Mặc định lấy tất cả địa chỉ host đủ điều kiện, gồm VPN/virtual adapter nếu có; chọn `-LanInterface` để giới hạn đúng mạng người chơi. Adapter được chọn không tồn tại lúc khởi động là lỗi; biến mất trong khi chạy thì xuất danh sách rỗng và phục hồi khi xuất hiện lại.
+
+Helper tạo `.docker-runtime/lan/origins.json`, `compose.env` và giữ `.helper.lock` bằng FileShare.None. Chạy thêm helper trên cùng thư mục bị từ chối. Không sửa `.env`, không ghi token/fleet/GameState, chỉ sao chép các khóa cấu hình trong `.env.example` vào env-file hiệu lực. Ghi file tạm cùng thư mục, UTF-8 không BOM, flush/đóng rồi [MoveFileExW](https://learn.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-movefileexw) với `REPLACE_EXISTING | WRITE_THROUGH`; không dùng delete-first hoặc copy giữa volume. Windows có thể giữ handle ngắn hạn, nên rename chỉ thử tối đa 10 lần, cách 20 ms, với lỗi sharing/access phù hợp; lỗi còn lại dừng rõ. Reader vẫn fail closed nếu một poll gặp lỗi mở file, không đọc/áp dụng JSON một phần và không làm mất phiên.
+
+Chọn chế độ trước trận:
+
+| Tham số | Hành vi |
+|---|---|
+| `-Mode Auto` (mặc định) | File LAN động, refresh 2 giây, PUBLIC_ORIGIN rỗng |
+| `-Mode Localhost` | Origin localhost tại cổng public, LAN_ORIGINS_FILE rỗng; không cần watcher |
+| `-Mode Manual -PublicOrigin <origin>` | Validate/canonicalize origin, đúng public port; không tự đổi IP |
+| `-LanInterface 'Wi-Fi'` | Chọn tên adapter host, không truyền tên đó vào bridge để dò container |
+| `-PublicPort 8081` | Cổng công bố dùng trong mọi URL/file; không đổi cổng đang chạy giữa trận |
+| `-ConfigDir <dir>` | Thư mục cấu hình host; tương đối với root repo, được resolve tuyệt đối |
+| `-EnvFile <file>` | Dùng file cấu hình riêng thay `.env`; mặc định `.env` nếu có, rồi `.env.example` |
+| `-WatchOnly` | Chuẩn bị cấu hình; Auto tiếp tục theo dõi, static chuẩn bị rồi thoát; không gọi Docker |
+| `-ComposeFile <file> -ProjectName <name>` | Chọn deployment rõ ràng; mặc định root `compose.yaml`, project `battleship` |
+| `-DockerCommand <path>` | CLI tùy chọn; mặc định tìm PATH, Docker Desktop per-user rồi all-users |
+
+Helper lấy cấu hình `.env.example` → `.env`/`-EnvFile` → shell → flag không xung đột. Chọn Mode có chủ đích thay origin mode trong **file**. Nếu shell còn giá trị khác với flag/chế độ, báo lỗi trước ghi/chạy Compose vì shell sẽ ưu tiên hơn env-file. Ví dụ chuyển từ manual sang Auto: xóa `$env:PUBLIC_ORIGIN` bằng `$env:PUBLIC_ORIGIN=$null`; cũng xóa `LAN_ORIGINS_FILE`/`WEB_PUBLIC_PORT` nếu muốn chọn giá trị khác. Không âm thầm sửa môi trường của terminal. Các file env cho helper dùng khai báo literal một dòng, hỗ trợ quote nhưng không hỗ trợ nội suy `${...}`; macro bị báo lỗi rõ, không tự suy đoán giá trị.
+
+File JSON đầu và env-file được tạo trước `compose up`. Compose chỉ được gọi **một lần** bằng `--project-directory`, `--env-file`, `-f`, `-p`, `up -d --wait --wait-timeout 60`. Lệnh chạy trong PowerShell job để vòng refresh host không bị chặn khi build/readiness kéo dài. Lỗi Compose làm helper thoát và trả lỗi; cập nhật IP không gọi Docker nữa. Auto giữ terminal mở; Ctrl+C dọn job/lock, không tự `compose down`. Khi helper dừng, LAN hết TTL 10 giây, localhost còn hoạt động; TCP/phiên đang giữ không bị tắt do TTL. Bắt đầu lại helper sẽ phục hồi file/allowlist, không reset deadline trong bridge.
+
+DK-07 đã thêm Compose production tại root `compose.yaml`. Sau khi build image, bỏ `-WatchOnly` để helper khởi chạy deployment thật; dùng cờ này khi chỉ muốn chuẩn bị/theo dõi. Fixture Compose của test DK-06 vẫn chỉ kiểm tra parser; bộ `scripts/test-compose.mjs` kiểm tra Compose production, readiness và vòng đời ở DK-07.
+
+Gate DK-06 ngày 2026-10-10:
+
+- Bộ unit PowerShell: **19 ca** về adapter, VPN, offline, canonical port/address, precedence/mode, UTF-8/schema, lock và lỗi ghi giữ nguyên dữ liệu.
+- Bộ test host Node: **7/7 qua**, kiểm tra bộ unit trên Windows PowerShell 5.1, so sánh IP host với API Node độc lập, watcher/đổi IP/mất mạng, 200 rename đồng thời với reader, giữ TCP/token/deadline, Compose khởi động chậm và lỗi Compose. Lệnh: `pnpm --dir frontend test:lan-helper`.
+- Integration Docker: **2/2 qua**, Compose đọc env-file có path chứa space/apostrophe, mount thư mục `RW=false`; helper Windows đổi IP, web nhận origin mới/loại origin cũ, file JSON hỏng fail closed; Haskell thật và web không restart, resume giữ P1/đội tàu riêng, deadline 300.000 ms không bị kéo dài, Quit kết thúc đúng P2 và Haskell exit 0. Lệnh: `node --test docker/test/lan-runtime.test.mjs`; cần hai image DK-04/05 và Docker Linux.
+- TypeScript/build và bộ frontend/bridge hiện có **36/36 qua**, cả native và Linux test stage `battleship-web-test:dk06`; Linux cài dependency bằng `--frozen-lockfile`. Không thay source Haskell/bridge, luật, wire protocol hoặc snapshot.
+
+Log ignored ở `.stack-work/dk06/`: `powershell-unit.log`, `lan-helper-test.log`, `lan-runtime-test.log`, `frontend-build.log`, `frontend-test.log`, `web-linux-test.log`. Test IP thay đổi dùng adapter giả lập qua chính producer PowerShell thật; đã đối chiếu API host thật nhưng chưa đổi Wi-Fi vật lý/hai thiết bị, chưa nghiệm thu Compose production DK-07/DK-08 và chưa ghi xác nhận thay C/D.
+
 ## 5. Vòng đời trận, dừng và restart
 
 Haskell vẫn một trận/lần chạy. Hai service dùng **`restart: "no"`** ở bản Compose MVP: không tự tạo trận mới khi container thoát. Không thêm vòng lặp chơi vào Main hoặc đổi behavior server vì đóng gói.
@@ -165,6 +201,16 @@ Không có volume lưu GameState. Thư mục LAN là cấu hình, không phải 
 - Interval 2s, timeout 1s, start_period 10s, retries 5. Backend dừng sau trận không biến HTTP thành lỗi: web vẫn cần phục vụ kết quả. File LAN mất/quá hạn cũng không có nghĩa process HTTP chết; từ chối LAN upgrade như mục 4 và log lỗi.
 
 DK-07 cấu hình web phụ thuộc `haskell` với `condition: service_healthy`. Deadline chờ deployment ready là **60 giây sau khi image đã build**, không tính thời gian build/download. `depends_on` chỉ giải quyết readiness ban đầu, không tự nối lại TCP của trận khi Haskell restart và không chứng minh backend healthy mãi mãi.
+
+### Triển khai Compose DK-07
+
+Nhánh `Ghep_compose_readiless_va_vong_doi`, nền `4726b1f`. Compose định nghĩa đúng hai service với runtime target của Dockerfile DK-04/05, image local `battleship-haskell:local` và `battleship-web:local`. Default network của Compose tách project; chỉ publish cổng web, không đặt container_name hoặc truyền chung env_file vào ứng dụng. Haskell chỉ nhận hai biến bind/readiness và đối số port; web nhận bảy biến cấu hình riêng. LAN_INTERFACE chỉ thuộc helper host.
+
+Các biến bắt buộc dùng `${VAR:?message}` để thiếu/rỗng báo lỗi trước tạo container; hai origin mode có thể rỗng trong Compose nhưng bridge vẫn kiểm tra đúng một mode trước listen. Cấu hình port/address/origin do validator ứng dụng kiểm tra như DK-02/03; `config --quiet` chỉ kiểm tra model/nội suy Compose, không thay runtime validation. Mount LAN là thư mục chỉ đọc với `create_host_path: false`: chuẩn bị LAN_CONFIG_DIR trước `up`, kể cả localhost, để lỗi đường dẫn không bị che bằng thư mục tự tạo.
+
+Healthcheck Compose dùng đúng chính sách 2s/1s/10s/5 retries; Node abort HTTP sau 800ms trong deadline 1s. Web Dockerfile được đồng bộ với timeout này. Dấu dollar trong healthcheck Haskell dùng `$$` để shell **trong container** đọc BATTLESHIP_READY_FILE, không nội suy biến host thành nội dung marker. Healthcheck không chứa token/fleet hoặc tạo kết nối chơi. Readiness, SIGTERM và cleanup vẫn do code DK-02/DK-05 xử lý, không thêm shell nền vào entrypoint production.
+
+Hai service dùng restart no, stop_signal SIGTERM, stop_grace_period 10s. Backend Exited sau một trận không tự mở trận tiếp theo. Dùng `start haskell` khi trận cũ đã kết thúc; web không restart. `stop`/`down` là dừng trận có chủ đích, dữ liệu RAM mất; thời hạn resume không tồn tại khi bridge dừng. Khi dùng helper, các lệnh ps/start/down phải dùng đúng env-file hiệu lực và project của helper. Ví dụ thao tác ở README và docker/README; nghiệm thu gameplay đầy đủ/LAN hai thiết bị vẫn thuộc DK-08.
 
 ## 7. Phân công và ca kiểm thử bắt buộc
 
@@ -280,6 +326,8 @@ Không đổi Haskell, API luật hoặc giao thức v1 ở DK-03. Bộ reconnec
 Rà soát DK-03 phát hiện Host có dấu `/` cuối được parser URL chuẩn hóa và chấp nhận. Đã chặn `/` trong Host trước parse; regression test từ chối `localhost:8081/`, `localhost/`, `localhost:80/` trước khi tạo TCP, đồng thời vẫn nhận Host hợp lệ ở port 80. PUBLIC_ORIGIN cấu hình có dấu `/` cuối vẫn được chuẩn hóa theo hợp đồng.
 
 ## 9. Tác động và xác nhận
+
+DK-08 bổ sung bộ nghiệm thu hai container và kịch bản LAN tại [dk08_acceptance.md](dk08_acceptance.md), không đổi hợp đồng triển khai. `scripts/test-compose.mjs` giữ gate DK-07 và thêm source sạch, trận đầy đủ, riêng tư, resume/hết hạn 5 phút, restart, đồng thời/client chậm và UI trình duyệt. Đồng hồ kiểm soát chỉ nằm trong fixture test; production vẫn dùng 300.000 ms. Kết quả tự động và xác nhận hai thiết bị thật được ghi riêng, không thay xác nhận C/D/R bên dưới.
 
 Sau DK-02, `runServer`/`runServerWith` vẫn bind loopback; ServerMain có thể chọn IPv4/localhost qua BATTLESHIP_BIND_HOST và readiness qua BATTLESHIP_READY_FILE. DK-03 giữ TCP host mặc định loopback, cho phép chọn BATTLESHIP_TCP_HOST; PUBLIC_ORIGIN dùng WEB_PUBLIC_PORT nếu có, nếu không dùng PORT. Chạy native mặc định tiếp tục tự dò IP của process; container dùng PUBLIC_ORIGIN cố định hoặc LAN_ORIGINS_FILE được helper DK-06 cập nhật. Hai chế độ này không được khai báo cùng lúc. Các biến ứng dụng không tự tạo mapping cổng; Compose DK-07 phải publish cổng tương ứng. `.env.example` phải được cập nhật cùng hợp đồng khi biến/giá trị đổi.
 
