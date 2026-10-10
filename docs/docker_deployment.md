@@ -3,7 +3,7 @@
 Ngày lập: **2026-10-10**. Nhánh: `Update_using_docker`, nền `0a7c250`.
 Chủ trì: R. C/D review cấu hình, healthcheck và vòng đời phiên trước hợp nhất.
 
-**Trạng thái: hợp đồng kỹ thuật để triển khai; chưa có xác nhận C/D.** DK-01 tạo tài liệu, `.env.example` và test tự động kiểm tra hai artifact này. DK-02 đã thêm BATTLESHIP_BIND_HOST/BATTLESHIP_READY_FILE, API listener tương thích và test Haskell. DK-03 đã thêm TCP host, public port, kiểm tra Origin/Host, reader file LAN và healthcheck bridge. DK-04 đã nghiệm thu [image Haskell và runner runtime](../docker/README.md) trên Linux amd64 ngày 2026-10-10: build thành công, 908 ví dụ Haskell với `-Werror` và 5/5 test runtime xanh. DK-05 đã nghiệm thu [image web](../docker/README.md#image-web--dk-05): TypeScript/build và 36 unit test qua trên Linux, 6/6 test runtime qua gồm asset và shutdown HTTP/WS/TCP với Haskell thật. DK-06 đã triển khai helper Windows và kiểm thử IP/producer/mount chỉ đọc/resume, xem mục 4. Compose production và nghiệm thu triển khai đầy đủ thuộc DK-07/DK-08; chưa thể dùng mẫu này để chạy Compose ngay. Các smoke test không thay thế nghiệm thu gameplay/LAN hai thiết bị DK-08.
+**Trạng thái: DK-01..DK-07 đã triển khai và kiểm thử kỹ thuật; chưa có xác nhận C/D/R thay người phụ trách.** DK-01 tạo tài liệu, `.env.example` và test artifact. DK-02 thêm listener/readiness Haskell; DK-03 thêm TCP host, public port, kiểm tra Origin/Host, reader file LAN và healthcheck bridge. DK-04 nghiệm thu [image Haskell](../docker/README.md) Linux amd64: 908 ví dụ Haskell với `-Werror`, 5/5 test runtime. DK-05 nghiệm thu [image web](../docker/README.md#image-web--dk-05): TypeScript/build, 36 unit test và 6/6 test runtime. DK-06 triển khai helper Windows và kiểm thử producer/mount chỉ đọc/resume. DK-07 thêm Compose production, build cả hai image và kiểm thử readiness/health/stop/start/down bằng server thật; xem mục 6 và docker/README. Mẫu localhost dùng được với compose.yaml sau khi tạo thư mục LAN_CONFIG_DIR và build; LAN động dùng helper. Nghiệm thu gameplay đầy đủ và hai thiết bị LAN vật lý thuộc DK-08.
 
 Nguồn phải giữ đúng: [luật R-01](game_spec.md), [wire v1](protocol.md), [hợp đồng chung](shared_contract.md), [bridge và GUI hiện tại](frontend_integration.md). Không đổi Types, luật, người nhận sự kiện hoặc nguồn sự thật `TVar GameState` để phục vụ Docker.
 
@@ -150,7 +150,7 @@ Helper lấy cấu hình `.env.example` → `.env`/`-EnvFile` → shell → flag
 
 File JSON đầu và env-file được tạo trước `compose up`. Compose chỉ được gọi **một lần** bằng `--project-directory`, `--env-file`, `-f`, `-p`, `up -d --wait --wait-timeout 60`. Lệnh chạy trong PowerShell job để vòng refresh host không bị chặn khi build/readiness kéo dài. Lỗi Compose làm helper thoát và trả lỗi; cập nhật IP không gọi Docker nữa. Auto giữ terminal mở; Ctrl+C dọn job/lock, không tự `compose down`. Khi helper dừng, LAN hết TTL 10 giây, localhost còn hoạt động; TCP/phiên đang giữ không bị tắt do TTL. Bắt đầu lại helper sẽ phục hồi file/allowlist, không reset deadline trong bridge.
 
-**Hiện chưa có Compose production DK-07.** Dùng `-WatchOnly` được ngay; không bỏ cờ này cho đến khi có Compose hoặc cung cấp `-ComposeFile` đã triển khai. Mục mount/explicit environment tại hợp đồng này là ràng buộc DK-07. Fixture Compose trong test chỉ kiểm tra parser, không phải file triển khai production.
+DK-07 đã thêm Compose production tại root `compose.yaml`. Sau khi build image, bỏ `-WatchOnly` để helper khởi chạy deployment thật; dùng cờ này khi chỉ muốn chuẩn bị/theo dõi. Fixture Compose của test DK-06 vẫn chỉ kiểm tra parser; bộ `scripts/test-compose.mjs` kiểm tra Compose production, readiness và vòng đời ở DK-07.
 
 Gate DK-06 ngày 2026-10-10:
 
@@ -201,6 +201,16 @@ Không có volume lưu GameState. Thư mục LAN là cấu hình, không phải 
 - Interval 2s, timeout 1s, start_period 10s, retries 5. Backend dừng sau trận không biến HTTP thành lỗi: web vẫn cần phục vụ kết quả. File LAN mất/quá hạn cũng không có nghĩa process HTTP chết; từ chối LAN upgrade như mục 4 và log lỗi.
 
 DK-07 cấu hình web phụ thuộc `haskell` với `condition: service_healthy`. Deadline chờ deployment ready là **60 giây sau khi image đã build**, không tính thời gian build/download. `depends_on` chỉ giải quyết readiness ban đầu, không tự nối lại TCP của trận khi Haskell restart và không chứng minh backend healthy mãi mãi.
+
+### Triển khai Compose DK-07
+
+Nhánh `Ghep_compose_readiless_va_vong_doi`, nền `4726b1f`. Compose định nghĩa đúng hai service với runtime target của Dockerfile DK-04/05, image local `battleship-haskell:local` và `battleship-web:local`. Default network của Compose tách project; chỉ publish cổng web, không đặt container_name hoặc truyền chung env_file vào ứng dụng. Haskell chỉ nhận hai biến bind/readiness và đối số port; web nhận bảy biến cấu hình riêng. LAN_INTERFACE chỉ thuộc helper host.
+
+Các biến bắt buộc dùng `${VAR:?message}` để thiếu/rỗng báo lỗi trước tạo container; hai origin mode có thể rỗng trong Compose nhưng bridge vẫn kiểm tra đúng một mode trước listen. Cấu hình port/address/origin do validator ứng dụng kiểm tra như DK-02/03; `config --quiet` chỉ kiểm tra model/nội suy Compose, không thay runtime validation. Mount LAN là thư mục chỉ đọc với `create_host_path: false`: chuẩn bị LAN_CONFIG_DIR trước `up`, kể cả localhost, để lỗi đường dẫn không bị che bằng thư mục tự tạo.
+
+Healthcheck Compose dùng đúng chính sách 2s/1s/10s/5 retries; Node abort HTTP sau 800ms trong deadline 1s. Web Dockerfile được đồng bộ với timeout này. Dấu dollar trong healthcheck Haskell dùng `$$` để shell **trong container** đọc BATTLESHIP_READY_FILE, không nội suy biến host thành nội dung marker. Healthcheck không chứa token/fleet hoặc tạo kết nối chơi. Readiness, SIGTERM và cleanup vẫn do code DK-02/DK-05 xử lý, không thêm shell nền vào entrypoint production.
+
+Hai service dùng restart no, stop_signal SIGTERM, stop_grace_period 10s. Backend Exited sau một trận không tự mở trận tiếp theo. Dùng `start haskell` khi trận cũ đã kết thúc; web không restart. `stop`/`down` là dừng trận có chủ đích, dữ liệu RAM mất; thời hạn resume không tồn tại khi bridge dừng. Khi dùng helper, các lệnh ps/start/down phải dùng đúng env-file hiệu lực và project của helper. Ví dụ thao tác ở README và docker/README; nghiệm thu gameplay đầy đủ/LAN hai thiết bị vẫn thuộc DK-08.
 
 ## 7. Phân công và ca kiểm thử bắt buộc
 
