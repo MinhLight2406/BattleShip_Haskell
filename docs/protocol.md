@@ -1,5 +1,7 @@
 # Giao thức Battleship v1 — D-01
 
+**Phạm vi wire:** phần 1–11 mô tả TCP Haskell v1, vẫn giữ grammar/transcript đã chốt. Giao diện web sử dụng cùng lệnh/response qua WebSocket bridge và thêm metadata resume riêng ở phần 12; không gửi metadata JSON đó vào parser TCP.
+
 Đây là hợp đồng wire đã chốt cho một server, hai client, một trận theo R-01 và kiểu A-01. C/D triển khai theo grammar, thứ tự phản hồi và transcript dưới đây. Thay đổi không tương thích phải tăng phiên bản và cập nhật cả hai phía cùng test. Văn bản hiển thị tiếng Việt do client ánh xạ từ mã; wire không chứa câu thông báo tự do.
 
 Đối chiếu với Types, Board A-02, hai Main, chủ sở hữu file và trạng thái xác nhận của cả nhóm tại [shared_contract.md](shared_contract.md), S-01 v2. Các xác nhận còn thiếu được ghi ở đó; wire vẫn là v1.
@@ -315,11 +317,13 @@ encodeEvent :: Phase -> Event -> Either ProtocolError [(PlayerId, ByteString)]
 - `feedFrames pending chunk` trả các payload hoàn chỉnh theo thứ tự và buffer còn lại hoặc lỗi. Nếu frame sau quá dài, các frame trước vẫn được trả để xử lý trước lỗi. Buffer giữ tối đa 256 byte, hoặc 257 khi byte cuối là CR chờ LF. EOF không tạo frame cho phần thiếu LF.
 - Parser PLACE giữ nguyên danh sách/thứ tự/trùng ID; Board/Rules chịu trách nhiệm count, chiều dài, vượt biên và chồng lấn. Encoder sắp theo CV/BB/CR/SB/DD, giữ các entry trùng/thiếu; PLACE rỗng không có biểu diễn wire hợp lệ. Vì có chuẩn hóa thứ tự, round-trip PLACE so với danh sách đã sắp xếp.
 - `Response` mô tả thông điệp trên wire, khác `Event` nội bộ: một ShotResolved tạo SHOT và INCOMING. `WireError` chỉ chứa tham số thực sự truyền, không dựng Coord giả cho lỗi không gửi tọa độ và không echo debug string của GameError. Không encode GameState/Fleet đối thủ.
-- `routeEvent` nhận **phase mới sau step** để chỉ thêm WAITING khi còn Placing. Broadcast liệt kê hai người nhận logic; Coordinator C-04 giữ thứ tự Event và xếp frame vào hai TQueue trong cùng giao dịch với state. Server có một writer cho mỗi socket; admission bỏ frame cũ cho người chưa có socket để WELCOME đứng đầu. Send thất bại đóng socket và submit Quit cho actor đó. Encoder từ chối tọa độ raw ngoài bàn hoặc START P2.
+- `routeEvent` nhận **phase mới sau step** để chỉ thêm WAITING khi còn Placing. Broadcast liệt kê hai người nhận logic; Coordinator C-04/C-07 giữ thứ tự Event và xếp frame vào hai **TBQueue giới hạn** trong cùng giao dịch với state. Kiểm tra chỗ cả batch, thiếu chỗ thì không commit batch gốc và Quit người nhận quá tải; chi tiết ở shared_contract. Server có một writer cho mỗi socket; admission bỏ frame cũ cho người chưa có socket để WELCOME đứng đầu. Send thất bại đóng socket và submit Quit cho actor đó. Encoder từ chối tọa độ raw ngoài bàn hoặc START P2.
 
 `Battleship.Client.runClient :: HostName -> PortNumber -> Command -> (Response -> IO ()) -> IO ()` kiểm tra lệnh trước khi kết nối, chờ WELCOME v1 rồi gửi một frame. ERROR SERVER_FULL trước WELCOME được hiển thị mà không gửi lệnh. Callback nhận các response hợp lệ; kết thúc trên OK PLACE/SHOT tương ứng lệnh, ERROR hoặc GAME_OVER. Các frame hoàn chỉnh đã nhận cùng chunk được kiểm tra/hiển thị tiếp; client không chờ thêm frame sau phản hồi kết thúc một lệnh. EOF trước phản hồi, sai handshake, SHOT khác tọa độ và dữ liệu sai là lỗi; bracket đóng socket ở mọi đường thoát.
 
 Client có deadline 10 giây cho connect/handshake/gửi/đọc; watchdog đóng socket để đánh thức I/O Windows. Đây là khung một lệnh, chưa dùng cho chờ đối thủ trong trận tương tác lâu. CLI dùng localhost, port mặc định 4000, hiển thị tiếng Việt UTF-8; không gửi văn bản tiếng Việt qua TCP.
+
+ClientMain hiện đã có phiên tương tác D-03..D-05 bên dưới; câu “khung một lệnh” ở đoạn này chỉ nói API runClient. Library nhận HostName nhưng CLI chưa có flag remote host; sản phẩm LAN dùng web/bridge.
 
 ## 10. Client đặt tàu D-03 — wire vẫn v1
 
@@ -334,3 +338,25 @@ ClientMain hỗ trợ mặc định hoặc `--place [PORT]` cho D-03/D-04, `[POR
 Sau OK PLACE, runPlacementClient chuyển sang chơi: chỉ nhận input bắn khi TURN trùng PlayerId đã nhận ở WELCOME. `parseFireInput :: String -> Either String Command` nhận A1..J10, FIRE A1 hoặc QUIT (chấp nhận chữ thường/khoảng trắng) và chuyển thành Command chung. encodeCommand gửi FIRE/QUIT chuẩn ASCII; cú pháp địa phương/câu tiếng Việt không đi qua TCP. Parser wire, giới hạn payload và toàn bộ transcript giữ nguyên.
 
 Sau FIRE, SHOT phải khớp tọa độ đang chờ. SHOT hiển thị MISS/HIT/SUNK/WIN; INCOMING hiển thị nước bắn của đối thủ. Client chờ TURN tiếp theo, không tự quyết định lượt từ Outcome. ERROR cho phép sửa lệnh hoặc chờ theo NOT_YOUR_TURN/FLEETS_NOT_READY; GAME_FINISHED chờ GAME_OVER. GAME_OVER kết thúc dù đang chờ phản hồi hoặc nhập dở. `renderResponseFor :: PlayerId -> Response -> String` trình bày lượt và thắng/thua theo danh tính của mình, tách khỏi codec. Không cần dữ liệu fleet bí mật hay serialize GameState.
+
+## 12. Transport web và metadata resume — không đổi TCP v1
+
+Nguồn implementation: [bridge.mjs](../frontend/bridge.mjs), [connection.ts](../frontend/connection.ts), [App.tsx](../frontend/App.tsx). Ngày đối chiếu 2026-10-10, source `8bd7da9`. HTTP phục vụ dist; WebSocket `/play` cùng origin là cầu tới một TCP player. Host/Origin được validate trước mở TCP; địa chỉ/cổng public theo [docker_deployment.md](docker_deployment.md).
+
+**Lệnh web:** một WS text message chứa đúng một payload PLACE/FIRE/QUIT ASCII ≤256 byte **không LF/CRLF**. Bridge thêm một LF vào TCP. WS binary hoặc newline/control character bị từ chối. Không gửi PlayerId tự khai. **Response web:** mỗi WS text message là payload response TCP đã bỏ LF/CR cuối. Dùng parser wire v1 của frontend để decode; TCP vẫn dùng feedFrames trước parser Haskell.
+
+Bridge thêm các WS text JSON object sau; chúng không phải Response/Event Haskell, không gửi xuống TCP:
+
+| Type | Trường / ý nghĩa | Ràng buộc |
+|---|---|---|
+| SESSION | token, fleet, frames | token 64 hex lowercase; fleet PLACE của chủ phiên đã OK hoặc null; frames mảng frame riêng khi replay hoặc null khi cập nhật metadata |
+| CONNECTION | missing: danh sách player/deadline | Tối đa P1/P2 không trùng; deadline epoch millisecond máy bridge; [] khi đã nối đủ; không fleet/token đối thủ |
+| RESUME_ERROR | code, message | INVALID_SESSION hoặc SESSION_ACTIVE; message trình bày, không đưa vào parser TCP |
+
+Metadata SESSION ban đầu có thể đến trước WELCOME; sau OK PLACE bridge cập nhật own fleet. Khi resume `/play?resume=<token>`, bridge gửi SESSION chứa own PLACE/private history và CONNECTION; không tạo TCP mới hoặc WELCOME TCP mới. History replay đã chứa WELCOME/response trước, frontend reset/rebuild view từ history, không gửi lại FIRE. SESSION_ACTIVE nghĩa WS cũ chưa đóng; INVALID_SESSION là không có/đã hết hạn hoặc phiên unfinished bị core đóng, không tự nhập slot mới.
+
+WS mất/heartbeat phát hiện mất im lặng: giữ TCP, deadline 300.000 ms; resume hủy timer đó; hết hạn gửi QUIT đúng TCP. Trong lúc missing, bridge tạm chặn PLACE/FIRE của các phiên web, QUIT vẫn đi core. Deadline bắt đầu khi phát hiện mất WS; ping mặc định 10 giây, không hứa chính xác theo khoảnh khắc Wi-Fi ngắt. Kết quả GAME_OVER được phép replay xem lại trong thời gian giữ phiên, không phục hồi ván sau core/bridge restart.
+
+Own PLACE/private frames ở RAM; cap replay 4096 frame/phiên, pending command 256; buffer transport có ngưỡng riêng. Không ghi token hoặc fleet vào log/healthcheck. UI giữ token theo sessionStorage/tab/origin; đổi origin cần mã đã lưu hoặc link `/#resume=...`, đọc rồi xóa fragment. Token là quyền nối phiên, phải giữ riêng; fragment không nằm trong HTTP tải trang nhưng WS resume query vẫn mang token. Không coi HTTP LAN hiện tại là kênh TLS.
+
+TCP transcript/fixture các phần trên giữ nguyên. Kiểm chứng WS envelope/replay/Origin/Host/resume: frontend unit/connection/bridge, reconnect/LAN và Compose DK-08. Mẫu thao tác thực tế ở [demo_script.md](demo_script.md); lệnh kiểm thử ở [testing.md](testing.md).

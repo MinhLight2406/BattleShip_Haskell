@@ -2,6 +2,10 @@
 
 Dự án Battleship cho hai người chơi qua client terminal hoặc giao diện web. Server TCP giữ trạng thái trận đấu; luật chơi được triển khai bằng các hàm thuần Haskell.
 
+## Tài liệu và báo cáo
+
+[Chỉ mục toàn bộ docs](docs/README.md) phân biệt hợp đồng hiện hành, báo cáo và bằng chứng lịch sử. Bắt đầu bằng [báo cáo tổng thể](docs/report_final.md), [lý do/đánh đổi thiết kế](docs/design_decisions.md), [đối chiếu 14 slide](docs/slide_mapping.md), [quá trình thực hiện](docs/development_history.md), [hướng dẫn kiểm thử](docs/testing.md) và [kịch bản demo](docs/demo_script.md). Báo cáo đối chiếu source nền `8bd7da9`; hồ sơ S-02 trước đây được giữ tại `docs/s02_acceptance.md`. Review nhóm và nghiệm thu hai thiết bị thật vẫn chờ, không được thay bằng kết quả hai browser trên một máy.
+
 ## Chạy bằng Docker — hướng dẫn chuẩn DK-09
 
 Từ thư mục gốc có `compose.yaml`. Cần **Docker Desktop đang chạy Linux containers**, Docker CLI/Compose trong PATH, PowerShell 5.1+ trên Windows và hai trình duyệt/profile độc lập. Chạy sản phẩm bằng Docker không cần cài GHC, Stack, Node hay pnpm trên host; Dockerfile tự build/test trên Linux. Lần build đầu cần Internet và thời gian tải compiler/dependency. Đã kiểm chứng Linux **amd64**; helper tự lấy IP dùng Windows host.
@@ -317,7 +321,7 @@ Test clock tăng tốc kiểm tra đúng mốc 299.999/300.000 ms với socket v
 
 **S-01:** bản hợp đồng chung v2 cập nhật A-02 ở [docs/shared_contract.md](docs/shared_contract.md). Chưa khóa mốc vì còn chờ xác nhận A/B/C/D; việc ẩn constructor Fleet, chủ sở hữu file và quy trình thay đổi được ghi tại đó.
 
-**S-02:** nghiệm thu kỹ thuật lõi thuần và kịch bản 25 lệnh ở [docs/report_final.md](docs/report_final.md); còn chờ A/B xác nhận. Fixture chơi hợp lệ trong test lõi được dựng qua `Rules.step` thật.
+**S-02:** nghiệm thu kỹ thuật lõi thuần và kịch bản 25 lệnh ở [docs/s02_acceptance.md](docs/s02_acceptance.md); còn chờ A/B xác nhận. Fixture chơi hợp lệ trong test lõi được dựng qua `Rules.step` thật. Báo cáo toàn dự án hiện ở [docs/report_final.md](docs/report_final.md).
 
 **S-03:** đã build sạch, chạy 794 test xanh và chơi trọn trận với hai terminal/lõi thật; [hồ sơ và log demo](docs/s03_acceptance.md). Còn chờ xác nhận A/B/C/D và R; một vấn đề trình bày nhỏ được ghi tại [task Đợt 9](docs/round9_fixes.md).
 

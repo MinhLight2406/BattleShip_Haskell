@@ -1,0 +1,45 @@
+$ node --test test/unit.test.ts test/connection.test.ts test/bridge.test.mjs test/docker-contract.test.mjs
+✔ bridge reassembles fragmented TCP/CRLF frames and adds one LF to commands (42.3801ms)
+✔ bridge rejects newline injection without reaching TCP; closes binary/oversize commands (8.8824ms)
+✔ maxPayload rejects more than 256 bytes (9.4021ms)
+✔ browser departure closes its TCP socket instead of leaving a ghost player (5.118ms)
+✔ cross-origin browser cannot acquire a player slot (3.9386ms)
+✔ HTTP serves built UI/hero and reports nonexistent assets clearly (22.6533ms)
+✔ automatic LAN is the CLI default; explicit localhost and LAN binding still work (0.9386ms)
+✔ LAN discovery ignores loopback/link-local/IPv6, deduplicates and supports interface selection (0.2738ms)
+✔ automatic origins follow the current interface IP, rejecting stale IP and mismatched Host (14.796ms)
+✔ LAN-01: invalid configuration is rejected before any listener is opened (1.4826ms)
+✔ LAN-01: an allowed Origin with a different Host is rejected (3.1269ms)
+✔ DK-03: TCP host accepts native IPv4/DNS and rejects URL, port and malformed names (0.8972ms)
+✔ DK-03: separates PORT 8080/public 8081 and permits wildcard bind with localhost (0.5795ms)
+✔ DK-03: connects to service haskell using its DNS name and preserves framing (6.3288ms)
+✔ DK-03: published authority is exact, internal/Vite/unconfigured origins cannot open TCP (18.0236ms)
+✔ DK-03: HTTP port 80 normalizes Host authority without weakening Origin checks (6.062ms)
+✔ DK-03: health probes never allocate TCP/session/player slots (977.8776ms)
+✔ DK-03: connection refused closes WS cleanly and leaves bridge usable (16.4859ms)
+✔ DK-03: DNS failure closes WS cleanly and leaves bridge usable (24.2334ms)
+✔ DK-03: LAN file schema, canonical origins, byte limit and freshness boundaries are strict (2.8644ms)
+✔ DK-03: invalid LAN file fails before bridge creation; a fresh empty file permits localhost (34.913ms)
+✔ DK-03: hot LAN replacements, errors, expiration and recovery update the exact allowlist without restart (155.054ms)
+✔ own fleet and filtered frames reconstruct exactly the same turn and boards (2.2138ms)
+✔ transport metadata validates tokens, players and frames independently from protocol v1 (0.6315ms)
+✔ recovery across IPs puts the secret in a fragment; rejects unrelated URLs (1.8322ms)
+✔ DK-01: the env example has no malformed lines or duplicate active declarations (1.7139ms)
+✔ DK-01: container listeners and backend DNS match the two-service contract (0.7346ms)
+✔ DK-01: the example exercises port mapping and advertises the host port (0.2974ms)
+✔ DK-01: the shipped example selects one origin mode and keeps host-only values separate (0.2612ms)
+✔ DK-01: every active key and nonempty default agrees with the documented configuration table (0.5821ms)
+✔ DK-01: the LAN JSON example is parseable and uses host origins at the public port (1.1857ms)
+✔ column letter + row number match Haskell coordinates, including J10 (1.065ms)
+✔ placement rejects corners/overlap, allows touching and preserves input on errors (1.3745ms)
+✔ random and exhausted random placement always produce 17 distinct in-board cells (10.3208ms)
+✔ decode every actual server response in docs/protocol.md transcripts (1.6858ms)
+✔ server events alone drive turns, error preservation and private shot history (0.5667ms)
+ℹ tests 36
+ℹ suites 0
+ℹ pass 36
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1516.0075

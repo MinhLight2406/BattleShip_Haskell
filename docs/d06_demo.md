@@ -1,5 +1,7 @@
 # D-06 — Tái hiện build sạch và trận đầu cuối
 
+**Kịch bản terminal lịch sử 2026-10-05.** Dùng để tái hiện snapshot/bundle D-06; hướng dẫn sản phẩm hiện hành ở [README](../README.md) và [demo_script.md](demo_script.md). Không dùng số test/địa chỉ/môi trường cũ để nhận là đã chạy lại bản Docker mới.
+
 ## 1. Checkout và kiểm tra tự động
 
 Theo lệnh clone bundle/build/test trong README. Bundle là snapshot độc lập chứa mã chưa commit đang được nghiệm thu, không phải HEAD nền cũ và không phải chữ ký nhóm. Báo cáo kết quả/log ở `demo/d06/`; không dùng log S-03 để chứng minh bản mới.

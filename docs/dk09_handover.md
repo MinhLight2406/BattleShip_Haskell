@@ -1,6 +1,6 @@
 # Bàn giao Docker — DK-09
 
-Ngày: **2026-10-10 (Asia/Saigon)**. Nhánh làm việc: `Test_2_container_va_LAN`, nền DK-07 `17928c0`. Bằng chứng DK-08/DK-09 được chạy trên working tree trước commit; tra SHA commit bàn giao bằng `git log -1 --format=%H` trên nhánh này. Phụ trách tài liệu: R; không ghi chữ ký thay nhóm.
+Ngày: **2026-10-10 (Asia/Saigon)**. Nhánh làm việc: `Test_2_container_va_LAN`, nền DK-07 `17928c0`. Bằng chứng DK-08/DK-09 chạy trên working tree trước commit; commit bàn giao đã lưu là **`8bd7da92c083bcf9d8119f5c786342f9496c6cd7`**. Không dùng HEAD của một nhánh tài liệu mới để thay SHA của nghiệm thu lịch sử. Phụ trách tài liệu: R; không ghi chữ ký thay nhóm.
 
 **Trạng thái kỹ thuật: ĐẠT** — hướng dẫn/hợp đồng đã cập nhật và lệnh bàn giao chạy thành công. Nghiệm thu DK-08 đã đạt phạm vi một máy/hai trình duyệt theo yêu cầu người dùng. **Chưa chốt nghiệm thu nhóm**: review A/B/C/D/R còn chờ.
 

@@ -1,112 +1,188 @@
-# Báo cáo nghiệm thu lõi luật thuần — S-02
+# Báo cáo tổng thể đồ án BattleShip Haskell
 
-Ngày chạy thực tế: **2026-10-05**, Windows/PowerShell. Chủ trì hồ sơ: R.
+**Bản đối chiếu:** 2026-10-10, nhánh `Update_docs_report`, nền `8bd7da92c083bcf9d8119f5c786342f9496c6cd7`. Báo cáo tổng hợp yêu cầu trong cuộc trao đổi, lịch sử Git, mã Haskell/frontend/scripts/Docker và hồ sơ kiểm thử. Lý do thiết kế là các căn cứ kỹ thuật kiểm chứng được: yêu cầu, phương án, đánh đổi và kết quả; không suy đoán lời xác nhận của thành viên.
 
-**Kết luận kỹ thuật: đạt. Xác nhận nhóm: CHỜ A/B.** Đây là hồ sơ S-02, chưa phải báo cáo nghiệm thu toàn bộ dự án.
+Hồ sơ nghiệm thu lõi thuần S-02 trước đây dùng tên `report_final.md` được bảo tồn tại [s02_acceptance.md](s02_acceptance.md). [Chỉ mục tài liệu](README.md) hướng dẫn đọc theo mục đích.
 
-Bản được kiểm tra là working tree trên nhánh `Luong_nhap_gui_dat_tau`, dựa trên commit `4eea8b544a4da77995d451a137dd98b8f0a574c3`. Thay đổi S-02 chưa được commit; SHA nền không phải SHA chứa các sửa đổi này. Snapshot `lts-24.59`, GHC **9.10.3**, Haskell2010.
+## 1. Bài toán, mục tiêu và phạm vi
 
-## 1. Vấn đề trước nghiệm thu và cách sửa
+Xây dựng Battleship hai người, lấy Haskell làm nơi quyết định luật và áp dụng kiến thức lập trình hàm, module, đồng thời, đồng bộ, truyền thông điệp và socket trong slide. Mục tiêu kiểm chứng: chơi một ván đầy đủ, lệnh sai không mất lượt, bí mật được giữ riêng và ngắt kết nối không khiến hệ thống chờ vô hạn.
 
-| Trước S-02 | Ảnh hưởng | Đã sửa |
+Ban đầu là terminal/localhost. Sau S-04, người dùng yêu cầu ghép giao diện `frontend-ui`, chơi LAN, tự lấy IP trước trận, giữ phiên web 5 phút khi mất mạng, QuickCheck, giới hạn queue và Docker hai service. Đây là các đợt mở rộng sau mốc terminal; không gán ngược GUI/Docker vào phạm vi S-04 lịch sử.
+
+### Sản phẩm hiện có
+
+- Thư viện Haskell lõi thuần/server TCP; hai executable server và client terminal.
+- React/TypeScript: bố trí tàu, hai bàn, bắn theo lượt, kết quả và khôi phục phiên.
+- Bridge Node chuyển WebSocket–TCP, giữ một TCP cho mỗi phiên người chơi.
+- Hai image/Compose `haskell` và `web`; Windows helper cập nhật origin LAN.
+- Hspec, QuickCheck, test STM/TCP/frontend/bridge/runtime/Compose và log/ảnh nghiệm thu.
+
+Phạm vi: một phòng, hai slot cố định, một trận mỗi lần chạy Haskell. Không có AI, nhiều phòng, tài khoản, lưu trận, phục hồi sau restart hoặc chế độ Trinh sát. Tự bố trí tàu ở UI là hỗ trợ nhập, không phải AI chơi.
+
+## 2. Luật được chốt và một nguồn luật
+
+Nguồn chuẩn: [game_spec.md](game_spec.md). Bàn 10×10, `A1..J10`, năm ID CV/BB/CR/SB/DD dài 5/4/3/3/2, tổng 17 ô. Tàu ngang/dọc, không chồng/vượt biên, được chạm cạnh; xác nhận một lần. Hai đội tàu sẵn sàng thì P1 đi trước. Trượt đổi lượt, trúng/chìm giữ lượt, trúng ô cuối toàn đội tàu thắng ngay.
+
+Mọi cách nhập đi qua `Rules.step` và `Board.placeFleet`. Viết luật lần nữa trong React/Node/server IO sẽ tạo nguy cơ một phía báo thắng trong khi phía khác chưa kết thúc. Client kiểm tra nhập để phản hồi sớm, nhưng chấp nhận, lượt và kết quả thuộc Haskell. Kiểm tra hình học UI là tiện ích nhập, không cấp quyền sửa `GameState`.
+
+Lệnh lỗi trả `Left GameError`, không có state mới để IO ghi nhầm. Khi queue đủ chỗ coordinator giữ state cũ, gửi lỗi riêng người gọi. Khi queue quá tải, coordinator thực hiện **Quit riêng** của người nhận chậm: trận có thể kết thúc vì bỏ cuộc, không phải lệnh sai được chấp nhận.
+
+## 3. Quá trình thực hiện và những điểm sửa
+
+Task/phụ thuộc/commit đầy đủ: [development_history.md](development_history.md).
+
+| Đợt | Đã làm | Vì sao / tác dụng |
 |---|---|---|
-| RulesSpec tự gán Turn/Finished, lịch sử Hit/Miss và trạng thái còn một ô để thắng | Test có thể xanh dù không có chuỗi lệnh hợp lệ nào tạo được fixture; bỏ qua lỗi chuyển lượt/đặt tàu/tích lũy lịch sử | `waitingFor`, `readyState`, `withHistories`, `turnFor`, `finishedState` dựng trạng thái bằng production `step`; kiểm tra thắng với mọi ô cuối, tàu dọc và 16 phát trượt cũng dùng lệnh thật |
-| Hai test đưa kết quả Win vào lịch sử nhưng giữ phase Turn | Trái bất biến: Win phải kết thúc trận; kỳ vọng AlreadyFired sau Win không mô tả ván hợp lệ | Bỏ hai trường hợp Win giả. Bắn lặp Miss/Hit/Sunk được tạo bằng phát bắn thật; sau Win được kiểm tra trả GameAlreadyFinished ở các test kết thúc |
-| BoardSpec tự tạo GameState có hai fleet, rồi gán lượt/kết thúc | Không chứng minh fleet đã được xác nhận và khóa qua Rules | Gọi hai PlaceFleet thật; chuyển sang P2 bằng một phát trượt; kết thúc bằng Quit hoặc bắn đủ 17 ô thật |
-| TypesSpec dựng baseline PlayerState với lịch sử tự điền | Trạng thái ví dụ chưa chứng minh có thể đạt được bằng luật | Baseline đi qua hai PlaceFleet và ba Fire thật; các test record/helper vẫn kiểm tra cập nhật record riêng |
-| Chưa có hồ sơ nghiệm thu riêng kết nối chờ, lỗi, bắn và thắng thành một chuỗi | Khó đối chiếu bước nào chuyển phase/lượt và lỗi có tiêu lượt không | Thêm 26 test S-02: 25 bước liên tiếp và một kiểm tra tổng kết cuối ván |
+| C-01/A-01/D-01/S-01 | Package, compiler, kiểu/chữ ký, wire và hai Main | Nhóm cùng cách build, cùng Coord/Command; không đoán định dạng hoặc trùng kiểu |
+| A/B/C/D-02..03 | Board, luật bắn, parser, client, coordinator | Kiểm chứng từng phần trước IO đồng thời; lõi chạy độc lập server |
+| S-02/B-03..05 | Thay fixture chơi giả bằng `step`, góc nhìn riêng | Test không bỏ qua luật/lịch sử; so sánh bí mật khác nhau với quan sát giống nhau |
+| C-04..06/D-04..06/S-03/04 | TVar, kênh riêng, EOF/timeout, terminal/checkout sạch | Chặn dùng lượt cũ, kiểm chứng kết thúc và khả năng làm lại |
+| UI/LAN | Ghép giao diện thật, sửa tọa độ/mã tàu, auto IP/resume | Prototype thành client chơi được; không cố định IP của Wi-Fi hiện tại |
+| A-06/B-06 | Generator độc lập, property ≥1.000 trường hợp | Đa dạng hơn fixture thủ công; có coverage và phản ví dụ |
+| C-07 | Queue 128, batch nguyên tử, chỗ kết thúc, Quit client chậm | Giới hạn bộ đệm và tránh chờ socket chậm trong giao dịch |
+| DK-01..09 | Config, image Linux, helper host, Compose, nghiệm thu/hướng dẫn | Chạy cùng môi trường, đúng cổng public, healthcheck không chiếm slot, dừng sạch |
 
-Không thay luật R-01, Types, Board hoặc Rules production. Không thêm dependency. Tất cả fleet chơi hợp lệ trong fixture đi qua smart constructor `Board.placeFleet`, trực tiếp hoặc qua `step`.
+**Lỗi thật C-05:** đóng socket khi còn input chưa đọc có thể gây TCP reset và mất `GAME_OVER`. Sửa bằng gửi hết FIFO, half-close chiều gửi, reader hiện hữu đọc bỏ input bằng buffer hữu hạn, sau 200 ms đóng; watchdog gửi 2 giây vẫn hoạt động. Test trước/sau nằm trong [test_evidence.md](test_evidence.md). Không nuốt lỗi trong test để coi mất phản hồi là thành công.
 
-**Phân biệt fixture với giá trị kỳ vọng:** các bảng tọa độ/kết quả mong đợi và record trong `shouldBe` là oracle để đối chiếu kết quả thật, không phải dữ liệu thay cho engine. Giữ test cố tình tạo Turn thiếu fleet hoặc history có tọa độ ngoài bàn, với nhãn `defensive corrupt-state probe`, để kiểm tra guard; chúng không dùng làm ván nghiệm thu. TypesSpec có test record-update thuần, không tuyên bố đó là transition hợp lệ. Stub trong CoordinatorSpec phục vụ kiểm tra ranh giới giao thức, không tham gia nghiệm thu lõi S-02.
+**Prototype UI:** hàng/cột đảo, mã CG/SS lệch CR/SB, chỉ chuyển màn hình, có nút chức năng chưa cài. Đợt tích hợp thống nhất cột A..J/hàng 1..10, mã wire, khóa Trinh sát, bỏ nút âm thanh chưa hoạt động và chờ phản hồi server. [Hồ sơ UI](frontend_integration.md) giữ chi tiết.
 
-## 2. Chuỗi lệnh đã kiểm tra
+## 4. Luồng xử lý thực tế
 
-Nguồn chạy: `test/RulesSpec.hs`, nhóm `S-02 pure core acceptance`. `acceptanceTrace` gọi trực tiếp `Battleship.Rules.step`, bắt đầu bằng `initialGameState`; Right lấy state/events thật, Left giữ nguyên state cũ. Test đối chiếu phase, thứ tự event và toàn bộ state cho mỗi phát bắn/lỗi; không mở server hoặc socket.
-
-Đội P1 đặt ngang: Carrier A1–E1, Battleship A2–D2, Cruiser A3–C3, Submarine A4–C4, Destroyer A5–B5. Đội P2 đặt ngang tương ứng ở hàng 6/7/8/9/10. Mỗi đội đủ năm ID, 17 ô.
-
-Bảng dưới dùng tọa độ A1..J10 để dễ đọc; đây là kết quả miền của `step`, không phải transcript byte TCP. Với dòng Fire hợp lệ, event đầu là `ShotResolved actor coord outcome`, event sau là `TurnReady` như cột phase; riêng Win là `GameEnded P1 AllShipsSunk`. Dòng lỗi trả `Left` và không có state/event thành công.
-
-| Bước | Actor và lệnh | Kết quả được test đối chiếu thành công | Phase sau khi caller xử lý |
-|---:|---|---|---|
-| 1 | P1 PlaceFleet đội P1 | `[FleetAccepted P1]`; P2 chưa có fleet | Placing — chờ đối thủ |
-| 2 | P1 Fire A6 | Left FleetsNotReady; giữ nguyên state | Placing |
-| 3 | P2 PlaceFleet đội P2 | `[FleetAccepted P2, GameStarted P1, TurnReady P1]` | Turn P1 |
-| 4 | P1 Fire J10 | Miss | Turn P2 |
-| 5 | P2 Fire J10 | Miss | Turn P1 |
-| 6 | P1 Fire A6 | Hit | Turn P1 |
-| 7 | P2 Fire A1 | Left (NotYourTurn P1); giữ nguyên state | Turn P1 |
-| 8 | P1 Fire A6 | Left (AlreadyFired A6); giữ nguyên state | Turn P1 |
-| 9 | P1 Fire B6 | Hit | Turn P1 |
-| 10 | P1 Fire C6 | Hit | Turn P1 |
-| 11 | P1 Fire D6 | Hit | Turn P1 |
-| 12 | P1 Fire E6 | Sunk Carrier | Turn P1 |
-| 13 | P1 Fire A7 | Hit | Turn P1 |
-| 14 | P1 Fire B7 | Hit | Turn P1 |
-| 15 | P1 Fire C7 | Hit | Turn P1 |
-| 16 | P1 Fire D7 | Sunk Battleship | Turn P1 |
-| 17 | P1 Fire A8 | Hit | Turn P1 |
-| 18 | P1 Fire B8 | Hit | Turn P1 |
-| 19 | P1 Fire C8 | Sunk Cruiser | Turn P1 |
-| 20 | P1 Fire A9 | Hit | Turn P1 |
-| 21 | P1 Fire B9 | Hit | Turn P1 |
-| 22 | P1 Fire C9 | Sunk Submarine | Turn P1 |
-| 23 | P1 Fire A10 | Hit | Turn P1 |
-| 24 | P1 Fire B10 | Win, rồi GameEnded P1 AllShipsSunk; không có TurnReady/Sunk thêm | Finished P1 AllShipsSunk |
-| 25 | P2 Quit | Left GameAlreadyFinished; không ghi đè winner | Finished P1 AllShipsSunk |
-
-Không có Command WAIT trong hợp đồng: chờ được biểu diễn bằng Placing khi P2 còn `Nothing`. Thông điệp TCP WAITING thuộc Protocol/Coordinator; lõi không tự gửi mạng.
-
-Tổng kết đã được assert: **21 lệnh thành công, 4 lỗi**; P1 có 18 tọa độ bắn (1 Miss, 12 Hit, 4 Sunk, 1 Win); đủ chính xác 17 ô của fleet P2 bị bắn. P2 có đúng một Miss ở J10. `shotsReceived P2` chính là history P1; hai fleet không đổi và state khởi đầu vẫn rỗng. Test B-02 còn mô phỏng ván hoàn chỉnh cho cả P1 và P2 thắng.
-
-## 3. Kết quả chạy thật
-
-Chạy từ gốc repository:
-
-| Lệnh | Kết quả thực tế |
-|---|---|
-| `stack test --ghc-options=-Werror --test-arguments="--match S-02"` | **26 examples, 0 failures**, 0.0061 giây trong Hspec |
-| `stack test --ghc-options=-Werror` | **642 examples, 0 failures**, 27.9946 giây; lượt này trước khi thay nốt fixture BoardSpec |
-| `stack test` | **642 examples, 0 failures**, 27.9834 giây; đã có fixture Board/Rules/Types mới |
-| `stack test --ghc-options=-Werror --test-arguments="--match A-03"` | **26 examples, 0 failures**, 0.7982 giây; biên dịch toàn bộ test suite với -Werror sau sửa BoardSpec |
-
-Các thời gian trên do Hspec báo, không bao gồm thời gian build. Suite từ 618 lên 642: thêm 26 test S-02 và bỏ hai trường hợp Win/Turn mâu thuẫn nêu ở mục 1. Không bỏ test TCP hoặc nới assertion để đạt xanh.
-
-Lần biên dịch S-02 đầu với -Werror báo warning `head`/`tail` trong helper test mới; đã đổi sang pattern matching có lỗi fixture rõ ràng và `drop 1`, sau đó chạy xanh. Không có lỗi test runtime ở các lượt S-02 này. Log hai lượt full-suite tại `.stack-work/s02-test-werror.log` và `.stack-work/s02-test.log` (local, được Git ignore); bảng này lưu kết quả để review trong repository.
-
-## 4. Kiểm chứng lõi độc lập server và tính thuần
-
-Lệnh đã chạy thành công, exit code 0:
-
-```sh
-stack exec -- ghc -fno-code -fforce-recomp -Wall -Werror -hide-all-packages -package base -package containers -isrc -outputdir .stack-work/s02-core src/Battleship/Rules.hs
+```mermaid
+flowchart LR
+  P[React hoặc terminal] --> T[WebSocket bridge hoặc TCP]
+  T --> S[Server: framing và actor socket]
+  S --> C[Coordinator: STM]
+  C --> R[Rules.step / Board thuần]
+  R --> C
+  C <--> G[(Một TVar GameState)]
+  C --> Q1[TBQueue P1]
+  C --> Q2[TBQueue P2]
+  Q1 --> W1[Writer P1]
+  Q2 --> W2[Writer P2]
+  W1 --> T
+  W2 --> T
 ```
 
-GHC biên dịch đúng **bốn module**: `Battleship.Internal.Fleet`, `Battleship.Types`, `Battleship.Board`, `Battleship.Rules`. Không có Server/Client/Coordinator/Protocol trong đồ thị này, không cấp package network/async/stm. Đây là kiểm tra biên dịch dependency; việc chạy ván thật được kiểm chứng riêng bởi 26 test S-02 gọi `step` trực tiếp.
+### 4.1 Đặt tàu
 
-Chữ ký production được test B-01 đối chiếu với alias:
+1. Chỉnh nháp cục bộ; UI/terminal báo lỗi trước khi gửi.
+2. Kết nối nhận `WELCOME 1 P1/P2`; danh tính do server gán, không nằm trong PLACE.
+3. Parser tạo danh sách `ShipPlacement`, giữ ID trùng để Board phát hiện.
+4. `step` kiểm tra phase/đã đặt; `placeFleet` kiểm tra năm ID, hình học/giao nhau. Chỉ `Right Fleet` được gắn vào người chơi.
+5. Người đặt đầu nhận `OK PLACE`, `WAITING OPPONENT`. Người đặt cuối nhận OK; cả hai nhận `START P1`, `TURN P1`.
+6. State và toàn bộ frame commit cùng STM; writer từng socket gửi FIFO sau đó.
 
-```haskell
-PlayerId -> Command -> GameState
-  -> Either GameError (GameState, [Event])
-```
+Đặt cả đội tàu trong một lệnh tránh state server nửa hoàn thành phải khôi phục; sửa nháp client không tạo thêm dữ liệu đồng bộ.
 
-Kiểm tra nguồn Rules và dependency lõi: chỉ ADT/pattern matching, Either/Maybe, hàm thuần và Map/Set; không thao tác IO, STM, socket hoặc unsafePerformIO/unsafeDupablePerformIO. Hspec dùng IO để chạy assertion, không biến `step` thành hàm IO. Stack test có build-tools server/client để phục vụ các test khác; chọn nhóm S-02 không khởi chạy chúng.
+### 4.2 Bắn
 
-Căn cứ kiến thức slide: kiểu dữ liệu đại số, Maybe/Either và pattern matching biểu diễn state/lệnh/lỗi; trạng thái bất biến và `foldM`/`scanl` xử lý chuỗi lệnh; module tách lõi khỏi IO; Hspec `describe`/`it`/`shouldBe` theo phần Module Programming (Chap8). Không cần cơ chế concurrency của server để quyết định trúng/chìm/thắng.
+1. UI đợi TURN, khóa click ngay bằng ref, gửi FIRE, chờ phản hồi. Cố gửi sai vẫn bị Haskell kiểm tra.
+2. Parser kiểm tra cú pháp; Rules kiểm tra readiness → lượt → tọa độ → bắn lặp → fleet đích.
+3. Thêm ô vào lịch sử **người bắn**; xét fleet đích và tập ô đã bắn để chọn MISS/HIT/SUNK/WIN. WIN ưu tiên hơn SUNK ở ô cuối toàn fleet.
+4. `ShotResolved` thành SHOT cho người bắn, INCOMING cho đối thủ; TURN/GAME_OVER theo sau.
+5. Coordinator encode batch và kiểm tra dung lượng cả hai queue trước khi ghi; không IO mạng trong STM.
+6. UI dựng bàn mình từ fleet riêng/INCOMING; bàn mục tiêu dùng fleet rỗng và các SHOT công khai.
 
-## 5. Phạm vi còn chờ và xác nhận
+Chìm xét theo ShipId, không gom tàu chạm cạnh thành vùng liên thông. HIT cũ giữ nghĩa lịch sử của phát đó, không viết lại thành SUNK khi phát sau làm chìm.
 
-| Tiêu chí S-02 | Trạng thái |
+### 4.3 Mất kết nối và kết thúc
+
+| Tình huống | Cách xử lý | Lý do |
+|---|---|---|
+| TCP terminal EOF/lỗi socket | `step actor Quit`, đối thủ thắng, dọn trận | Không có tầng giữ phiên terminal |
+| WebSocket mất, TCP còn sống | Giữ TCP/token, CONNECTION, chờ 300.000 ms | Reload/đổi IP có thể quay lại cùng người chơi |
+| Resume trước hạn | Gắn WS mới vào TCP cũ, replay own fleet/frame | Không slot mới, không phát lại FIRE |
+| Hết hạn web | QUIT qua TCP đúng phiên | Haskell vẫn quyết định bỏ cuộc |
+| Bấm Rời trận khi đang kết nối | QUIT ngay | Chủ động bỏ cuộc, không dùng grace period |
+| Queue thiếu chỗ | Bỏ batch/nước gây tràn; Quit người nhận chậm từ state cũ | Không để state mới mà thiếu SHOT/TURN |
+| Restart/host tắt/Engine dừng | Phiên RAM mất, cần trận mới | Không có persistence GameState/token |
+
+Hạn resume bắt đầu khi bridge **phát hiện** WebSocket mất; không đo chính xác từ thời điểm Wi-Fi ngắt. Ping 10 giây, mất im lặng thường phát hiện khoảng hai chu kỳ; scheduling/mạng có thể tăng độ trễ. Thiếu người thì bridge chặn PLACE/FIRE của các phiên web, vẫn cho QUIT. Đây là chính sách web, không thêm phase vào lõi.
+
+## 5. Dữ liệu và trách nhiệm module
+
+| File | Nội dung / lợi ích |
 |---|---|
-| Fixture chơi hợp lệ dùng lõi thật, không giả phase/history | ĐẠT |
-| Chuỗi đặt tàu → chờ → trượt → trúng → chìm → thắng | ĐẠT |
-| Stack test xanh | ĐẠT — 642/642 |
-| Step thuần và độc lập server | ĐẠT — kiểm tra nguồn/chữ ký, compile riêng và test trực tiếp |
-| A xác nhận A-03 và fixture đặt tàu trong revision S-02 | CHỜ XÁC NHẬN |
-| B xác nhận B-02, kết quả/phases/events và không đổi luật | CHỜ XÁC NHẬN |
+| [Types.hs](../src/Battleship/Types.hs) | ADT/record/chữ ký thống nhất người, tàu, phase, lệnh/sự kiện/lỗi/góc nhìn |
+| [Internal/Fleet.hs](../src/Battleship/Internal/Fleet.hs) | Biểu diễn private, tránh vòng import, ngăn caller package dựng Fleet sai |
+| [Board.hs](../src/Battleship/Board.hs) | Constructor kiểm tra; Set phát hiện chồng, Map giữ ShipId |
+| [Rules.hs](../src/Battleship/Rules.hs) | `step` thuần, mọi Command/Phase, một nguồn luật |
+| [View.hs](../src/Battleship/View.hs) | Phép chiếu chỉ dữ liệu cho phép; không copy hình học đối thủ |
+| [Protocol.hs](../src/Battleship/Protocol.hs) | Codec ASCII/dòng 256 byte, framing, lỗi wire và recipient |
+| [Coordinator.hs](../src/Battleship/Coordinator.hs) | TVar/queue, batch, commit hoặc Quit quá tải |
+| [Server.hs](../src/Battleship/Server.hs) | Listener/slot/worker/timeout/readiness/cleanup |
+| [Client.hs](../src/Battleship/Client.hs) | Nhập nháp/bắn/hiển thị terminal, chờ event server |
+| [App.tsx](../frontend/App.tsx), [game.ts](../frontend/game.ts), [connection.ts](../frontend/connection.ts) | Trình bày, nháp, wire/public view, resume/replay |
+| [bridge.mjs](../frontend/bridge.mjs) | HTTP/static, Origin/Host, WS–TCP, token/heartbeat/allowlist |
+| [Start-LanCompose.ps1](../scripts/Start-LanCompose.ps1) | IP Windows host, atomic file/origin, không IP container |
+| [compose.yaml](../compose.yaml), [Haskell Dockerfile](../docker/haskell.Dockerfile), [web Dockerfile](../docker/web.Dockerfile) | Linux test gate, runtime non-root, health/start/stop/mapping |
 
-Chưa có bằng chứng xác nhận trực tiếp từ A/B, không dùng test xanh hay tác giả commit thay chữ ký. Khi A/B review cần ghi tên, ngày, SHA chứa bản S-02 thực sự được duyệt và link/lời xác nhận. S-01 cũng còn chờ xác nhận A/B/C/D trong `shared_contract.md`.
+`Maybe Fleet` thể hiện chưa đặt thay Fleet rỗng giả. GameState có hai PlayerState riêng. Lịch sử chỉ lưu một bản ở người bắn; `shotsReceived` đọc history người kia, tránh hai bản outgoing/incoming có thể lệch nhau.
 
-Lỗi TCP Windows hiếm ở concurrent QUIT đã ghi ở B-02/D-03 không tái hiện trong hai lượt full-suite S-02, nhưng chưa xác định/sửa nguyên nhân gốc. Đây là vấn đề transport riêng; S-02 không thay Server và không tuyên bố đã chữa lỗi đó. Không ảnh hưởng việc chạy lõi thuần trực tiếp.
+Coord/GameState có constructor công khai nên caller Haskell vẫn tạo được tọa độ/state không nhất quán. Invariant được bảo vệ qua Board/Rules và pipeline production, **không phải mọi giá trị của type đều hợp lệ**. Riêng Fleet che constructor, có compile probe ngăn constructor/record update/coerce/import module private qua package công khai.
+
+Luồng và hằng số: [architecture.md](architecture.md). Đánh đổi/phương án khác: [design_decisions.md](design_decisions.md).
+
+## 6. Kiến thức slide và phần mở rộng
+
+Đối chiếu đủ 14 PDF theo **trang vật lý tính từ 1**, vì số slide in trong tài liệu ADT không luôn trùng số trang. [slide_mapping.md](slide_mapping.md) ghi trang/source/mức áp dụng/giới hạn.
+
+- Trực tiếp: pure function/immutable, lambda/higher order/composition, kiểu/ADT/Maybe/Either/pattern matching, module/package/snapshot, Hspec/QuickCheck, thread/MVar/STM, supervision/cleanup, producer–consumer/pipeline, message/file passing và TCP client–server.
+- Mở rộng: React/TypeScript/Vite/pnpm, WebSocket/token resume/Origin/Host, Dockerfile/Compose/healthcheck, atomic rename Windows/TTL allowlist và Playwright/test container.
+- Chưa triển khai: pin thread NUMA, GPU/SIMD, Map–Reduce, Kafka/RabbitMQ, Cloud Haskell, mmap/shared memory liên process, NFS/RPC filesystem/replication/consensus.
+
+QuickCheck **có trong Chap8**, không ghi là hoàn toàn ngoài slide. C-07 dùng TBQueue của Chap9 nhưng chọn Quit khi quá tải thay chờ writeTBQueue đầy: yêu cầu giữ tiến triển của trận và đường kết thúc là lý do điều chỉnh.
+
+## 7. Kiểm thử và ý nghĩa bằng chứng
+
+[testing.md](testing.md) giải thích oracle/seed/coverage/race/cách chạy. [test_evidence.md](test_evidence.md) dẫn kết quả theo thời điểm.
+
+| Mốc đã chạy | Kết quả | Kết luận trong phạm vi |
+|---|---:|---|
+| S-04 terminal, 2026-10-05 | 815 Haskell, 0 lỗi | Lõi/STM/TCP/terminal revision lịch sử qua test/demo |
+| DK-08 source sạch Linux amd64, 2026-10-10 | 908 Haskell; 36 frontend; TS/Vite qua | Build Linux/snapshot, có A-06/B-06/C-07 |
+| DK-08 Compose | 19/19, 0 skip | Health/slot/trận/lỗi/riêng tư/resume/restart/chậm/down |
+| DK-08 Chrome/Edge cùng Windows host | 1/1 trận UI, reload, thắng/thua | Hai process/profile độc lập qua LAN IP cùng host |
+| DK-09 build/bàn giao | 908 Haskell, 36 frontend; 8 vận hành; 10 S-01 | Lệnh helper/port 8082/trận mới/log/stop/down chạy lại |
+
+Không cộng các lần chạy hoặc dữ liệu QuickCheck thành “tổng unit test”. Một example property chạy nhiều dữ liệu; một ca integration chứa cả ván. Clock kiểm soát/hạn fixture ngắn không phải chờ 5 phút thời gian thực. Test chứng minh các trường hợp đã chạy, không chứng minh mọi lịch trình mạng không còn lỗi.
+
+Bí mật không chỉ kiểm tra tọa độ có xuất hiện: ô tàu mình có thể trùng tên tọa độ đối thủ. Test so sánh **toàn view/event** khi bí mật khác nhưng thông tin công khai giống nhau, kể cả SUNK. Trạng thái sinh đi qua `step`, không ghép lịch sử tùy ý.
+
+## 8. Công dụng và giới hạn Docker/LAN
+
+Hai service tách Haskell khỏi Node. Bridge gọi `haskell:4000`; chỉ web publish **8081 → 8080**. Người chơi dùng IP host/cổng public; loopback web container không phải core container. Test stage bắt buộc trước khi copy executable/dist sang runtime; runtime không cần compiler/pnpm/source phát triển.
+
+Probe Haskell đọc marker sau listen, web `/healthz`, không TCP game. Connect probe vào 4000 có thể chiếm P1 rồi đóng gây Quit. `service_healthy` chờ ready khi start, không bảo đảm backend sống mãi. Web còn healthy sau trận để phục vụ kết quả.
+
+Helper lấy IP **host**, chọn adapter, ghi file cùng thư mục rồi rename; bridge poll 2 giây. Mount thư mục read-only nhìn thấy file mới; TTL loại LAN cũ khi helper chết/file lỗi. Đổi IP không restart giữ TCP/token; đổi port/restart mất phiên. Người chơi vẫn cần nhận URL mới/token, không có DNS tự tìm máy chủ trên mọi thiết bị.
+
+`restart: no` phù hợp một trận/lần chạy. Trận mới: chờ core Exited, `start haskell`, healthy, tạo phiên mới; giữ web. Docker đóng gói/vận hành, **không giữ server chạy khi máy chủ tắt**. Luôn phục vụ cần host/VPS luôn bật; persistence/recovery cần thiết kế riêng nếu mở yêu cầu.
+
+Lệnh chuẩn nằm trong README/DK-09; báo cáo không tạo một bộ lệnh khác làm lệch env-file/project.
+
+## 9. Dự án tham khảo
+
+Đã kiểm tra ngày 2026-10-10: [DKurilo/battleship](https://github.com/DKurilo/battleship). README nêu Haskell/Snap/MongoDB/TypeScript/React, bot, SSL và build Linux/Docker. Đồ án tham khảo ý tưởng game/Haskell–web, không tuyên bố sao chép nguyên kiến trúc hoặc mọi file.
+
+Đồ án chọn lõi thuần/TCP/bridge, không dùng Snap/MongoDB/bot, để làm rõ socket/STM, giảm hạ tầng một ván và test độc lập IO. Database phù hợp khi cần lưu trận/tài khoản/lịch sử; hiện thêm schema, IO/recovery/service phải test. Compose hiện tại là hai service runtime có gate test, không suy diễn deployment hai repo tương đương.
+
+Package hiện ghi `AllRightsReserved`. Khi lấy thêm mã/asset ngoài, nhóm ghi nguồn/điều kiện sử dụng tương ứng; chưa có bảng nguồn asset đầy đủ để kết luận mọi ảnh đã được kiểm toán.
+
+## 10. Phần còn cần chốt trước khi nộp
+
+| Việc | Hiện trạng / ảnh hưởng | Cách hoàn tất |
+|---|---|---|
+| Review contract/revision | A/B/C/D/R chưa xác nhận thật | Ghi tên, SHA, ngày, link review trong shared_contract |
+| Hai thiết bị/Wi-Fi vật lý | Một host không kiểm tra client isolation/firewall giữa thiết bị | Checklist DK-08, log/ảnh đúng phạm vi |
+| R9-S03-01 terminal 80 cột | TODO: câu kết thúc 81 ký tự wrap; luật vẫn đúng | Rút/chia dòng, regression renderer, chạy console lại |
+| Thông tin bản nộp/nguồn asset | Chưa có đầy đủ tác giả/lớp/ngày/nguồn ảnh | R bổ sung thông tin thật |
+| Persistence/Internet | Ngoài MVP; RAM mất, HTTP không mã hóa | Chỉ mở task nếu đổi yêu cầu, không mô tả đã có |
+
+Các gate kỹ thuật có bằng chứng xanh; không ghi nhận lỗi luật/riêng tư đang mở trong hồ sơ hiện có. Điều này không thay test thực địa/review. AI/nhiều phòng/lưu trận/TLS Internet là hướng phát triển có điều kiện, không cần thêm để hoàn thành phạm vi hiện tại.
+
+## 11. Kết luận
+
+Hàm thuần/ADT tổ chức lõi; module tạo hợp đồng; STM commit state/event; supervision quản lý socket; message passing nối client. UI/LAN/Docker thêm sau để thuận tiện chơi/triển khai, vẫn giữ Haskell quyết định luật. Lợi ích là dễ test, rõ trách nhiệm, client chậm không gây mất đồng bộ; đánh đổi là codec/bridge và phiên chỉ sống khi tiến trình còn chạy. Báo cáo hoàn chỉnh về hiện trạng kỹ thuật; chốt nhóm/bản nộp cần thông tin thật ở mục 10.
