@@ -1,6 +1,6 @@
-# Hợp đồng chung S-01 v2 — cập nhật đến C-07, chờ duyệt
+# Hợp đồng chung S-01 v2 — cập nhật đến C-07/DK-02, chờ duyệt
 
-Ngày đối chiếu kỹ thuật: 2026-10-08. Chủ trì tài liệu: R.
+Ngày đối chiếu kỹ thuật: 2026-10-10. Chủ trì tài liệu: R.
 
 **Trạng thái: đã lập bản hợp đồng để duyệt; CHƯA KHÓA vì chưa có xác nhận A/B/C/D.** Build/test xanh chỉ là bằng chứng kỹ thuật, không thay thế xác nhận của người phụ trách.
 
@@ -177,6 +177,21 @@ Hai file đều tên module Main vì nằm trong hai component Cabal khác nhau;
 ### Phạm vi transport C-02/C-03/C-04/C-07
 
 `Battleship.Server.runServer :: PortNumber -> (PortNumber -> IO ()) -> IO ()` bind `127.0.0.1`; callback nhận port thực tế sau listen, port 0 dành cho thử nghiệm không tranh port cố định. `PortNumber` thuộc `network`, không tạo kiểu miền trùng với Types. Hai kết nối nhận WELCOME theo thứ tự accept; kết nối thứ ba nhận ERROR SERVER_FULL rồi bị đóng, không tạo worker hay thay đổi hai slot.
+
+**Bổ sung transport DK-02 (C/D cần review trước hợp nhất):** giữ nguyên `runServer`/`runServerWith`; thêm API sau trong Battleship.Server, không đổi domain/wire:
+
+```haskell
+-- ServerConfig abstract, không xuất constructor hoặc record label có thể update.
+defaultServerConfig :: ServerConfig
+parseServerConfig :: Maybe String -> Maybe FilePath -> Either String ServerConfig
+serverBindHost :: ServerConfig -> String
+serverReadyFile :: ServerConfig -> Maybe FilePath
+runServerConfigured :: ServerConfig -> PortNumber -> (PortNumber -> IO ()) -> IO ()
+```
+
+`Nothing` dùng mặc định loopback/không marker; `Just ""` là lỗi. ServerMain đọc BATTLESHIP_BIND_HOST/BATTLESHIP_READY_FILE, parse trước IO listener, rồi chạy lõi Rules thật. IPv4 canonical/localhost được kiểm tra thuần; không DNS hoặc URL/port trong host. Readiness marker được xóa trước bind, ghi nguyên tử sau listen trước callback và dọn trong bracket trên mọi đường thoát có cleanup. Lỗi bind ghi rõ host/port; lỗi marker không báo ready. Healthcheck không tạo kết nối TCP vào cổng chơi. Unix giữ ReuseAddr để restart; Windows bật SO_EXCLUSIVEADDRUSE tránh hai listener wildcard/loopback tranh cùng cổng.
+
+Library thêm `directory`/`filepath` cho marker; executable server thêm `unix` chỉ khi không phải Windows, dùng SIGTERM đưa tín hiệu kết thúc vào owner thread để chạy finalizer. Không sửa Board/Rules/View/Coordinator hoặc lifecycle một trận. Chi tiết cấu hình và vòng đời Docker ở [docker_deployment.md](docker_deployment.md); test DK-02 gồm parser, TCP, callback/marker và executable dùng env thật.
 
 Server tách dòng TCP với LF/CRLF và giới hạn 256 byte, gọi atomically Coordinator.submitPayload → Protocol.parseCommand → Step → Protocol.encodeEvent. Payload sai không tới Step để xử lý lệnh; Left GameError giữ state cũ và xếp lỗi actor-only nếu batch đủ chỗ. Nếu xếp lỗi gây quá tải, C-07 gọi Step với Quit riêng cho người nhận bị quá tải. EOF/lỗi socket gọi atomically submitCommand core coordinator actor Quit; sau Finished không gọi lại Step hoặc đổi winner. LINE_TOO_LONG xếp lỗi nếu đủ chỗ rồi xử lý rời trận qua core; nếu hết chỗ, đi thẳng đường Quit quá tải. Không thêm mã wire hoặc đổi luật R-01.
 

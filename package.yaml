@@ -33,6 +33,8 @@ library:
     - bytestring
     - async
     - stm
+    - directory
+    - filepath
   exposed-modules:
     - Battleship.Board
     - Battleship.Client
@@ -55,6 +57,10 @@ executables:
     dependencies:
       - battleship-haskell
       - network
+    when:
+      - condition: '!os(windows)'
+        dependencies:
+          - unix
     ghc-options:
       - -Wall
       - -threaded

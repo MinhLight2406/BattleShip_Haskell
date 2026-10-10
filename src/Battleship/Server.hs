@@ -1,5 +1,8 @@
 -- | Two permanent TCP slots; STM owns the game and each socket has one writer.
-module Battleship.Server (runServer, runServerWith) where
+module Battleship.Server
+  ( ServerConfig, defaultServerConfig, parseServerConfig, serverBindHost, serverReadyFile
+  , runServer, runServerWith, runServerConfigured
+  ) where
 
 import Battleship.Coordinator
   ( Coordinator, newCoordinator, nextFrame, readGameState, isSlowClient, submitCommand,
@@ -13,17 +16,61 @@ import Control.Concurrent.STM (atomically, check)
 import Control.Concurrent.MVar
   ( MVar, modifyMVar, modifyMVar_, newEmptyMVar, newMVar, readMVar,
     tryPutMVar )
-import Control.Exception (AssertionFailed (..), IOException, SomeException, bracket, bracketOnError, catch, finally, throwIO)
+import Control.Exception (AssertionFailed (..), IOException, SomeException, bracket, bracket_, bracketOnError, catch, finally, throwIO)
 import Control.Monad (forM_, forever, void, when)
 import qualified Data.ByteString as BS
+import qualified Data.ByteString.Char8 as BSC
+import Data.Bits (complement)
 import Network.Socket
-  ( Family (AF_INET), PortNumber, ShutdownCmd (ShutdownBoth, ShutdownSend), SockAddr (SockAddrInet), Socket,
-    SocketOption (ReuseAddr), SocketType (Stream), accept, bind, close,
+  ( Family (AF_INET), HostAddress, PortNumber, ShutdownCmd (ShutdownBoth, ShutdownSend), SockAddr (SockAddrInet), Socket,
+    SocketOption (SockOpt, ReuseAddr), SocketType (Stream), accept, bind, close,
     defaultProtocol, listen, setSocketOption, shutdown, socket, socketPort,
     tupleToHostAddress, withSocketsDo )
 import Network.Socket.ByteString (recv, sendAll)
+import System.Directory (removeFile, renameFile)
+import System.FilePath (isAbsolute, takeDirectory, takeFileName)
+import System.IO (hClose, openBinaryTempFile)
+import System.IO.Error (isDoesNotExistError)
 import System.Info (os)
 import System.Timeout (timeout)
+import Text.Read (readMaybe)
+
+-- The constructor is private: invalid configuration cannot reach socket IO.
+data ServerConfig = ServerConfig String HostAddress (Maybe FilePath) deriving (Eq, Show)
+
+serverBindHost :: ServerConfig -> String
+serverBindHost (ServerConfig host _ _) = host
+
+serverReadyFile :: ServerConfig -> Maybe FilePath
+serverReadyFile (ServerConfig _ _ path) = path
+
+bindAddress :: ServerConfig -> HostAddress
+bindAddress (ServerConfig _ address _) = address
+
+defaultServerConfig :: ServerConfig
+defaultServerConfig = ServerConfig "127.0.0.1" (tupleToHostAddress (127, 0, 0, 1)) Nothing
+
+-- | Missing env values keep native defaults; explicitly empty values are errors.
+-- Only canonical IPv4 and the localhost alias are accepted, without DNS lookup.
+parseServerConfig :: Maybe String -> Maybe FilePath -> Either String ServerConfig
+parseServerConfig hostSetting readySetting = do
+  let host = maybe "127.0.0.1" id hostSetting
+  address <- case host of
+    "localhost" -> Right (tupleToHostAddress (127, 0, 0, 1))
+    _ -> case traverse octet (splitDots host) of
+      Just [a, b, c, d] -> Right (tupleToHostAddress (a, b, c, d))
+      _ -> Left "BATTLESHIP_BIND_HOST must be a canonical IPv4 address or localhost (no URL or port)"
+  case readySetting of
+    Just path | not (isAbsolute path) || '\0' `elem` path ->
+      Left "BATTLESHIP_READY_FILE must be a nonempty absolute file path"
+    _ -> Right (ServerConfig host address readySetting)
+  where
+    splitDots value = case break (== '.') value of
+      (part, []) -> [part]
+      (part, _ : rest) -> part : splitDots rest
+    octet value = case readMaybe value :: Maybe Integer of
+      Just number | number >= 0 && number <= 255 && show number == value -> Just (fromInteger number)
+      _ -> Nothing
 
 data Lobby = Lobby
   { clients :: [(PlayerId, Socket)]
@@ -38,16 +85,27 @@ data Lobby = Lobby
 runServer :: PortNumber -> (PortNumber -> IO ()) -> IO ()
 runServer = runServerWith Rules.step initialGameState
 
+-- | Docker/native configuration; the same Rules and initial state as runServer.
+-- The marker is written after listen, before the callback; all exits remove it.
+runServerConfigured :: ServerConfig -> PortNumber -> (PortNumber -> IO ()) -> IO ()
+runServerConfigured config = runServerWithConfig config Rules.step initialGameState
+
 -- | C-03/Đợt 6 seam: replace only the supplied Step/initial state when working
 -- with a stub. The default already uses the completed A/B core. CLI clients
 -- cannot select a core or supply a state. No extra victory logic is needed.
 runServerWith :: Step -> GameState -> PortNumber -> (PortNumber -> IO ()) -> IO ()
-runServerWith core initial port onListening = withSocketsDo $
-  bracket (openListener port) close $ \listener -> do
+runServerWith = runServerWithConfig defaultServerConfig
+
+runServerWithConfig :: ServerConfig -> Step -> GameState -> PortNumber -> (PortNumber -> IO ()) -> IO ()
+runServerWithConfig config core initial port onListening = withSocketsDo $
+  bracket_ clearMarker clearMarker $
+  bracket (openListener config port) close $ \listener -> do
     coordinator <- atomically (newCoordinator initial)
     lobby <- newMVar (Lobby [] False [])
     finished <- newEmptyMVar
-    socketPort listener >>= onListening
+    actual <- socketPort listener
+    forM_ (serverReadyFile config) writeReadyMarker
+    onListening actual
     withAsync (acceptClients core coordinator listener lobby finished [P1, P2]) $ \acceptor ->
       race_ (wait acceptor) (readMVar finished >>= either throwIO pure)
         `finally` modifyMVar_ lobby (\state -> do
@@ -57,15 +115,37 @@ runServerWith core initial port onListening = withSocketsDo $
           close listener
           forM_ (clients state) (closeConnection . snd)
           pure state { stopped = True })
+  where
+    clearMarker = forM_ (serverReadyFile config) removeIfPresent
 
-openListener :: PortNumber -> IO Socket
-openListener port = bracketOnError (socket AF_INET Stream defaultProtocol) close $ \listener -> do
-  -- On Windows SO_REUSEADDR permits another live listener on the same port.
-  -- Keep exclusive binding there; Unix needs reuse for restart after TIME_WAIT.
-  when (os /= "mingw32") (setSocketOption listener ReuseAddr 1)
-  bind listener (SockAddrInet port (tupleToHostAddress (127, 0, 0, 1)))
-  listen listener 8
-  pure listener
+openListener :: ServerConfig -> PortNumber -> IO Socket
+openListener config port = open `catch` report
+  where
+    report :: IOException -> IO Socket
+    report exception = ioError (userError ("Cannot listen on " ++ serverBindHost config ++ ":" ++ show port ++ ": " ++ show exception))
+    open = bracketOnError (socket AF_INET Stream defaultProtocol) close $ \listener -> do
+      -- Winsock requires SO_EXCLUSIVEADDRUSE, including wildcard/specific clashes.
+      -- Its value is ~SO_REUSEADDR; reuse on Unix permits restart after TIME_WAIT.
+      if os == "mingw32" then case ReuseAddr of
+        SockOpt level option -> setSocketOption listener (SockOpt level (complement option)) 1
+      else setSocketOption listener ReuseAddr 1
+      bind listener (SockAddrInet port (bindAddress config))
+      listen listener 8
+      pure listener
+
+-- Publish a complete marker by rename in the same directory, including Windows.
+writeReadyMarker :: FilePath -> IO ()
+writeReadyMarker destination = bracket
+  (openBinaryTempFile (takeDirectory destination) (takeFileName destination ++ ".tmp"))
+  (\(temporary, handle) -> hClose handle `finally` removeIfPresent temporary)
+  (\(temporary, handle) -> do
+    BS.hPut handle (BSC.pack "ready\n")
+    hClose handle
+    renameFile temporary destination)
+
+removeIfPresent :: FilePath -> IO ()
+removeIfPresent path = removeFile path `catch` \exception ->
+  if isDoesNotExistError exception then pure () else throwIO (exception :: IOException)
 
 -- Nested brackets/withAsync own the two sockets/readers for the whole session.
 -- Rejected connections have a separate short bracket and never get a worker.

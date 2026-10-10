@@ -3,7 +3,7 @@
 Ngày lập: **2026-10-10**. Nhánh: `Update_using_docker`, nền `0a7c250`.
 Chủ trì: R. C/D review cấu hình, healthcheck và vòng đời phiên trước hợp nhất.
 
-**Trạng thái: hợp đồng kỹ thuật để triển khai; chưa có xác nhận C/D.** DK-01 tạo tài liệu, `.env.example` và test tự động kiểm tra hai artifact này. Các biến mới, Dockerfile, Compose, helper LAN và test runtime được thực hiện ở DK-02..DK-08; chưa thể dùng mẫu này để chạy Docker ngay. Không coi tài liệu này là bằng chứng Docker đã build/chạy xanh.
+**Trạng thái: hợp đồng kỹ thuật để triển khai; chưa có xác nhận C/D.** DK-01 tạo tài liệu, `.env.example` và test tự động kiểm tra hai artifact này. DK-02 đã thêm BATTLESHIP_BIND_HOST/BATTLESHIP_READY_FILE, API listener tương thích và test Haskell. Cấu hình bridge mới, Dockerfile, Compose, helper LAN và test Docker runtime thuộc DK-03..DK-08; chưa thể dùng mẫu này để chạy Docker ngay. Không coi tài liệu này là bằng chứng Docker đã build/chạy xanh.
 
 Nguồn phải giữ đúng: [luật R-01](game_spec.md), [wire v1](protocol.md), [hợp đồng chung](shared_contract.md), [bridge và GUI hiện tại](frontend_integration.md). Không đổi Types, luật, người nhận sự kiện hoặc nguồn sự thật `TVar GameState` để phục vụ Docker.
 
@@ -243,9 +243,24 @@ Kết quả chạy tại workspace Windows ngày **2026-10-10**, Node **v24.19.0
 
 Log bộ frontend: `.stack-work/dk01/frontend-test.log` (artifact cục bộ, không commit). Không sửa Haskell trong DK-01; chưa chạy test Docker runtime hoặc nghiệm thu hai container ở bước này.
 
+### Kết quả triển khai Haskell DK-02
+
+Nhánh `Cho_Haskell_cau_hinh_lang_nghe` tách từ `Update_using_docker` tại `e709bea`. Kiểm tra trên Windows ngày **2026-10-10**, Stack **3.11.1**, snapshot **lts-24.59**, GHC **9.10.3**:
+
+| Lệnh | Kết quả thực tế |
+|---|---|
+| `stack build` | Qua, exit 0 |
+| `stack test --ghc-options=-Werror --test-arguments="--match DK-02"` | 51 ví dụ, 0 lỗi |
+| `stack test --ghc-options=-Werror` | 907 ví dụ, 0 lỗi; gồm QuickCheck A-06/B-06, C-06/C-07 và trận CLI đầy đủ |
+| `node --test frontend/test/docker-contract.test.mjs` | 6 test, 0 lỗi |
+
+Log cục bộ: `.stack-work/dk02/build-final.log`, `targeted-fixed.log`, `full-test.log` trong cùng thư mục. Test chứng minh listener native/default/localhost/wildcard nhận đúng P1/P2 và từ chối P3; đọc marker 100 lần không chiếm slot; cấu hình sai bị chặn trước bind/readiness IO; marker được thay sau listen và dọn khi Quit, callback lỗi, bind lỗi hoặc cancellation. Lỗi ghi marker không gọi callback và listener được giải phóng. Main giữ CLI/luật hiện tại, đọc môi trường bằng enumeration để phân biệt biến rỗng trên Windows.
+
+Windows dùng [SO_EXCLUSIVEADDRUSE](https://learn.microsoft.com/en-us/windows/win32/winsock/so-exclusiveaddruse) trước bind để tránh listener wildcard/loopback tranh cổng; không chỉ bỏ ReuseAddr. Linux thêm handler [SIGTERM qua System.Posix.Signals](https://hackage-content.haskell.org/package/unix-2.8.1.0/docs/System-Posix-Signals.html) để owner thread chạy finalizer. Test SIGTERM chỉ được biên dịch/chạy trên Unix, **chưa được chạy ở workspace Windows này**; máy hiện chưa có WSL/Docker. DK-04/DK-08 phải chạy gate Linux/container, gồm test này, trước nghiệm thu Docker. Không dùng kết quả wildcard native để khẳng định hai container đã kết nối được.
+
 ## 9. Tác động và xác nhận
 
-Hiện `Server` bind loopback, bridge nối TCP loopback, PUBLIC_ORIGIN phải cùng PORT và bridge tự dò IP của process. Các task DK-02/DK-03/DK-06 sẽ bổ sung API/cấu hình theo tài liệu này; không có gì trong DK-01 làm chúng đã hoạt động. `.env.example` phải được cập nhật cùng hợp đồng khi biến/giá trị đổi.
+Sau DK-02, `runServer`/`runServerWith` vẫn bind loopback; ServerMain có thể chọn IPv4/localhost qua BATTLESHIP_BIND_HOST và readiness qua BATTLESHIP_READY_FILE. Bridge hiện vẫn nối TCP loopback, PUBLIC_ORIGIN phải cùng PORT và tự dò IP của process; DK-03/DK-06 sẽ bổ sung cấu hình bridge/helper theo hợp đồng này. `.env.example` phải được cập nhật cùng hợp đồng khi biến/giá trị đổi.
 
 Tiêu chí kỹ thuật DK-01: service/port/mapping, precedence/validation, hai chế độ origin, schema/freshness LAN, hot update, restart và healthcheck đã xác định; C/D có vector test và phân công để triển khai độc lập. Chưa ghi tên/chữ ký hoặc chứng nhận review thay người phụ trách.
 

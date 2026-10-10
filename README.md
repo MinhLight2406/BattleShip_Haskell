@@ -29,6 +29,32 @@ Mở link LAN được terminal cầu web tự in, hoặc `http://127.0.0.1:8080
 
 Server Haskell hiện phục vụ **một trận**. Sau khi thắng hoặc bỏ cuộc, chạy lại lệnh server ở Terminal 1 trước trận mới; cầu web ở Terminal 2 có thể giữ nguyên. Trinh sát chưa được hỗ trợ.
 
+### Cấu hình listener Haskell — DK-02
+
+Không đặt biến môi trường thì server vẫn bind `127.0.0.1:4000`. `BATTLESHIP_BIND_HOST` nhận IPv4 canonical hoặc `localhost`; `0.0.0.0` lắng nghe trên mọi giao diện IPv4, dùng khi bridge ở container khác. Không nhận URL, port kèm địa chỉ, chuỗi rỗng hoặc IPv4 sai. CLI `[PORT]` và port `0` cho test vẫn giữ nguyên.
+
+Ví dụ PowerShell để kiểm tra listener và readiness trực tiếp:
+
+```powershell
+$env:BATTLESHIP_BIND_HOST = '0.0.0.0'
+$env:BATTLESHIP_READY_FILE = Join-Path $env:TEMP 'battleship-ready'
+stack exec battleship-server -- 4000
+```
+
+Linux/container dùng `BATTLESHIP_READY_FILE=/tmp/battleship-ready`. Biến này tùy chọn khi chạy native, phải là đường dẫn tuyệt đối đến file trong thư mục đã tồn tại và ghi được. Server xóa marker cũ trước bind, ghi nguyên tử đúng `ready\n` sau `listen`, trước log/callback và xóa khi thoát bình thường, lỗi hoặc hủy có cleanup. Healthcheck chỉ đọc marker, **không connect cổng 4000**. Linux xử lý `SIGTERM` để đóng socket/worker và xóa marker; kill cưỡng bức không chạy finalizer, marker cũ sẽ được xóa ở lần khởi động tiếp theo.
+
+Sau khi thử, bỏ cấu hình để trở lại chế độ localhost:
+
+```powershell
+Remove-Item Env:BATTLESHIP_BIND_HOST, Env:BATTLESHIP_READY_FILE -ErrorAction SilentlyContinue
+```
+
+```sh
+stack test --ghc-options=-Werror --test-arguments="--match DK-02"
+```
+
+Hợp đồng hai service, mapping cổng và cập nhật IP LAN: [docs/docker_deployment.md](docs/docker_deployment.md). Dockerfile/Compose và cấu hình bridge dành cho container thuộc các task tiếp theo; DK-02 mới triển khai phần listener Haskell.
+
 Test giao diện và tích hợp (chạy từ gốc repository sau khi build):
 
 ```sh
