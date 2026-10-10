@@ -1,5 +1,7 @@
 # Images Docker — DK-04 / DK-05
 
+**Chạy sản phẩm:** dùng [hướng dẫn chuẩn Docker DK-09](../README.md#chạy-bằng-docker--hướng-dẫn-chuẩn-dk-09) cho build/start/log/stop/trận mới, localhost/LAN/chọn adapter/đổi cổng. [Hồ sơ bàn giao DK-09](../docs/dk09_handover.md) tập hợp bằng chứng và mục chờ review. Các mục DK-04..DK-07 dưới đây là cấu trúc image, test chuyên biệt và kết quả lịch sử; không cần chạy từng demo image riêng để chơi bằng Compose.
+
 ## Image Haskell — DK-04
 
 Nhánh `Dong_goi_kiem_thu`, nền `c8f02e5`. Chỉ đóng gói server Haskell; web image và Compose thuộc DK-05/DK-07. Không đổi luật hoặc cơ chế một trận/process.
@@ -177,7 +179,7 @@ docker compose --env-file .env.example -p battleship-build build
 node --test scripts/test-compose.mjs
 ```
 
-Runner cần Docker Linux và hai image `battleship-haskell:local`/`battleship-web:local` vừa build; Node/dependency frontend của checkout để tạo WebSocket thật. Nếu CLI không trong PATH, đặt BATTLESHIP_DOCKER_CLI như các runner DK-04/05. Test không down deployment đang demo: mỗi ca runtime có project UUID, thư mục riêng dưới `.stack-work/dk07/`, cổng trống do OS cấp; cleanup chỉ nhắm project/thư mục đó. Ca helper Windows chạy PowerShell 5.1 và helper production thật; ca này chỉ chạy trên Windows host.
+Runner cần Docker Linux và hai image `battleship-haskell:local`/`battleship-web:local` vừa build; Node/dependency frontend của checkout để tạo WebSocket thật. Nếu CLI không trong PATH, đặt BATTLESHIP_DOCKER_CLI như các runner DK-04/05. Sau DK-08, runner còn cần Chromium (`pnpm --dir frontend exec playwright install chromium`), dùng project UUID `battleship-dk08-*` và thư mục `.stack-work/dk08/`; cổng do OS cấp, cleanup chỉ nhắm project/thư mục đó. Ca helper Windows chạy PowerShell 5.1 và helper production thật; ca này chỉ chạy trên Windows host.
 
 - Render Compose: đúng hai service, environment đúng nơi nhận, mapping riêng public/internal, backend không publish, mount chỉ đọc, required values thiếu/rỗng báo lỗi.
 - Gate trước listener: entrypoint test chờ file được test mở sau một healthcheck thất bại; web không chạy/không HTTP ready trước marker thật. Entry point production giữ nguyên PID 1 của executable.
@@ -203,3 +205,9 @@ Ngày **2026-10-10**, Windows host, Docker Engine 29.8.2 / Compose 5.5.1, Linux 
 | Chính sách một trận | QUIT khiến backend exit 0, restart count 0; web còn HTTP; start haskell giữ nguyên thời điểm khởi động web |
 
 Log cục bộ ignored: `.stack-work/dk07/compose-build.log`, `compose-test.log`, `compose-ui-stop-test.log`, `frontend-test.log`. Ca health/stop được chạy lại sau khi bổ sung kiểm tra HTML/bundle và log ở cả stdout/stderr: 1/1 qua. Lần chạy test model đầu phát hiện Compose config xuất `$$` để escape khi render; test đã phân biệt model và runtime: healthcheck trong container nhận `$` đơn và chạy được. Không sửa API Haskell/bridge, luật, snapshot hoặc dependency. Build gate này chạy lại A-06/B-06/C-07 trên Linux. Chưa nghiệm thu trận đầy đủ bằng hai trình duyệt/hai thiết bị vật lý hoặc arm64; DK-08 và C/R review còn chờ.
+
+## Trận đầy đủ, hai container và LAN — DK-08
+
+Bộ `scripts/test-compose.mjs` hiện có 19 ca, gồm 7 ca DK-07 và 12 ca DK-08. Build source sạch chạy lại gate Linux của cả hai Dockerfile; các ca runtime dùng đúng hai service production, cổng web công bố khác cổng nội bộ. Test kiểm tra trận đủ 17 ô, riêng tư, resume/hết hạn 300.000 ms, restart web/Haskell, đồng thời, P1/P2/cả hai không đọc TCP, UI React desktop/mobile và LAN IPv4 của host Windows. Không sửa code production hoặc thêm dependency.
+
+Xem [hồ sơ DK-08](../docs/dk08_acceptance.md) để chuẩn bị Chromium, chạy lại và xem log/ảnh. Đã chạy thêm nghiệm thu một máy với Chrome/Edge riêng theo yêu cầu người dùng; có thể tái hiện bằng `BATTLESHIP_BROWSER_CHANNELS=chrome,msedge` nếu đã cài cả hai trình duyệt. Clock fixture thay đồng hồ trong entrypoint test và import bridge nguyên bản; TCP fixture dùng gate để chứng minh Haskell đã thoát trước khi client đọc lại. Kết quả một máy/hai trình duyệt không xác nhận hai thiết bị Wi-Fi. Kết quả DK-07 ở trên là lịch sử của commit nền; kết quả mới và phạm vi chưa kiểm chứng được ghi trong hồ sơ DK-08.

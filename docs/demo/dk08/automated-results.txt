@@ -1,0 +1,31 @@
+✔ DK-07: rendered Compose has exactly two services, explicit env, private TCP and read-only LAN directory (676.6478ms)
+✔ DK-07: port mapping is consistent; empty/unset required values fail without hidden defaults (5450.9454ms)
+✔ DK-07: web cannot start before the real Haskell listener writes readiness (18410.345ms)
+✔ DK-07: backend startup failure cannot report readiness or start web (3098.6401ms)
+✔ DK-07: 100 health probes preserve P1/P2; stop cleans real sockets and restart reuses the port (28611.3829ms)
+✔ DK-07: one match exits without restart; start haskell opens a new match; down releases containers/network (34957.8374ms)
+✔ DK-07: actual Windows Auto helper starts production Compose and keeps the mounted file fresh (13946.0995ms)
+✔ DK-08: build from a clean source snapshot, then complete a private game over mapped HTTP/WebSocket ports (247796.0346ms)
+ℹ Clean export excludes .git/.env/host caches; production images built with all Linux tests. Full game: 17 hits + misses/errors, Haskell exit 0.
+✔ DK-08: strict Origin/Host rejection cannot allocate a slot; both players resume their own private history (13247.7357ms)
+✔ DK-08: exact five-minute clock boundary while placing forfeits the correct player (15571.9587ms)
+ℹ Clock fixture imports unmodified /app/bridge.mjs; default RECONNECT_GRACE_MS remains 300000, winner comes from real Haskell Quit.
+✔ DK-08: exact five-minute clock boundary during battle after a successful resume forfeits the correct player (17552.6762ms)
+ℹ Clock fixture imports unmodified /app/bridge.mjs; default RECONNECT_GRACE_MS remains 300000, winner comes from real Haskell Quit.
+✔ DK-08: restarting haskell mid-game closes old sessions and never restores old state (19005.0749ms)
+✔ DK-08: restarting web mid-game closes old sessions and never restores old state (20393.5496ms)
+✔ DK-08: concurrent WebSocket shots have one valid actor and exactly one update per target (13581.5262ms)
+✔ DK-08: C-07 P1 stops reading TCP; server and sockets exit within deadline (15253.1406ms)
+✔ DK-08: C-07 P2 stops reading TCP; server and sockets exit within deadline (15147.8564ms)
+✔ DK-08: C-07 both clients stops reading TCP; server and sockets exit within deadline (15648.7941ms)
+✔ DK-08: two isolated Chromium browsers play the production React UI to victory without secret reveal (21115.3612ms)
+✔ DK-08: Windows LAN IPv4 from the host helper serves a complete game over the real host network address (14635.4744ms)
+ℹ LAN host address http://192.168.1.126:62993; two automated WebSocket peers on ONE Windows computer, not two physical devices.
+ℹ tests 19
+ℹ suites 0
+ℹ pass 19
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 534214.0142

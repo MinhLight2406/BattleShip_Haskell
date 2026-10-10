@@ -2,14 +2,17 @@ import assert from 'node:assert/strict'
 import { execFile, spawn } from 'node:child_process'
 import { randomUUID } from 'node:crypto'
 import { once } from 'node:events'
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs'
+import { createRequire } from 'node:module'
 import net from 'node:net'
+import { networkInterfaces } from 'node:os'
 import path from 'node:path'
 import { test } from 'node:test'
 import { fileURLToPath } from 'node:url'
 import { parseEnv, promisify } from 'node:util'
-import { peer, within, fleet1, fleet2 } from '../frontend/test/helpers.mjs'
+import { peer, within, fleet1, fleet2, winningShots } from '../frontend/test/helpers.mjs'
 import { helperEnv, shell, script, until } from '../frontend/test/lan-helper-support.mjs'
+import { lanAddresses } from '../frontend/bridge.mjs'
 
 const root = fileURLToPath(new URL('../', import.meta.url))
 const composeFile = path.join(root, 'compose.yaml')
@@ -18,6 +21,8 @@ const cli = process.env.BATTLESHIP_DOCKER_CLI ?? 'docker'
 const execute = promisify(execFile)
 const docker = (...args) => execute(cli, args, { env: helperEnv(), windowsHide: true, timeout: 30000, maxBuffer: 1024 * 1024 })
 const get = url => fetch(url, { signal: AbortSignal.timeout(3000) })
+const require = createRequire(new URL('../frontend/package.json', import.meta.url))
+const { WebSocket } = require('ws')
 
 async function freePort() {
   const socket = net.createServer()
@@ -29,22 +34,23 @@ async function freePort() {
 }
 
 function fixture(t, overrides = {}) {
-  const parent = path.join(root, '.stack-work/dk07')
+  const parent = path.join(root, '.stack-work/dk08')
   mkdirSync(parent, { recursive: true })
   const directory = mkdtempSync(path.join(parent, 'compose-'))
   const lan = path.join(directory, 'lan')
   mkdirSync(lan)
   const envFile = path.join(directory, 'compose.env')
-  const project = `battleship-dk07-${randomUUID()}`
+  const project = `battleship-dk08-${randomUUID()}`
   const values = { ...example, LAN_CONFIG_DIR: lan.replaceAll('\\', '/'), ...overrides }
   const save = () => writeFileSync(envFile, Object.entries(values).map(([key, value]) => `${key}='${value.replaceAll("'", "\\'")}'`).join('\n') + '\n')
   save()
   const files = [composeFile]
   let started = false
   let child
-  const args = () => ['compose', '--project-directory', root, '--env-file', envFile, '-p', project, ...files.flatMap(file => ['-f', file])]
+  let sourceRoot = root
+  const args = () => ['compose', '--project-directory', sourceRoot, '--env-file', envFile, '-p', project, ...files.flatMap(file => ['-f', file])]
   const command = (...argsExtra) => execute(cli, [...args(), ...argsExtra], { env: helperEnv(), windowsHide: true,
-    timeout: argsExtra[0] === 'up' ? 70000 : 30000, maxBuffer: 1024 * 1024 })
+    timeout: argsExtra[0] === 'build' ? 600000 : argsExtra[0] === 'up' ? 70000 : 30000, maxBuffer: 16 * 1024 * 1024 })
   const inspect = async service => {
     const id = (await command('ps', '--all', '--quiet', service)).stdout.trim()
     return id ? JSON.parse((await docker('inspect', id)).stdout)[0] : undefined
@@ -56,26 +62,53 @@ function fixture(t, overrides = {}) {
       }
       if (started) await command('down', '--remove-orphans')
     } finally {
-      assert.equal(path.dirname(directory), parent, 'cleanup must stay inside the owned DK-07 fixture')
+      assert.equal(path.dirname(directory), parent, 'cleanup must stay inside the owned Compose fixture')
       rmSync(directory, { recursive: true, force: true })
     }
   })
   return { directory, lan, values, envFile, project, save, command, inspect,
     origin: () => `http://127.0.0.1:${values.WEB_PUBLIC_PORT}`,
     async model() { return JSON.parse((await command('config', '--format', 'json')).stdout) },
+    async cleanSource() {
+      const snapshot = path.join(directory, 'source')
+      mkdirSync(snapshot)
+      const { stdout } = await execute('git', ['ls-files', '-z', '--cached', '--others', '--exclude-standard'], { cwd: root, windowsHide: true })
+      for (const file of new Set(stdout.split('\0').filter(Boolean))) {
+        const source = path.resolve(root, file), target = path.resolve(snapshot, file)
+        assert.ok(source.startsWith(path.resolve(root) + path.sep) && target.startsWith(snapshot + path.sep))
+        mkdirSync(path.dirname(target), { recursive: true }); copyFileSync(source, target)
+      }
+      for (const forbidden of ['.git', '.env', '.stack-work', 'frontend/node_modules', 'frontend/dist'])
+        assert.equal(existsSync(path.join(snapshot, forbidden)), false, `clean snapshot contains ${forbidden}`)
+      sourceRoot = snapshot; files[0] = path.join(snapshot, 'compose.yaml')
+      const built = await command('build')
+      writeFileSync(path.join(root, '.stack-work/dk08/clean-build.log'), built.stdout + built.stderr)
+    },
     override(data) {
       const filename = path.join(directory, 'override.json')
       writeFileSync(filename, JSON.stringify(data)); files.push(filename)
     },
     up() { started = true; return command('up', '-d', '--no-build', '--wait', '--wait-timeout', '60') },
+    clockFixture() {
+      copyFileSync(path.join(root, 'docker/test/controlled-clock.mjs'), path.join(lan, 'controlled-clock.mjs'))
+      writeFileSync(path.join(lan, 'clock.json'), '{"elapsed":0}')
+      this.override({ services: { web: { entrypoint: ['node', '/run/battleship-lan/controlled-clock.mjs'] } } })
+    },
+    async advanceClock(elapsed) {
+      const temporary = path.join(lan, 'clock.tmp')
+      writeFileSync(temporary, JSON.stringify({ elapsed })); renameSync(temporary, path.join(lan, 'clock.json'))
+      const web = await inspect('web')
+      await until(async () => JSON.parse((await docker('exec', web.Id, 'cat', '/tmp/dk08-clock-status.json')).stdout).elapsed === elapsed,
+        'container clock applied', 5000)
+    },
     async healthy() {
       await until(async () => (await inspect('haskell'))?.State.Health?.Status === 'healthy' &&
         (await inspect('web'))?.State.Health?.Status === 'healthy', 'both Compose services healthy', 60000)
     },
-    async pair() {
-      const first = await peer(Number(values.WEB_PUBLIC_PORT)); t.after(() => first.ws.terminate())
+    async pair(host = '127.0.0.1') {
+      const first = await peer(Number(values.WEB_PUBLIC_PORT), host); t.after(() => first.ws.terminate())
       await first.wait('WELCOME 1 P1')
-      const second = await peer(Number(values.WEB_PUBLIC_PORT)); t.after(() => second.ws.terminate())
+      const second = await peer(Number(values.WEB_PUBLIC_PORT), host); t.after(() => second.ws.terminate())
       await second.wait('WELCOME 1 P2')
       return [first, second]
     },
@@ -282,4 +315,311 @@ test('DK-07: actual Windows Auto helper starts production Compose and keeps the 
   assert.equal(helper.child.exitCode, null)
   pair[0].send('QUIT')
   for (const client of pair) { await client.wait('GAME_OVER P2 OPPONENT_LEFT'); await within(client.closed) }
+})
+
+test('DK-08: build from a clean source snapshot, then complete a private game over mapped HTTP/WebSocket ports', async t => {
+  const f = fixture(t, { WEB_PUBLIC_PORT: String(await freePort()) })
+  f.values.PUBLIC_ORIGIN = f.origin(); f.save()
+  await f.cleanSource(); await f.up()
+  assert.equal((await get(f.origin())).status, 200)
+  const [first, second] = await f.pair()
+  first.send('PLACE CV=J10:H;BB=A2:H;CR=A3:H;SB=A4:H;DD=A5:H')
+  await first.wait('ERROR SHIP_OUT_OF_BOUNDS CV')
+  first.send(fleet1); await first.wait('OK PLACE'); await first.wait('WAITING OPPONENT')
+  first.send('FIRE A6'); await first.wait('ERROR FLEETS_NOT_READY')
+  const third = await peer(Number(f.values.WEB_PUBLIC_PORT))
+  await third.wait('ERROR SERVER_FULL'); await within(third.closed)
+  assert.equal(third.frames.some(frame => frame.startsWith('WELCOME ')), false)
+  second.send(fleet2); await second.wait('OK PLACE')
+  for (const client of [first, second]) { await client.wait('START P1'); await client.wait('TURN P1') }
+  second.send('FIRE A1'); await second.wait('ERROR NOT_YOUR_TURN P1')
+  first.send('FIRE K1'); await first.wait('ERROR INVALID_COORDINATE')
+  first.send('FIRE J10'); await first.wait('SHOT J10 MISS'); await second.wait('INCOMING J10 MISS')
+  for (const client of [first, second]) await client.wait('TURN P2')
+  second.send('FIRE J10'); await second.wait('SHOT J10 MISS'); await first.wait('INCOMING J10 MISS')
+  for (const client of [first, second]) await client.wait('TURN P1')
+  first.send('FIRE J10'); await first.wait('ERROR ALREADY_FIRED J10')
+  for (const [index, coord] of winningShots.entries()) {
+    const outcome = index === 16 ? 'WIN' : ({ 4: 'SUNK CV', 8: 'SUNK BB', 11: 'SUNK CR', 14: 'SUNK SB' }[index] ?? 'HIT')
+    first.send(`FIRE ${coord}`)
+    await first.wait(`SHOT ${coord} ${outcome}`); await second.wait(`INCOMING ${coord} ${outcome}`)
+    if (outcome !== 'WIN') for (const client of [first, second]) await client.wait('TURN P1')
+    assert.equal(first.frames.join('\n').includes('CV=A6'), false)
+    assert.equal(second.frames.join('\n').includes('CV=A1'), false)
+  }
+  for (const client of [first, second]) { await client.wait('GAME_OVER P1 ALL_SHIPS_SUNK'); await within(client.closed) }
+  const core = await f.inspect('haskell')
+  assert.equal((await within(docker('wait', core.Id))).stdout.trim(), '0')
+  assert.equal(first.frames.filter(frame => frame.startsWith('SHOT ')).length, 18)
+  assert.equal(second.frames.filter(frame => frame.startsWith('SHOT ')).length, 1)
+  assert.equal(second.frames.some(frame => frame.startsWith('SHOT A6 ')), false)
+  t.diagnostic('Clean export excludes .git/.env/host caches; production images built with all Linux tests. Full game: 17 hits + misses/errors, Haskell exit 0.')
+})
+
+test('DK-08: strict Origin/Host rejection cannot allocate a slot; both players resume their own private history', async t => {
+  const f = fixture(t, { WEB_PUBLIC_PORT: String(await freePort()) })
+  f.values.PUBLIC_ORIGIN = f.origin(); f.save(); await f.up()
+  const reject = async (origin, host) => {
+    const ws = new WebSocket(`ws://127.0.0.1:${f.values.WEB_PUBLIC_PORT}/play`, { origin, headers: { Host: host } })
+    ws.on('error', () => {})
+    const rejected = new Promise((resolve, reject) => {
+      ws.once('unexpected-response', (_request, response) => { response.resume(); ws.terminate(); resolve(response.statusCode) })
+      ws.once('open', () => { ws.terminate(); reject(new Error('invalid Origin/Host accepted')) })
+    })
+    assert.equal(await within(rejected, 'rejected handshake'), 401)
+  }
+  await reject(f.origin(), `localhost:${f.values.WEB_PUBLIC_PORT}`)
+  await reject('http://127.0.0.1:8080', '127.0.0.1:8080')
+  await reject('http://evil.example:8081', 'evil.example:8081')
+  const pair = await f.pair()
+  const tokens = []
+  for (const client of pair) tokens.push((await client.meta('SESSION')).token)
+  pair[0].send(fleet1); await pair[0].wait('OK PLACE')
+  pair[1].send(fleet2); await pair[1].wait('OK PLACE')
+  for (const client of pair) { await client.wait('START P1'); await client.wait('TURN P1') }
+  pair[0].send('FIRE A6'); await pair[0].wait('SHOT A6 HIT'); await pair[1].wait('INCOMING A6 HIT')
+  for (const actor of [0, 1]) {
+    const waiting = pair[1 - actor]
+    pair[actor].ws.close(); await within(pair[actor].closed)
+    let pause
+    do { pause = await waiting.meta('CONNECTION') } while (!pause.missing.length)
+    assert.equal(pause.missing[0].player, `P${actor + 1}`)
+    assert.ok(Math.abs(pause.missing[0].deadline - Date.now() - 300000) < 1000)
+    waiting.send('FIRE B6'); assert.deepEqual(await waiting.meta('CONNECTION'), pause)
+    const stranger = await peer(Number(f.values.WEB_PUBLIC_PORT), '127.0.0.1', 'a'.repeat(64))
+    assert.equal((await stranger.meta('RESUME_ERROR')).code, 'INVALID_SESSION'); await within(stranger.closed)
+    const restored = await peer(Number(f.values.WEB_PUBLIC_PORT), 'localhost', tokens[actor])
+    t.after(() => restored.ws.terminate())
+    const replay = await restored.meta('SESSION')
+    assert.equal(replay.token, tokens[actor]); assert.equal(replay.fleet, actor === 0 ? fleet1 : fleet2)
+    assert.ok(replay.frames.includes(`WELCOME 1 P${actor + 1}`))
+    assert.ok(replay.frames.includes(actor === 0 ? 'SHOT A6 HIT' : 'INCOMING A6 HIT'))
+    assert.equal(JSON.stringify(replay).includes(actor === 0 ? 'CV=A6' : 'CV=A1'), false)
+    assert.deepEqual((await restored.meta('CONNECTION')).missing, [])
+    assert.deepEqual((await waiting.meta('CONNECTION')).missing, [])
+    pair[actor] = restored
+  }
+  pair[0].send('FIRE A6'); await pair[0].wait('ERROR ALREADY_FIRED A6')
+  pair[0].send('FIRE B6'); await pair[0].wait('SHOT B6 HIT')
+  pair[0].send('QUIT')
+  for (const client of pair) { await client.wait('GAME_OVER P2 OPPONENT_LEFT'); await within(client.closed) }
+})
+
+for (const inBattle of [false, true]) test(`DK-08: exact five-minute clock boundary ${inBattle ? 'during battle after a successful resume' : 'while placing'} forfeits the correct player`, async t => {
+  const f = fixture(t, { WEB_PUBLIC_PORT: String(await freePort()) })
+  f.values.PUBLIC_ORIGIN = f.origin(); f.save(); f.clockFixture(); await f.up()
+  const pair = await f.pair()
+  const tokens = []
+  for (const client of pair) tokens.push((await client.meta('SESSION')).token)
+  pair[0].send(fleet1); await pair[0].wait('OK PLACE')
+  if (inBattle) {
+    pair[1].send(fleet2); await pair[1].wait('OK PLACE')
+    for (const client of pair) { await client.wait('START P1'); await client.wait('TURN P1') }
+  }
+  pair[0].ws.close(); await within(pair[0].closed); await pair[1].meta('CONNECTION')
+  await f.advanceClock(299999)
+  assert.equal((await f.inspect('haskell')).State.Running, true)
+  assert.equal(pair[1].frames.some(frame => frame.startsWith('GAME_OVER ')), false)
+  let missing = 0, boundary = 300000
+  if (inBattle) {
+    const restored = await peer(Number(f.values.WEB_PUBLIC_PORT), '127.0.0.1', tokens[0])
+    t.after(() => restored.ws.terminate())
+    assert.equal((await restored.meta('SESSION')).token, tokens[0]); await restored.meta('CONNECTION')
+    await pair[1].meta('CONNECTION'); pair[0] = restored
+    await f.advanceClock(300000)
+    restored.send('FIRE A6'); await restored.wait('SHOT A6 HIT')
+    assert.equal(restored.frames.some(frame => frame.startsWith('GAME_OVER ')), false, 'old expiry must be cancelled')
+    pair[1].ws.close(); await within(pair[1].closed); await restored.meta('CONNECTION')
+    missing = 1; boundary = 600000
+    await f.advanceClock(599999)
+    assert.equal((await f.inspect('haskell')).State.Running, true)
+  }
+  await f.advanceClock(boundary)
+  const winner = `P${2 - missing}`
+  await pair[1 - missing].wait(`GAME_OVER ${winner} OPPONENT_LEFT`); await within(pair[1 - missing].closed)
+  const core = await f.inspect('haskell')
+  assert.equal((await within(docker('wait', core.Id))).stdout.trim(), '0')
+  const late = await peer(Number(f.values.WEB_PUBLIC_PORT), 'localhost', tokens[missing])
+  const result = await late.meta('SESSION')
+  assert.ok(result.frames.includes(`GAME_OVER ${winner} OPPONENT_LEFT`)); await within(late.closed)
+  t.diagnostic('Clock fixture imports unmodified /app/bridge.mjs; default RECONNECT_GRACE_MS remains 300000, winner comes from real Haskell Quit.')
+})
+
+for (const service of ['haskell', 'web']) test(`DK-08: restarting ${service} mid-game closes old sessions and never restores old state`, async t => {
+  const f = fixture(t, { WEB_PUBLIC_PORT: String(await freePort()) })
+  f.values.PUBLIC_ORIGIN = f.origin(); f.save(); await f.up()
+  const pair = await f.pair(), token = (await pair[0].meta('SESSION')).token
+  pair[0].send(fleet1); await pair[0].wait('OK PLACE')
+  pair[1].send(fleet2); await pair[1].wait('OK PLACE'); await pair[0].wait('START P1'); await pair[0].wait('TURN P1')
+  pair[0].send('FIRE A6'); await pair[0].wait('SHOT A6 HIT')
+  await f.command('restart', service)
+  for (const client of pair) await within(client.closed, 'old session closes on restart')
+  assert.equal(pair[0].frames.includes('GAME_OVER P1 ALL_SHIPS_SUNK'), false)
+  if (service === 'web') {
+    const core = await f.inspect('haskell')
+    assert.equal((await within(docker('wait', core.Id))).stdout.trim(), '0')
+    await f.command('start', 'haskell')
+  }
+  await f.healthy()
+  const old = await peer(Number(f.values.WEB_PUBLIC_PORT), '127.0.0.1', token)
+  assert.equal((await old.meta('RESUME_ERROR')).code, 'INVALID_SESSION', 'unfinished sessions cannot replay into a restarted match')
+  await within(old.closed)
+  const fresh = await f.pair()
+  const current = await fresh[0].meta('SESSION')
+  assert.notEqual(current.token, token); assert.equal(current.fleet, null)
+  fresh[0].send('FIRE A6'); await fresh[0].wait('ERROR FLEETS_NOT_READY')
+  fresh[0].send('QUIT')
+  for (const client of fresh) { await client.wait('GAME_OVER P2 OPPONENT_LEFT'); await within(client.closed) }
+})
+
+test('DK-08: concurrent WebSocket shots have one valid actor and exactly one update per target', async t => {
+  const f = fixture(t, { WEB_PUBLIC_PORT: String(await freePort()) })
+  f.values.PUBLIC_ORIGIN = f.origin(); f.save(); await f.up()
+  const pair = await f.pair()
+  pair[0].send(fleet1); await pair[0].wait('OK PLACE')
+  pair[1].send(fleet2); await pair[1].wait('OK PLACE')
+  for (const client of pair) { await client.wait('START P1'); await client.wait('TURN P1') }
+  // Hits retain P1's turn: P2's command cannot become valid through a preceding miss.
+  for (const [index, coord] of winningShots.slice(0, 10).entries()) {
+    pair[0].send(`FIRE ${coord}`); pair[1].send('FIRE A1')
+    const outcome = { 4: 'SUNK CV', 8: 'SUNK BB' }[index] ?? 'HIT'
+    await pair[0].wait(`SHOT ${coord} ${outcome}`); await pair[1].wait(`INCOMING ${coord} ${outcome}`)
+    await pair[1].wait('ERROR NOT_YOUR_TURN P1')
+    for (const client of pair) await client.wait('TURN P1')
+    pair[0].send(`FIRE ${coord}`); await pair[0].wait(`ERROR ALREADY_FIRED ${coord}`)
+    assert.equal(pair[0].frames.filter(frame => frame.startsWith(`SHOT ${coord} `)).length, 1)
+    assert.equal(pair[1].frames.some(frame => frame.startsWith('SHOT A1 ')), false)
+  }
+  pair[0].send('QUIT')
+  for (const client of pair) { await client.wait('GAME_OVER P2 OPPONENT_LEFT'); await within(client.closed) }
+})
+
+for (const actor of [1, 2, 0]) test(`DK-08: C-07 ${actor ? 'P' + actor : 'both clients'} stops reading TCP; server and sockets exit within deadline`, async t => {
+  const f = fixture(t, { WEB_PUBLIC_PORT: String(await freePort()) })
+  f.values.PUBLIC_ORIGIN = f.origin(); f.save()
+  copyFileSync(path.join(root, 'docker/test/nonreading-clients.mjs'), path.join(f.lan, 'nonreading-clients.mjs'))
+  await f.up()
+  const web = await f.inspect('web'), core = await f.inspect('haskell')
+  let failure
+  const running = docker('exec', web.Id, 'node', '/run/battleship-lan/nonreading-clients.mjs', String(actor))
+    .catch(error => { failure = error })
+  await until(async () => {
+    if (failure) throw failure
+    try { await docker('exec', web.Id, 'test', '-f', '/tmp/dk08-nonreaders-ready'); return true } catch { return false }
+  }, 'both TCP clients admitted and flooding', 10000)
+  // The process must terminate while the client streams are still paused.
+  assert.equal((await within(docker('wait', core.Id), 'C-07 container shutdown', 10000)).stdout.trim(), '0')
+  writeFileSync(path.join(f.lan, 'release-nonreaders'), 'release\n')
+  const result = await running
+  if (failure) throw failure
+  const report = JSON.parse(result.stdout.trim())
+  assert.equal(report.socketsClosed, 2); assert.equal(report.winner, actor ? `P${3 - actor}` : null)
+  assert.equal((await f.inspect('haskell')).State.Running, false)
+  assert.equal((await get(f.origin() + '/healthz')).status, 200)
+})
+
+test('DK-08: two separate browser processes play the production React UI to victory without secret reveal', async t => {
+  const { chromium } = require('playwright')
+  const channels = process.env.BATTLESHIP_BROWSER_CHANNELS?.split(',') ?? [undefined, undefined]
+  assert.equal(channels.length, 2, 'BATTLESHIP_BROWSER_CHANNELS must specify two browsers')
+  assert.ok(channels.every(channel => channel === undefined || ['chrome', 'msedge'].includes(channel)), 'supported channels: chrome,msedge')
+  const host = process.env.BATTLESHIP_LAN_TEST_HOST ?? '127.0.0.1'
+  assert.ok(host === '127.0.0.1' || lanAddresses(networkInterfaces()).includes(host), 'browser host must be a current host LAN IPv4')
+  const f = fixture(t, { WEB_PUBLIC_PORT: String(await freePort()) })
+  const origin = `http://${host}:${f.values.WEB_PUBLIC_PORT}`
+  f.values.PUBLIC_ORIGIN = origin; f.save(); await f.up()
+  const pages = [], errors = [], received = [[], []], versions = []
+  for (const [actor, viewport] of [{ width: 1440, height: 1000 }, { width: 390, height: 844 }].entries()) {
+    const browser = await chromium.launch({ headless: true, channel: channels[actor] }); t.after(() => browser.close())
+    versions.push(`${channels[actor] ?? 'Chromium'} ${browser.version()}`)
+    const context = await browser.newContext({ viewport })
+    const page = await context.newPage(); page.setDefaultTimeout(10000)
+    page.on('websocket', ws => ws.on('framereceived', ({ payload }) => received[actor].push(payload.toString())))
+    page.on('pageerror', error => errors.push(error.message)); await page.goto(origin); pages.push(page)
+  }
+  const status = (page, text) => page.locator('.game-status').filter({ hasText: text }).waitFor()
+  const target = (page, coord) => page.locator(`[aria-label="Bàn mục tiêu"] [data-coordinate="${coord}"]`)
+  const own = (page, coord) => page.locator(`[aria-label="Bàn phòng thủ"] [data-coordinate="${coord}"]`)
+  for (const [actor, page] of pages.entries()) {
+    await page.getByRole('button', { name: 'Vào phòng tác chiến' }).click()
+    await page.getByRole('button', { name: 'Chọn Cổ điển' }).click()
+    if (actor === 0) {
+      await page.locator('.board-panel [data-coordinate="J10"]').click()
+      await page.locator('.placement-status').filter({ hasText: 'vượt biên' }).waitFor()
+      assert.equal(await page.locator('.board-cell.occupied').count(), 0)
+    }
+    for (const [index, name] of ['Hàng không mẫu hạm', 'Thiết giáp hạm', 'Tuần dương hạm', 'Tàu ngầm', 'Khu trục hạm'].entries()) {
+      await page.getByRole('button', { name: new RegExp(name) }).click()
+      await page.locator(`.board-panel [data-coordinate="A${index + (actor === 0 ? 1 : 6)}"]`).click()
+    }
+    assert.equal(await page.locator('.board-cell.occupied').count(), 17)
+    await page.getByRole('button', { name: 'Bắt đầu trận' }).click()
+    if (actor === 0) await status(page, 'Chờ đối thủ')
+  }
+  const [first, second] = pages
+  for (const [actor, frames] of received.entries()) assert.ok(frames.includes(`WELCOME 1 P${actor + 1}`), 'two distinct player slots')
+  await status(first, 'Đến lượt bạn'); await status(second, 'Lượt đối thủ')
+  assert.equal(await target(second, 'A1').isDisabled(), true)
+  await target(first, 'J10').click(); await status(second, 'Đến lượt bạn')
+  assert.equal(await own(second, 'J10').getAttribute('data-outcome'), 'MISS')
+  await target(second, 'J10').click(); await status(first, 'Đến lượt bạn')
+  assert.equal(await own(first, 'J10').getAttribute('data-outcome'), 'MISS')
+  const token = await first.getByRole('textbox', { name: 'Mã phiên của bạn' }).inputValue()
+  for (const [index, coord] of winningShots.entries()) {
+    await target(first, coord).click()
+    const outcome = index === 16 ? 'WIN' : ({ 4: 'SUNK CV', 8: 'SUNK BB', 11: 'SUNK CR', 14: 'SUNK SB' }[index] ?? 'HIT')
+    await until(async () => await target(first, coord).getAttribute('data-outcome') === outcome, 'UI shot acknowledged')
+    await until(async () => await own(second, coord).getAttribute('data-outcome') === outcome, 'opponent UI shot acknowledged')
+    assert.equal(await first.locator('.enemy-board .occupied').count(), 0)
+    assert.equal(await second.locator('.enemy-board .occupied').count(), 0)
+    if (outcome !== 'WIN') await status(first, 'Đến lượt bạn')
+    if (index === 0) {
+      await first.reload(); await status(first, 'Đến lượt bạn')
+      assert.equal(await first.getByRole('textbox', { name: 'Mã phiên của bạn' }).inputValue(), token)
+      assert.equal(await target(first, 'J10').getAttribute('data-outcome'), 'MISS')
+      assert.equal(await target(first, 'A6').getAttribute('data-outcome'), 'HIT')
+      assert.equal(await first.locator('[aria-label="Bàn phòng thủ"] .occupied').count(), 17)
+    }
+  }
+  await status(first, 'Bạn thắng'); await status(second, 'Bạn thua')
+  for (const page of pages) assert.equal(await page.locator('.enemy-board button:not(:disabled)').count(), 0)
+  assert.deepEqual(errors, [])
+  // Redact recovery tokens in shareable screenshots.
+  for (const [index, page] of pages.entries()) {
+    await page.evaluate(() => { document.activeElement?.blur(); window.scrollTo(0, 0) })
+    await page.screenshot({ path: path.join(root, `.stack-work/dk08/ui-${index === 0 ? 'victory-desktop' : 'defeat-mobile'}.png`),
+      fullPage: true, mask: [page.getByRole('textbox', { name: 'Mã phiên của bạn' })] })
+  }
+  const core = await f.inspect('haskell')
+  assert.equal((await within(docker('wait', core.Id))).stdout.trim(), '0')
+  t.diagnostic(`ONE Windows/Linux host; TWO separate browser processes: ${versions.join(' / ')}; origin ${origin}. P1/P2, invalid placement, MISS/HIT/SUNK/WIN, reload after A6, privacy and exit 0 passed.`)
+})
+
+test('DK-08: Windows LAN IPv4 from the host helper serves a complete game over the real host network address', { skip: process.platform !== 'win32' }, async t => {
+  const interfaces = networkInterfaces()
+  const selected = process.env.BATTLESHIP_LAN_INTERFACE ?? Object.keys(interfaces).find(name => /wi-?fi/i.test(name))
+  const addresses = lanAddresses(interfaces, selected)
+  const host = process.env.BATTLESHIP_LAN_TEST_HOST ?? addresses[0]
+  assert.ok(host && addresses.includes(host), 'no eligible host LAN IPv4; set BATTLESHIP_LAN_INTERFACE / BATTLESHIP_LAN_TEST_HOST')
+  const f = fixture(t, { WEB_PUBLIC_PORT: String(await freePort()), LAN_INTERFACE: selected ?? '' })
+  const helper = f.startHelper()
+  await until(async () => {
+    if (helper.child.exitCode !== null) throw new Error(helper.output())
+    return (await f.inspect('web'))?.State.Health?.Status === 'healthy'
+  }, 'LAN Compose ready', 60000)
+  const origin = `http://${host}:${f.values.WEB_PUBLIC_PORT}`
+  assert.equal((await get(origin)).status, 200)
+  assert.ok(JSON.parse(readFileSync(path.join(f.lan, 'origins.json'))).origins.includes(origin))
+  const pair = await f.pair(host)
+  pair[0].send(fleet1); await pair[0].wait('OK PLACE')
+  pair[1].send(fleet2); await pair[1].wait('OK PLACE')
+  for (const client of pair) { await client.wait('START P1'); await client.wait('TURN P1') }
+  for (const [index, coord] of winningShots.entries()) {
+    const outcome = index === 16 ? 'WIN' : ({ 4: 'SUNK CV', 8: 'SUNK BB', 11: 'SUNK CR', 14: 'SUNK SB' }[index] ?? 'HIT')
+    pair[0].send(`FIRE ${coord}`)
+    await pair[0].wait(`SHOT ${coord} ${outcome}`); await pair[1].wait(`INCOMING ${coord} ${outcome}`)
+    if (outcome !== 'WIN') for (const client of pair) await client.wait('TURN P1')
+  }
+  for (const client of pair) { await client.wait('GAME_OVER P1 ALL_SHIPS_SUNK'); await within(client.closed) }
+  t.diagnostic(`LAN host address ${origin}; two automated WebSocket peers on ONE Windows computer, not two physical devices.`)
 })

@@ -2,6 +2,104 @@
 
 Dự án Battleship cho hai người chơi qua client terminal hoặc giao diện web. Server TCP giữ trạng thái trận đấu; luật chơi được triển khai bằng các hàm thuần Haskell.
 
+## Chạy bằng Docker — hướng dẫn chuẩn DK-09
+
+Từ thư mục gốc có `compose.yaml`. Cần **Docker Desktop đang chạy Linux containers**, Docker CLI/Compose trong PATH, PowerShell 5.1+ trên Windows và hai trình duyệt/profile độc lập. Chạy sản phẩm bằng Docker không cần cài GHC, Stack, Node hay pnpm trên host; Dockerfile tự build/test trên Linux. Lần build đầu cần Internet và thời gian tải compiler/dependency. Đã kiểm chứng Linux **amd64**; helper tự lấy IP dùng Windows host.
+
+### 1. Chuẩn bị và build
+
+Dùng terminal PowerShell riêng cho Docker. Nếu terminal còn biến từ cách chạy native, xóa chúng **chỉ trong terminal này** để shell không ghi đè env-file:
+
+```powershell
+Remove-Item Env:HOST,Env:PORT,Env:PUBLIC_ORIGIN,Env:WEB_PUBLIC_PORT,Env:BATTLESHIP_TCP_HOST,Env:BATTLESHIP_TCP_PORT,Env:BATTLESHIP_BIND_HOST,Env:BATTLESHIP_READY_FILE,Env:LAN_CONFIG_DIR,Env:LAN_ORIGINS_FILE,Env:LAN_INTERFACE -ErrorAction SilentlyContinue
+docker info
+docker compose version
+New-Item -ItemType Directory -Force .docker-runtime/lan | Out-Null
+docker compose --env-file .env.example -p battleship config --quiet
+docker compose --env-file .env.example -p battleship build
+```
+
+`config --quiet` thành công không in lỗi; `build` phải exit 0, đã chạy `stack build`, `stack test --ghc-options=-Werror`, TypeScript/Vite và frontend unit test trong image. `.env.example` là mẫu Docker; không export vào shell native. Hướng dẫn này dùng mẫu bằng `-EnvFile .env.example`, helper tạo env-file hiệu lực riêng, không sửa mẫu hoặc `.env` cá nhân. Nếu Docker CLI chưa được nhận diện, mở terminal mới sau khi cài Desktop hoặc thêm thư mục `resources/bin` của Docker Desktop vào PATH.
+
+### 2. Start: chọn một chế độ
+
+**Localhost**, chơi trên máy chủ bằng Chrome/Edge hoặc hai profile:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/Start-LanCompose.ps1 -Mode Localhost -EnvFile .env.example -ProjectName battleship -ConfigDir .docker-runtime/lan
+```
+
+Mở **http://localhost:8081** ở cả hai trình duyệt. Helper localhost thoát sau khi hai service healthy; container tiếp tục chạy.
+
+**LAN tự lấy IP**, trước trận lấy đúng tên adapter của host:
+
+```powershell
+. ./scripts/Start-LanCompose.ps1
+Get-LanHostInterfaces | Select-Object Name,IsUp,Addresses
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/Start-LanCompose.ps1 -Mode Auto -LanInterface 'Wi-Fi' -EnvFile .env.example -ProjectName battleship -ConfigDir .docker-runtime/lan
+```
+
+Thay `Wi-Fi` bằng tên thực vừa liệt kê, ví dụ `Ethernet`. Dùng link **Player URL** helper in ra trên cả hai thiết bị cùng mạng; không dùng localhost ở thiết bị thứ hai. Giữ terminal Auto mở: nó cập nhật IP mỗi 2 giây. Nếu không có IPv4 LAN, localhost vẫn dùng được. TCP Haskell chỉ ở mạng container, không cần mở/publish cổng 4000 trên host.
+
+**Đổi cổng web**, ví dụ public **8082 → container 8080**, chọn trước trận:
+
+```powershell
+# Localhost: helper in http://localhost:8082.
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/Start-LanCompose.ps1 -Mode Localhost -PublicPort 8082 -EnvFile .env.example -ProjectName battleship -ConfigDir .docker-runtime/lan
+# Hoặc LAN: helper in http://<IP-host-hiện-tại>:8082, tiếp tục cập nhật IP.
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/Start-LanCompose.ps1 -Mode Auto -LanInterface 'Wi-Fi' -PublicPort 8082 -EnvFile .env.example -ProjectName battleship -ConfigDir .docker-runtime/lan
+```
+
+Chỉ chạy **một** lệnh start phù hợp. Trước khi chuyển chế độ/cổng của deployment đã chạy, kết thúc trận, Ctrl+C helper Auto rồi `down` bằng env-file ở mục 4; sau đó start cấu hình mới. Đổi mapping cổng tạo lại web và mất phiên. IP đổi trong Auto chỉ cập nhật file, không restart. Nếu cần origin cố định, dùng `-Mode Manual -PublicOrigin 'http://<IPv4-host>:8081'`; IP này phải do người vận hành cập nhật, không dùng để tự dò mạng.
+
+### 3. Kết nối hai người và chơi
+
+Mỗi người chọn **Vào phòng tác chiến → Cổ điển**, đặt đủ năm tàu CV/BB/CR/SB/DD dài 5/4/3/3/2 bằng click, rồi **Bắt đầu trận**. Người xác nhận và kết nối trước nhận P1, người tiếp theo P2; người thứ ba báo phòng đầy. P1 bắn trước; trượt đổi lượt, trúng/chìm giữ lượt. Không cần nhập lệnh TCP.
+
+Demo có thể làm lại: P1 đặt ngang tại A1/A2/A3/A4/A5, P2 tại A6/A7/A8/A9/A10. Mỗi người bắn J10 trượt; P1 bắn A6, reload để kiểm tra giữ trận, rồi B6/C6/D6/E6, A7/B7/C7/D7, A8/B8/C8, A9/B9/C9, A10/B10 để thắng. Đây là đội tàu demo được thống nhất, không phải bot/stub. Khi đổi IP giữa trận, lưu mã phiên riêng, mở Player URL mới và nhập mã tại Khôi phục trận **trước hạn 5 phút**; không gửi mã cho đối thủ.
+
+### 4. Trạng thái, log, trận mới và dừng
+
+Mở terminal thứ hai tại root. **Cả localhost/LAN/cổng 8082 ở hướng dẫn này đều dùng đúng cùng env-file dưới đây**; không thay bằng `.env.example` vì helper đã thay mode/port/path:
+
+```powershell
+docker compose --env-file .docker-runtime/lan/compose.env -p battleship ps --all
+docker compose --env-file .docker-runtime/lan/compose.env -p battleship logs --tail 100 haskell web
+# Theo dõi trực tiếp; Ctrl+C chỉ dừng theo dõi log.
+docker compose --env-file .docker-runtime/lan/compose.env -p battleship logs --follow --tail 30 haskell web
+```
+
+Haskell **Exited (0)** sau thắng/bỏ cuộc là bình thường; web healthy vẫn phục vụ kết quả, không chứng minh có trận mới. Sau GAME_OVER, đợi Haskell Exited rồi:
+
+```powershell
+docker compose --env-file .docker-runtime/lan/compose.env -p battleship start haskell
+docker compose --env-file .docker-runtime/lan/compose.env -p battleship ps --all
+```
+
+Đợi Haskell **healthy**; mỗi người nhấn **Về trang đầu**, đặt tàu và Bắt đầu trận để nhận phiên mới. Không resume token trận cũ. Giữ helper Auto chạy nếu đang chơi LAN; không restart web để mở trận mới.
+
+Để dừng, Ctrl+C helper Auto trước, rồi chọn `stop` (giữ container) hoặc `down` (dọn container/mạng):
+
+```powershell
+docker compose --env-file .docker-runtime/lan/compose.env -p battleship stop --timeout 10
+docker compose --env-file .docker-runtime/lan/compose.env -p battleship down --timeout 10
+```
+
+Sau stop/down, chạy lại lệnh start chế độ đã chọn ở mục 2 để mở deployment/trận mới. Stop/restart/down mất dữ liệu RAM của trận. **Docker không giữ server hoạt động khi máy chủ tắt/ngủ hoặc Docker Engine dừng**; muốn phục vụ liên tục cần một máy chủ luôn bật. Thời hạn nối lại 5 phút chỉ được bảo đảm khi bridge và Haskell còn chạy.
+
+### 5. Kết quả, giới hạn và xử lý lỗi
+
+Đã chạy Linux amd64: 908 ví dụ Haskell, 36 frontend test, 19 test Compose; thêm Chrome/Edge hai tiến trình trên cùng Windows host đến thắng/thua và reload thành công. Log/ảnh tại [nghiệm thu DK-08](docs/dk08_acceptance.md), lệnh chuẩn và hồ sơ bàn giao tại [DK-09](docs/dk09_handover.md); [hợp đồng chung](docs/shared_contract.md#7-hợp-đồng-docker-và-bàn-giao-dk-09) còn chờ review nhóm. Hai thiết bị Wi-Fi thật, arm64, đổi Wi-Fi vật lý và phục hồi sau restart chưa được nghiệm thu.
+
+| Triệu chứng | Kiểm tra/cách xử lý |
+|---|---|
+| Không kết nối Docker API | Mở Docker Desktop, chọn Linux containers, chờ `docker info` thành công rồi chạy lại |
+| Port đang dùng | Down đúng project cũ hoặc chọn `-PublicPort` khác trước trận; không đổi `PORT` container chỉ để đổi URL |
+| Conflicting shell / origin sai | Dùng terminal riêng, xóa các biến ở mục 1; giữ đúng env-file hiệu lực của helper cho mọi lệnh |
+| LAN không mở được, localhost mở được | Kiểm tra adapter/IP mới, helper còn chạy, hai máy cùng mạng và mạng/firewall có cho phép cổng web; không dùng IP container |
+| Web lên nhưng không vào trận | `ps --all`: Haskell đã Exited thì `start haskell`; chờ healthy, tạo phiên mới |
+| Phiên cũ lỗi sau restart | Trạng thái/token đã mất; quay về trang đầu và mở trận mới, không thử phục hồi đội tàu cũ |
+
 ## Chơi bằng giao diện web
 
 Nhánh `Connect_ui_backend` được rẽ từ `frontend-ui` (`a6ca31f`). Giao diện của nhóm đã kết nối với server Haskell qua cầu WebSocket–TCP. Hướng dẫn đầy đủ, kiến trúc và kết quả test: [docs/frontend_integration.md](docs/frontend_integration.md).
@@ -129,6 +227,18 @@ node --test scripts/test-compose.mjs
 ```
 
 **Nếu khởi chạy bằng helper**, thay `--env-file .env` bằng `--env-file .docker-runtime/lan/compose.env` (hoặc đường dẫn helper in) và giữ đúng `-p` project. Khi `down`, dừng helper bằng Ctrl+C để ngừng ghi file. Backend kết thúc sau trận là bình thường; `/healthz` của web vẫn khỏe để phục vụ kết quả, không chứng minh backend có trận đang mở. Không restart/recreate giữa trận để đổi IP; helper cập nhật file nóng. Chi tiết kiểm thử và vòng đời ở [docker/README.md](docker/README.md#compose--dk-07).
+
+### Test hai container và nghiệm thu LAN — DK-08
+
+`scripts/test-compose.mjs` mở rộng thành 19 ca: giữ 7 ca DK-07, thêm build từ source sạch, trận đầy đủ, riêng tư, resume/hết hạn đúng 5 phút, restart từng service, đồng thời, TCP không đọc và hai trình duyệt Chromium chơi UI thật. Trên Windows còn kiểm tra helper qua IPv4 LAN của host. Cài dependency và trình duyệt trước khi chạy:
+
+```powershell
+pnpm --dir frontend install --frozen-lockfile
+pnpm --dir frontend exec playwright install chromium
+node --test scripts/test-compose.mjs
+```
+
+Runner cần hai image `:local` đã build ở DK-07; dùng project/cổng riêng, log và ảnh tại `.stack-work/dk08/`. Một ca export source không chứa Git/cache/dependency Windows rồi build lại cả hai image, gồm `stack build`, `stack test --ghc-options=-Werror` và frontend test/build trên Linux. Fixture clock và client chậm chỉ phục vụ test, không thêm service hay cấu hình test vào production. Đã nghiệm thu thêm trận bằng **Chrome và Edge trong hai tiến trình riêng trên một máy** qua IP LAN: đặt tàu, chuyển lượt, reload sau A6, trúng/chìm/thắng và riêng tư đều qua. Báo cáo, log/ảnh và phạm vi **hai thiết bị thật chưa thực hiện** tại [docs/dk08_acceptance.md](docs/dk08_acceptance.md).
 
 Test giao diện và tích hợp (chạy từ gốc repository sau khi build):
 
