@@ -1,0 +1,76 @@
+Frontend integration — observed local test output
+Branch: codex/frontend-ui-integration; base: a6ca31fd963f3698bc8c9686e954cc8f14bc564a
+Working tree: integration changes are not committed yet.
+Runtime: v24.19.0; GHC 9.10.3; LTS 24.59
+Commands: pnpm --dir frontend build; pnpm --dir frontend test
+stack exec -- node --test frontend/test/integration.test.mjs frontend/test/browser.test.mjs
+stack test --ghc-options=-Werror (summary copied from the full local log)
+$ tsc --noEmit && vite build
+vite v8.3.2 building client environment for production...
+transforming...
+✓ 17 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                          0.46 kB │ gzip:  0.31 kB
+dist/assets/naval-hero-CzmtFjH3.png  2,239.23 kB
+dist/assets/index-Duu5y533.css          24.62 kB │ gzip:  6.29 kB
+dist/assets/index-D4HPwhT7.js          248.52 kB │ gzip: 78.10 kB
+
+✓ built in 129ms
+$ node --test test/unit.test.ts test/bridge.test.mjs
+✔ bridge reassembles fragmented TCP/CRLF frames and adds one LF to commands (28.8134ms)
+✔ bridge rejects newline injection without reaching TCP; closes binary/oversize commands (5.5522ms)
+✔ maxPayload rejects more than 256 bytes (7.2383ms)
+✔ browser departure closes its TCP socket instead of leaving a ghost player (3.5047ms)
+✔ cross-origin browser cannot acquire a player slot (2.7328ms)
+✔ HTTP serves built UI/hero and reports nonexistent assets clearly (16.7301ms)
+✔ column letter + row number match Haskell coordinates, including J10 (0.7322ms)
+✔ placement rejects corners/overlap, allows touching and preserves input on errors (0.9848ms)
+✔ random and exhausted random placement always produce 17 distinct in-board cells (7.5223ms)
+✔ decode every actual server response in docs/protocol.md transcripts (1.3858ms)
+✔ server events alone drive turns, error preservation and private shot history (0.4559ms)
+ℹ tests 11
+ℹ suites 0
+ℹ pass 11
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 191.3732
+✔ UI: two human-style fleets, invalid placement, miss, hit, sunk, win/loss and no secret reveal (7870.8163ms)
+✔ UI: closing opponent tab while waiting shows forfeit victory (2379.4477ms)
+✔ UI: closing opponent tab mid-game shows forfeit victory (4706.2225ms)
+✔ UI: explicit leave confirmation forfeits and returns to landing (4617.3376ms)
+✔ UI: server unavailable is actionable, never a fake ready game (2981.6148ms)
+✔ UI: mobile placement, rotate at J10, keyboard help and responsive board (2316.8883ms)
+✔ two browsers over bridge play real Haskell game; errors, private events, sinking and victory (75.1221ms)
+✔ WebSocket disconnect while waiting gives opponent win and clean exit (38.3266ms)
+✔ WebSocket disconnect mid-game gives opponent win and clean exit (40.5693ms)
+ℹ tests 9
+ℹ suites 0
+ℹ pass 9
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 25229.6286
+
+Finished in 74.6301 seconds
+815 examples, 0 failures
+
+
+
+battleship-haskell> Test suite battleship-test passed
+Completed 2 action(s).
+$ tsc --noEmit && vite build
+vite v8.3.2 building client environment for production...
+transforming...
+✓ 17 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                          0.46 kB │ gzip:  0.31 kB
+dist/assets/naval-hero-CzmtFjH3.png  2,239.23 kB
+dist/assets/index-Duu5y533.css          24.62 kB │ gzip:  6.29 kB
+dist/assets/index-CQVX-cM6.js          248.54 kB │ gzip: 78.11 kB
+
+✓ built in 127ms

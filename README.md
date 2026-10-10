@@ -1,8 +1,163 @@
 # BattleShip Haskell
 
-Dự án Battleship cho hai người chơi bằng hai client terminal kết nối đến một server TCP. Server giữ trạng thái trận đấu; luật chơi được triển khai bằng các hàm thuần Haskell.
+Dự án Battleship cho hai người chơi qua client terminal hoặc giao diện web. Server TCP giữ trạng thái trận đấu; luật chơi được triển khai bằng các hàm thuần Haskell.
 
-**Trạng thái hiện tại:** đã có C-01, A-01, D-01, Board A-02/A-03/A-04, Rules B-01/B-02/B-04, View B-03, server C-02/C-05, codec/client D-02, Coordinator C-03/C-04 và client tương tác D-03/D-04/D-05. Server thực thi PLACE/FIRE/QUIT qua Rules thật; một TVar giữ GameState, STM commit trạng thái/phản hồi cùng lúc và hai writer gửi từ TQueue riêng. Client hướng dẫn nhập/sửa năm tàu, nhập bắn theo lượt, cập nhật hai bàn từ dữ liệu riêng tư và hiển thị kết quả đến thắng/thua.
+## Chơi bằng giao diện web
+
+Nhánh `Connect_ui_backend` được rẽ từ `frontend-ui` (`a6ca31f`). Giao diện của nhóm đã kết nối với server Haskell qua cầu WebSocket–TCP. Hướng dẫn đầy đủ, kiến trúc và kết quả test: [docs/frontend_integration.md](docs/frontend_integration.md).
+
+Cần Stack, Node.js 24 trở lên và pnpm 11.25.0. Từ thư mục gốc repository:
+
+```sh
+stack build
+cd frontend
+pnpm install --frozen-lockfile
+pnpm build
+cd ..
+```
+
+Mở hai terminal ở thư mục gốc:
+
+```sh
+# Terminal 1: server luật Haskell
+stack exec battleship-server -- 4000
+# Terminal 2: web server và cầu kết nối
+node frontend/bridge.mjs
+```
+
+Mở link LAN được terminal cầu web tự in, hoặc `http://127.0.0.1:8080` ở **hai tab**. Chọn Cổ điển, đặt đủ năm tàu, nhấn Bắt đầu trận. Tab xác nhận trước là P1; chờ đủ hai người rồi bấm ô đối phương khi đến lượt. Trượt chuyển lượt; trúng/chìm giữ lượt. Nút Rời trận gửi QUIT để bỏ cuộc ngay; đóng tab/mất Wi-Fi được giữ phiên 5 phút. Người thứ ba nhận lỗi phòng đầy. Không cần nhập giao thức thô.
+
+Server Haskell hiện phục vụ **một trận**. Sau khi thắng hoặc bỏ cuộc, chạy lại lệnh server ở Terminal 1 trước trận mới; cầu web ở Terminal 2 có thể giữ nguyên. Trinh sát chưa được hỗ trợ.
+
+### Cấu hình listener Haskell — DK-02
+
+Không đặt biến môi trường thì server vẫn bind `127.0.0.1:4000`. `BATTLESHIP_BIND_HOST` nhận IPv4 canonical hoặc `localhost`; `0.0.0.0` lắng nghe trên mọi giao diện IPv4, dùng khi bridge ở container khác. Không nhận URL, port kèm địa chỉ, chuỗi rỗng hoặc IPv4 sai. CLI `[PORT]` và port `0` cho test vẫn giữ nguyên.
+
+Ví dụ PowerShell để kiểm tra listener và readiness trực tiếp:
+
+```powershell
+$env:BATTLESHIP_BIND_HOST = '0.0.0.0'
+$env:BATTLESHIP_READY_FILE = Join-Path $env:TEMP 'battleship-ready'
+stack exec battleship-server -- 4000
+```
+
+Linux/container dùng `BATTLESHIP_READY_FILE=/tmp/battleship-ready`. Biến này tùy chọn khi chạy native, phải là đường dẫn tuyệt đối đến file trong thư mục đã tồn tại và ghi được. Server xóa marker cũ trước bind, ghi nguyên tử đúng `ready\n` sau `listen`, trước log/callback và xóa khi thoát bình thường, lỗi hoặc hủy có cleanup. Healthcheck chỉ đọc marker, **không connect cổng 4000**. Linux xử lý `SIGTERM` để đóng socket/worker và xóa marker; kill cưỡng bức không chạy finalizer, marker cũ sẽ được xóa ở lần khởi động tiếp theo.
+
+Sau khi thử, bỏ cấu hình để trở lại chế độ localhost:
+
+```powershell
+Remove-Item Env:BATTLESHIP_BIND_HOST, Env:BATTLESHIP_READY_FILE -ErrorAction SilentlyContinue
+```
+
+```sh
+stack test --ghc-options=-Werror --test-arguments="--match DK-02"
+```
+
+Hợp đồng hai service, mapping cổng và cập nhật IP LAN: [docs/docker_deployment.md](docs/docker_deployment.md). DK-02/DK-03 đã triển khai listener Haskell và cấu hình bridge; DK-04 đã kiểm thử image Haskell trên Linux. Web image và Compose thuộc các task tiếp theo.
+
+### Cấu hình bridge — DK-03
+
+`BATTLESHIP_TCP_HOST` mặc định `127.0.0.1`, nhận IPv4 canonical hoặc tên DNS như `localhost`, `haskell`; không nhận URL, port kèm host hoặc chuỗi rỗng. `BATTLESHIP_TCP_PORT` mặc định `4000`. Lỗi DNS/kết nối được log cùng endpoint và đóng WebSocket với mã 1011; bridge tiếp tục chạy và nhận kết nối mới khi backend sẵn sàng.
+
+`HOST`/`PORT` là listener của bridge. `WEB_PUBLIC_PORT` là cổng bên ngoài mà người chơi truy cập; `PUBLIC_ORIGIN` phải dùng cổng này nếu được khai báo. Ví dụ cấu hình dành cho mapping **host 8081 → container 8080**:
+
+```dotenv
+HOST=0.0.0.0
+PORT=8080
+WEB_PUBLIC_PORT=8081
+PUBLIC_ORIGIN=http://localhost:8081
+BATTLESHIP_TCP_HOST=haskell
+BATTLESHIP_TCP_PORT=4000
+```
+
+Các biến này chỉ cấu hình ứng dụng; chúng **không tự publish/forward cổng**. Compose ở DK-07 phải tạo mapping `8081:8080` và mạng có service `haskell`. Chạy trực tiếp không có mapping thì bỏ `WEB_PUBLIC_PORT`, dùng `PUBLIC_ORIGIN` cùng cổng `PORT`, và để TCP host mặc định.
+
+Bind `0.0.0.0` cho phép công bố localhost hoặc IP LAN cụ thể. Handshake vẫn yêu cầu Origin nằm trong danh sách cho phép và Host cùng authority với Origin. Khi đặt `WEB_PUBLIC_PORT`, origin nội bộ và origin Vite `:5173` không được tự cho phép. `GET /healthz` trả `{"status":"ok"}` mà không kết nối Haskell hoặc chiếm P1/P2; endpoint này chỉ kiểm tra bridge.
+
+Để cập nhật IP host trong container, dùng `LAN_ORIGINS_FILE` thay cho `PUBLIC_ORIGIN`. Bridge đọc file trước khi listen và mỗi 2 giây; file lỗi/quá hạn sẽ bỏ origin LAN, giữ localhost và các phiên hiện có. Schema, giới hạn và TTL nằm trong hợp đồng Docker. Reader đã có ở DK-03; helper tạo/cập nhật file thuộc DK-06.
+
+### Image Haskell — DK-04
+
+Đã có `docker/haskell.Dockerfile` với stage build/test/runtime và `.dockerignore`. Ngày 2026-10-10, build Linux amd64 với lts-24.59 / GHC 9.10.3 thành công; toàn bộ `stack test --ghc-options=-Werror` qua **908 ví dụ, 0 lỗi**. Image runtime chạy bằng UID/GID 10001, không thiếu dependency động; **5/5 test runtime** qua với server thật, WELCOME, cấu hình, healthcheck marker và SIGTERM. Lệnh chạy và minh chứng nằm trong [docker/README.md](docker/README.md). Web image và Compose thuộc DK-05/DK-07.
+
+### Image web — DK-05
+
+`docker/web.Dockerfile` ghim Node 24.21.0 bằng digest và pnpm 11.25.0, cài bằng `pnpm-lock.yaml` với `--frozen-lockfile`. Stage test chạy TypeScript, Vite và 36 unit test; runtime chỉ chứa bridge, `dist` và dependency production, chạy user `node` (UID/GID 1000), bridge làm PID 1. Đã nghiệm thu Linux amd64: **36/36 unit test, 6/6 test runtime xanh**; HTML/JS/CSS/PNG hoạt động, cấu hình sai báo lỗi, SIGTERM/SIGINT dọn HTTP/WebSocket/TCP thật. Lệnh build/demo và test ở [docker/README.md](docker/README.md#image-web--dk-05). Compose và helper cập nhật IP host thuộc DK-06/DK-07.
+
+Test giao diện và tích hợp (chạy từ gốc repository sau khi build):
+
+```sh
+pnpm --dir frontend test
+stack exec -- node --test frontend/test/integration.test.mjs
+pnpm --dir frontend exec playwright install chromium
+stack exec -- node --test frontend/test/browser.test.mjs
+stack test --ghc-options=-Werror
+```
+
+Các test tích hợp tự mở port trống, dựng trận mới và dọn process/socket; không dùng trận đang chơi ở port 4000. Test trình duyệt tự thao tác giao diện, xuất ảnh vào `frontend/test-results/`.
+
+### Tự nhận IP LAN và khôi phục trong 5 phút
+
+Trên nhánh `Updata_Connecting_LAN`, cầu mặc định lắng nghe IPv4 tại `0.0.0.0`, tự đọc IP hiện tại của các giao diện mạng và in link. Không ghi cố định IP Wi-Fi vào mã nguồn. Khi Wi-Fi/IP thay đổi, cầu kiểm tra lại mỗi 2 giây, in link mới và chỉ cho WebSocket dùng origin của IP hiện tại, với Host trùng origin. Link cũ không được giữ trong danh sách cho phép. Kết nối Haskell vẫn là `127.0.0.1:4000`.
+
+Nếu đã dùng cấu hình IP thủ công ở terminal trước, xóa nó trước khi chạy tự động:
+
+```powershell
+Remove-Item Env:HOST, Env:PUBLIC_ORIGIN, Env:WEB_PUBLIC_PORT, Env:LAN_ORIGINS_FILE -ErrorAction SilentlyContinue
+$env:PORT = '8081'
+node frontend/bridge.mjs
+```
+
+Terminal in các link lấy từ IP thực tế; hai thiết bị mở link của giao diện Wi-Fi/LAN chung. Nếu máy có cả VPN/máy ảo/Ethernet, có thể chọn đúng giao diện bằng `$env:LAN_INTERFACE = 'Wi-Fi'` (tên lấy từ máy thực tế). Không có IPv4 LAN thì cầu vẫn phục vụ localhost và chờ giao diện mạng xuất hiện.
+
+**Đổi Wi-Fi trong trận:**
+
+1. Lưu **Mã phiên của bạn** trên giao diện trước khi đổi mạng. Mỗi người có mã ngẫu nhiên riêng; không gửi cho đối thủ.
+2. Cầu giữ nguyên TCP/P1/P2 và lõi Haskell khi mất WebSocket. Trận tạm dừng, người còn lại thấy thời gian còn lại; không gửi PLACE/FIRE trong lúc chờ.
+3. Cầu bắt đầu hạn **300.000 ms** khi phát hiện mất kết nối. Ping mỗi 10 giây phát hiện kết nối im lặng trong khoảng tối đa 20 giây; đóng tab chủ động được phát hiện ngay khi nhận close. Hạn do máy chủ giữ, không bị đặt lại bởi tải trang hoặc thử kết nối thất bại.
+4. Giao diện tự thử lại địa chỉ cũ mỗi 2 giây. Nếu IP máy chủ đổi, đọc link mới trên terminal; nhập vào **Địa chỉ máy chủ hiện tại → Kết nối địa chỉ mới**. Hoặc mở link mới rồi nhập mã ở **Khôi phục trận**. Dữ liệu trình duyệt thuộc từng origin, nên không thể trông chờ IP mới tự có mã của IP cũ.
+5. Đúng mã và trước hạn: nhận lại chính P1/P2, đội tàu của mình, lịch sử đã lọc và lượt hiện tại; không gửi lại phát bắn cũ. Một mã không được dùng trên hai kết nối đang hoạt động.
+6. Hết hạn: cầu gửi QUIT cho Haskell, người mất kết nối thua do bỏ cuộc; kết quả là GAME_OVER ... OPPONENT_LEFT. Có thể quay lại xem kết quả trong 5 phút sau khi phiên TCP kết thúc. Nếu cả hai cùng mất kết nối, phiên hết hạn trước bị xử QUIT trước.
+
+Giữ cả process cầu web và server Haskell chạy khi đổi Wi-Fi. Khởi động lại process sẽ mất phiên đang giữ trong RAM. Hai thiết bị phải cùng mạng có thể liên lạc và firewall cho phép cổng web; tự nhận IP không vượt qua cô lập mạng khách. Chế độ client TCP terminal vẫn dùng luật EOF/QUIT tức thời; hạn khôi phục này áp dụng cho giao diện web qua cầu.
+
+### Cấu hình IP thủ công — tùy chọn LAN-01
+
+Nhánh `Updata_Connecting_LAN` bổ sung `HOST` và `PUBLIC_ORIGIN`. Sau khi build frontend, chạy Haskell server ở một terminal như trên. Trong terminal PowerShell thứ hai:
+
+```powershell
+$env:HOST = '192.168.1.10'  # Thay bằng IPv4 Wi-Fi/LAN của máy chạy server
+$env:PORT = '8080'
+$env:PUBLIC_ORIGIN = 'http://192.168.1.10:8080'
+node frontend/bridge.mjs
+```
+
+Hai thiết bị cùng LAN mở đúng URL trong `PUBLIC_ORIGIN`; log khởi động cũng in URL này. TCP tới Haskell vẫn là `127.0.0.1:4000` mặc định. Có thể đặt `HOST='0.0.0.0'` để lắng nghe trên mọi giao diện IPv4, nhưng vẫn phải đặt `PUBLIC_ORIGIN` bằng IP LAN thật, không dùng `0.0.0.0` trong URL người chơi.
+
+`HOST` nhận IPv4 hoặc `localhost`; `PUBLIC_ORIGIN` nhận HTTP với IPv4/localhost, có port trùng `PORT` khi không khai báo `WEB_PUBLIC_PORT`, không có đường dẫn/query/credentials. Cấu hình rõ `HOST='127.0.0.1'` để chỉ chạy localhost. Xóa HOST/PUBLIC_ORIGIN/WEB_PUBLIC_PORT/LAN_ORIGINS_FILE để dùng tự nhận LAN; đặt IP thủ công thì IP đó không tự đổi khi Wi-Fi đổi.
+
+Thiết bị ngoài máy chủ cần được mạng Wi-Fi và firewall cho phép truy cập cổng web đã chọn. Quy tắc firewall và nghiệm thu hai thiết bị thật thuộc LAN-05/LAN-06.
+
+Kiểm tra cầu qua IP LAN của chính máy chủ (sau `stack build`):
+
+```powershell
+$env:BATTLESHIP_LAN_TEST_HOST = '192.168.1.10' # Thay bằng IP LAN thật của máy
+stack exec -- node --test frontend/test/lan.test.mjs
+```
+
+Test tự chọn cổng trống, chạy bridge CLI/server Haskell production, kiểm tra HTTP, `WELCOME` P1/P2, từ chối Origin/Host sai, tự tìm IP không truyền HOST/PUBLIC_ORIGIN và khôi phục từ localhost sang origin IP LAN. Test này chạy trên máy chủ qua IP LAN; không thay thế nghiệm thu từ hai thiết bị vật lý.
+
+Test khôi phục phiên và giới hạn thời gian:
+
+```sh
+pnpm --dir frontend test
+stack exec -- node --test frontend/test/integration.test.mjs frontend/test/reconnect.test.mjs
+stack exec -- node --test frontend/test/browser.test.mjs
+```
+
+Test clock tăng tốc kiểm tra đúng mốc 299.999/300.000 ms với socket và Haskell thật; test ngắt kết nối dùng hạn ngắn được truyền vào fixture, không đổi hạn 5 phút của CLI production. Test trình duyệt kiểm tra tải lại, chuyển origin bằng mã, riêng tư, tiếp tục bắn và kết quả thua khi quay lại muộn.
+
+**Trạng thái hiện tại:** đã có C-01, A-01, D-01, Board A-02/A-03/A-04/A-06, Rules B-01/B-02/B-04, View B-03/B-06, server C-02/C-05/C-07, codec/client D-02, Coordinator C-03/C-04/C-07 và client tương tác D-03/D-04/D-05. Server thực thi PLACE/FIRE/QUIT qua Rules thật; một TVar giữ GameState, STM commit trạng thái/phản hồi cùng lúc và hai writer gửi từ TBQueue riêng có giới hạn. Client hướng dẫn nhập/sửa năm tàu, nhập bắn theo lượt, cập nhật hai bàn từ dữ liệu riêng tư và hiển thị kết quả đến thắng/thua.
 
 **S-01:** bản hợp đồng chung v2 cập nhật A-02 ở [docs/shared_contract.md](docs/shared_contract.md). Chưa khóa mốc vì còn chờ xác nhận A/B/C/D; việc ẩn constructor Fleet, chủ sở hữu file và quy trình thay đổi được ghi tại đó.
 
@@ -10,7 +165,7 @@ Dự án Battleship cho hai người chơi bằng hai client terminal kết nố
 
 **S-03:** đã build sạch, chạy 794 test xanh và chơi trọn trận với hai terminal/lõi thật; [hồ sơ và log demo](docs/s03_acceptance.md). Còn chờ xác nhận A/B/C/D và R; một vấn đề trình bày nhỏ được ghi tại [task Đợt 9](docs/round9_fixes.md).
 
-**S-04:** A-05/B-05/C-06/D-06 đã được kiểm tra kỹ thuật; [hồ sơ chốt tính năng](docs/s04_feature_freeze.md) ghi bản mã, build/test và lỗi còn lại. Sau commit chốt chỉ sửa lỗi, test và tài liệu; không thêm GUI, AI, nhiều phòng hoặc lưu trận. Còn chờ nhóm xác nhận cùng commit để chọn bản báo cáo.
+**S-04:** A-05/B-05/C-06/D-06 đã được kiểm tra kỹ thuật; [hồ sơ chốt tính năng](docs/s04_feature_freeze.md) ghi bản terminal dùng tại mốc đó. Nhánh hiện tại bổ sung GUI theo yêu cầu tích hợp `frontend-ui` ngày 2026-10-05. Việc nhóm xác nhận bản dùng để báo cáo vẫn cần ghi riêng.
 
 ## Build và test
 
@@ -85,6 +240,15 @@ stack test --ghc-options=-Werror --test-arguments="--match A-03"
 
 BoardSpec gồm test thuần cho đúng năm ID/17 ô, mép A1/J10, tàu dài 3 trùng ID, tàu chạm cạnh và không đặt lại qua Rules.step. Năm test biên dịch chạy GHC có sẵn trong môi trường Stack trên probe tạm: API public hợp lệ phải biên dịch, constructor/record update/coerce/import private phải bị từ chối đúng nguyên nhân. Probe chỉ dùng package đã build, được xóa sau test; không cần dependency mới.
 
+Chạy riêng QuickCheck A-06/B-06 (mỗi property tối thiểu 1.000 trường hợp):
+
+```sh
+stack test --ghc-options=-Werror --test-arguments="--match=A-06"
+stack test --ghc-options=-Werror --test-arguments="--match=B-06"
+```
+
+Hai bộ test dùng chung generator trong `test/TestSupport/Generators.hs`, độc lập với các hàm kiểm tra của Board. B-06 tạo trạng thái qua `step`, đối chiếu view với sự kiện quan sát được và so sánh hai trận có ô bí mật khác nhau nhưng cùng sự kiện công khai, kể cả Sunk và kết thúc. Khi lỗi, Hspec in phản ví dụ và lệnh chạy lại có seed; ví dụ thêm `--seed=20261009` vào `--test-arguments`. Giữ nguyên code và phiên bản dependency khi tái hiện seed. Test ngẫu nhiên không thay thế chứng minh bất biến.
+
 Chạy riêng luật B-01/B-02:
 
 ```sh
@@ -147,7 +311,25 @@ fmap (take 1 . reverse . snd) game -- batch cuối gồm ShotResolved ... Win, G
 stack test --ghc-options=-Werror --test-arguments="--match C-04"
 ```
 
-Coordinator giữ một TVar GameState và hai TQueue cho P1/P2. Mỗi submit đọc state, gọi step, encode/lọc và ghi state + toàn bộ batch vào queue trong cùng atomically; lệnh lỗi chỉ xếp phản hồi actor-only, không ghi state. Writer riêng lấy frame từ queue và gửi socket ngoài giao dịch. GAME_OVER nằm trước marker kết thúc; server chờ mọi writer đã được admission drain xong rồi đóng. MVar chỉ giữ registry/cleanup, không giữ bản sao GameState. Test gồm 250 cuộc đua có barrier, rollback lỗi/retry, FIFO và commit khi queue chưa được đọc.
+Coordinator giữ một TVar GameState và hai TBQueue cho P1/P2. Mỗi submit đọc state, gọi step, encode/lọc, kiểm tra chỗ cho cả batch rồi ghi state + toàn bộ phản hồi trong cùng atomically. Lệnh lỗi chỉ xếp phản hồi actor-only và giữ state nếu queue đủ chỗ; quá tải áp dụng Quit như mục C-07. Writer riêng lấy frame từ queue và gửi socket ngoài giao dịch. GAME_OVER nằm trước marker kết thúc; server chờ mọi writer đã được admission dọn xong rồi đóng. MVar chỉ giữ registry/cleanup, không giữ bản sao GameState. Test C-04 gồm 250 cuộc đua có barrier, rollback lỗi/retry, FIFO và commit khi queue chưa được đọc.
+
+## Hàng đợi giới hạn và client chậm C-07
+
+Mỗi người có **128 phần tử** trong TBQueue: phản hồi thường tối đa **126**, dành **2 chỗ** cho `GAME_OVER` và marker kết thúc. Giới hạn áp dụng cho dữ liệu đang nằm trong queue; frame đang gửi và bộ đệm TCP của OS được tính riêng. Giới hạn dòng TCP vẫn là 256 byte payload.
+
+Coordinator kiểm tra toàn bộ batch cho cả hai người trong STM trước khi ghi. Nếu không đủ chỗ, lệnh gây tràn không ghi nước bắn/đội tàu hoặc một phần phản hồi; coordinator gọi `Rules.step overloadedPlayer Quit oldState` và chốt bỏ cuộc. Người bị ngắt là **người nhận có queue quá tải**, có thể khác người gửi lệnh. Nếu cả hai quá tải trong cùng batch, P1 bỏ cuộc trước, cả hai socket được đóng. Sau Finished, EOF/QUIT không đổi người thắng.
+
+Worker riêng đóng socket quá tải ngoài STM để đánh thức reader/writer; writer bỏ phần chưa gửi tới marker, không chờ client đó đọc. Đối thủ còn đọc nhận GAME_OVER đúng thứ tự. Watchdog gửi 2 giây và grace cleanup 200 ms giữ nguyên. Không có timeout nhập tàu/nước bắn mới. Khoảng nối lại **5 phút của phiên web** vẫn do bridge quản lý.
+
+```sh
+stack test --ghc-options=-Werror --test-arguments="--match=C-07"
+stack build
+stack test --ghc-options=-Werror
+```
+
+Test C-07 dùng queue 5/8 phần tử và cổng đồng bộ: kiểm tra giới hạn mặc định, thiếu một chỗ, rollback batch, đúng người quá tải, kết thúc khi đầy, 300 cuộc đua STM (100 lần/kịch bản), TCP không đọc và cleanup trong deadline 10 giây. Client đọc bình thường được thử gửi/đọc vượt 128 phản hồi theo thời gian; bộ test tích hợp vẫn chơi trọn trận.
+
+API coordinator thêm `newCoordinatorWithCapacity` (tối thiểu 5), `queuedFrameCount`, `isSlowClient`; `submitTooLong` thêm `Step` để đường Quit quá tải dùng đúng lõi. Cần nhóm review thay đổi API trước hợp nhất; chi tiết tại [hợp đồng chung](docs/shared_contract.md#giới-hạn-và-chính-sách-client-chậm-c-07). Không đổi luật R-01 hoặc wire v1.
 
 ## Chạy và kiểm tra server C-02/C-03/C-04
 
@@ -281,7 +463,7 @@ Có thể bỏ PORT để dùng 4000, ví dụ `stack exec battleship-client -- 
 
 `package.yaml` là nguồn cấu hình package; file `.cabal` được Stack/Hpack sinh tự động. Giữ `stack.yaml.lock` trong Git để chia sẻ cùng snapshot.
 
-`Types` dùng `containers` cho `Map`/`Set`; C-02/D-02 dùng `network` cho TCP, `bytestring` cho framing/codec theo byte, `async` cho vòng đời worker và deadline. C-04 dùng `stm` cho TVar/TQueue/atomically trong library và test; D-04 dùng queue cho Response đọc từ mạng. D-04 khai báo `Win32` chỉ khi `os(windows)`, dùng binding console sẵn trong GHC để nhận sự kiện khi đang nhập dở; CPP bỏ import/cài đặt Win32 trên nền tảng khác. Hai Main dùng PortNumber từ `network`; ClientMain dùng `bytestring` để đưa lệnh CLI vào parser. Test suite dùng Hspec, `network`/`async` để kiểm tra TCP thật, `process` để khởi chạy executable và `directory`/`filepath` để đối chiếu cây nguồn S-01 trên Windows/Linux. `docs/protocol.md` là data file để test đọc đúng tài liệu qua module Cabal tự sinh `Paths_battleship_haskell`. Chưa cần thêm QuickCheck hoặc text.
+`Types` dùng `containers` cho `Map`/`Set`; C-02/D-02 dùng `network` cho TCP, `bytestring` cho framing/codec theo byte, `async` cho vòng đời worker và deadline. C-04/C-07 dùng `stm` cho TVar/TBQueue/atomically trong server và test; D-04 dùng TQueue cho Response đọc từ mạng. D-04 khai báo `Win32` chỉ khi `os(windows)`, dùng binding console sẵn trong GHC để nhận sự kiện khi đang nhập dở; CPP bỏ import/cài đặt Win32 trên nền tảng khác. Hai Main dùng PortNumber từ `network`; ClientMain dùng `bytestring` để đưa lệnh CLI vào parser. Test suite dùng Hspec, `network`/`async` để kiểm tra TCP thật, `process` để khởi chạy executable và `directory`/`filepath` để đối chiếu cây nguồn S-01 trên Windows/Linux. `docs/protocol.md` là data file để test đọc đúng tài liệu qua module Cabal tự sinh `Paths_battleship_haskell`. A-06/B-06 dùng QuickCheck trong test suite cho tính chất đội tàu và góc nhìn riêng; chưa cần thêm text.
 
 Thành viên A/B/D lấy nhánh nền đã chứa C-01 bằng `git fetch origin` và checkout/pull nhánh được nhóm thống nhất, rồi chạy hai lệnh trên trước khi thêm mã của mình.
 

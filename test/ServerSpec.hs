@@ -1,6 +1,7 @@
-module ServerSpec (spec, withServer, withClient, expectLine, expectClosed, readLine, await) where
+module ServerSpec (spec, withServer, withClient, expectLine, expectClosed, readLine, await, withReadyFile) where
 
-import Battleship.Server (runServer)
+import Battleship.Server
+  ( ServerConfig, defaultServerConfig, parseServerConfig, runServer, runServerConfigured, serverBindHost, serverReadyFile )
 import Control.Concurrent (threadDelay)
 import Control.Concurrent.Async (Async, cancel, mapConcurrently, race, wait, withAsync)
 import Control.Concurrent.MVar (newEmptyMVar, putMVar, readMVar)
@@ -8,7 +9,9 @@ import Control.Exception (IOException, bracket, bracketOnError, catch, try)
 import Control.Monad (forM_, void)
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Char8 as BSC
-import Data.List (sort)
+import Data.List (isInfixOf, sort)
+import Data.Either (isLeft)
+import Data.IORef (newIORef, readIORef, writeIORef)
 import Foreign.Marshal.Alloc (allocaBytes)
 import Network.Socket
   ( Family (AF_INET), PortNumber, ShutdownCmd (ShutdownBoth, ShutdownSend),
@@ -16,13 +19,136 @@ import Network.Socket
     defaultProtocol, recvBufNoWait, setSocketOption, shutdown, socket, tupleToHostAddress, withSocketsDo )
 import Network.Socket.ByteString (recv, sendAll)
 import System.Timeout (timeout)
+import System.Directory (doesFileExist, getTemporaryDirectory, removeFile)
+import System.FilePath ((</>))
+import System.IO (hClose, openBinaryTempFile)
+import System.IO.Error (isDoesNotExistError)
 import Test.Hspec
   ( Expectation, Spec, describe, it, shouldBe, shouldSatisfy )
 
 spec :: Spec
 spec = do
+  dk02Spec
   c02Spec
   c05Spec
+  c07Spec
+
+dk02Spec :: Spec
+dk02Spec = describe "DK-02 configurable listener and readiness" $ do
+  it "keeps loopback/no-marker native defaults" $ do
+    parseServerConfig Nothing Nothing `shouldBe` Right defaultServerConfig
+    serverBindHost defaultServerConfig `shouldBe` "127.0.0.1"
+    serverReadyFile defaultServerConfig `shouldBe` Nothing
+
+  forM_ ["127.0.0.1", "localhost", "0.0.0.0", "192.168.1.126", "255.255.255.255"] $ \host ->
+    it ("parses an IPv4 address/localhost without DNS: " ++ host) $ do
+      config <- configured (Just host) Nothing
+      serverBindHost config `shouldBe` host
+
+  forM_ ["", "K1", "256.0.0.1", "127.0.0", "127.0.0.1.2", "127..0.1", "127.00.0.1",
+         "-1.0.0.1", "+1.0.0.1", " 127.0.0.1", "127.0.0.1 ", "127.0.0.1\n",
+         "127.0.0.1:4000", "http://127.0.0.1", "haskell", "::1", "localhost:4000"] $ \host ->
+    it ("rejects malformed bind configuration: " ++ show host) $
+      parseServerConfig (Just host) Nothing `shouldSatisfy` isLeft
+
+  forM_ ["", "relative-ready", "ready\0file"] $ \path ->
+    it ("rejects a nonabsolute/empty/invalid readiness path: " ++ show path) $
+      parseServerConfig Nothing (Just path) `shouldSatisfy` isLeft
+
+  forM_ [Nothing, Just "localhost", Just "127.0.0.1", Just "0.0.0.0"] $ \host ->
+    it ("accepts exactly P1/P2 and rejects P3 with bind " ++ show host) $ withReadyFile $ \marker -> do
+      config <- configured host (Just marker)
+      withConfiguredServer config $ \port server -> do
+        -- Repeated file probes must not create clients or consume a slot.
+        forM_ [1 :: Int .. 100] $ \_ -> BS.readFile marker >>= (`shouldBe` BSC.pack "ready\n")
+        withPair port $ \first second -> do
+          withClient port $ \third -> expectLine third "ERROR SERVER_FULL" >> expectClosed third
+          quitAndWait first [first, second] "P2" server
+        doesFileExist marker >>= (`shouldBe` False)
+        expectCanRestart port
+
+  it "publishes readiness after listen and before the callback, without accepting a fake player" $ withReadyFile $ \marker -> do
+    config <- configured Nothing (Just marker)
+    writeFile marker "stale"
+    ready <- newEmptyMVar
+    release <- newEmptyMVar
+    withAsync (runServerConfigured config 0 (\port -> do
+      BS.readFile marker >>= (`shouldBe` BSC.pack "ready\n")
+      putMVar ready port
+      readMVar release)) $ \server -> do
+      port <- await "DK-02 callback readiness" (readMVar ready)
+      withClient port $ \first -> do
+        -- connect can succeed while the callback still holds the accept loop.
+        putMVar release ()
+        expectLine first "WELCOME 1 P1"
+        quitAndWait first [first] "P2" server
+      doesFileExist marker >>= (`shouldBe` False)
+
+  it "clears a stale marker before failed bind and does not invoke readiness" $ withReadyFile $ \marker ->
+    withServer $ \port _ -> do
+      config <- configured Nothing (Just marker)
+      writeFile marker "stale"
+      called <- newIORef False
+      result <- await "DK-02 occupied bind" (try (runServerConfigured config port (const (writeIORef called True))))
+        :: IO (Either IOException ())
+      result `shouldSatisfy` either (isInfixOf ("Cannot listen on 127.0.0.1:" ++ show port) . show) (const False)
+      readIORef called >>= (`shouldBe` False)
+      doesFileExist marker >>= (`shouldBe` False)
+
+  it "removes readiness and releases both clients/listener on cancellation" $ withReadyFile $ \marker -> do
+    config <- configured (Just "0.0.0.0") (Just marker)
+    withConfiguredServer config $ \port server -> withPair port $ \first second -> do
+      cancel server
+      doesFileExist marker >>= (`shouldBe` False)
+      mapM_ expectClosed [first, second]
+      expectCanRestart port
+
+  it "removes readiness when the callback fails and permits immediate restart" $ withReadyFile $ \marker -> do
+    config <- configured Nothing (Just marker)
+    ready <- newEmptyMVar
+    result <- try (runServerConfigured config 0 (\port -> putMVar ready port >> ioError (userError "callback failed")))
+      :: IO (Either IOException ())
+    result `shouldSatisfy` isLeft
+    doesFileExist marker >>= (`shouldBe` False)
+    readMVar ready >>= expectCanRestart
+
+  it "fails startup if the marker cannot be written and releases its listener" $ withReadyFile $ \marker ->
+    withServer $ \port server -> do
+      cancel server
+      config <- configured Nothing (Just (marker ++ ".missing" </> "ready"))
+      called <- newIORef False
+      result <- await "DK-02 marker write failure" (try (runServerConfigured config port (const (writeIORef called True))))
+        :: IO (Either IOException ())
+      result `shouldSatisfy` isLeft
+      readIORef called >>= (`shouldBe` False)
+      expectCanRestart port
+
+configured :: Maybe String -> Maybe FilePath -> IO ServerConfig
+configured host marker = either (ioError . userError) pure (parseServerConfig host marker)
+
+withConfiguredServer :: ServerConfig -> (PortNumber -> Async () -> IO a) -> IO a
+withConfiguredServer config action = do
+  ready <- newEmptyMVar
+  withAsync (runServerConfigured config 0 (putMVar ready)) $ \server -> do
+    startup <- await "DK-02 configured startup" (race (readMVar ready) (wait server))
+    case startup of
+      Left port -> action port server
+      Right () -> ioError (userError "DK-02 server stopped before readiness")
+
+-- A unique absolute path, with no preexisting marker; cleanup owns only this file.
+withReadyFile :: (FilePath -> IO a) -> IO a
+withReadyFile = bracket acquire removeMarker
+  where
+    acquire = do
+      directory <- getTemporaryDirectory
+      (path, handle) <- openBinaryTempFile directory "battleship-dk02-ready"
+      hClose handle
+      removeFile path
+      pure path
+    removeMarker path = removeFile path `catch` \exception ->
+      if isDoesNotExistError exception then pure () else throwIOException exception
+    throwIOException :: IOException -> IO ()
+    throwIOException = ioError
 
 c02Spec :: Spec
 c02Spec = describe "C-02 TCP server" $ do
@@ -260,7 +386,7 @@ c05Spec = describe "C-05 private delivery and disconnect cleanup" $ do
     withServer $ \port server -> withPair port $ \first second -> do
       -- Keep P1's socket open, stop receiving after WELCOME and force its send
       -- window to fill with actor-only errors. No Quit/EOF is sent by the test:
-      -- the server's failed-send watchdog must end this session itself.
+      -- queue overflow or the failed-send watchdog must end the session.
       setSocketOption first RecvBuffer 4096
       void (awaitSocket "C-05 slow reader flood" first
         (try (sendText first (concat (replicate 50000 "UNKNOWN\n"))) :: IO (Either IOException ())))
@@ -276,6 +402,57 @@ c05Spec = describe "C-05 private delivery and disconnect cleanup" $ do
         void (try (sendText first (concat (replicate 2000 "QUIT\n"))) :: IO (Either IOException ()))
         expectEnd [first, second] "P2"
         await "C-05 exit after pipelined terminal command" (wait server)
+
+c07Spec :: Spec
+c07Spec = describe "C-07 slow TCP clients" $ do
+  forM_ ["P1", "P2"] $ \actor ->
+    it ("ends when " ++ actor ++ " floods errors without reading; the opponent receives GAME_OVER") $
+      withServer $ \port server -> withPair port $ \first second -> do
+        let (slow, healthy, winner) = if actor == "P1" then (first, second, "P2") else (second, first, "P1")
+        setSocketOption slow RecvBuffer 4096
+        void (awaitSocket "C-07 flood without reading" slow (try (flood slow) :: IO (Either IOException ())))
+        expectEnd [healthy] winner
+        await "C-07 one slow client shutdown deadline" (wait server)
+        expectPeerReleased slow
+        expectListenerClosed port
+        expectCanRestart port
+
+  it "releases both nonreading clients, all workers and the listener within the deadline (10 sessions)" $
+    forM_ [1 :: Int .. 10] $ \_ ->
+      withServer $ \port server -> withPair port $ \first second -> do
+        forM_ [first, second] $ \connection -> setSocketOption connection RecvBuffer 4096
+        -- Both senders start together, neither receives after WELCOME. TCP
+        -- reset is allowed for the discarded slow socket, unlike a survivor.
+        await "C-07 two flooding senders" $ void $ mapConcurrently
+          (\connection -> awaitSocket "C-07 nonreader send" connection
+            (try (flood connection) :: IO (Either IOException ()))) [first, second]
+        await "C-07 both slow shutdown deadline" (wait server)
+        mapM_ expectPeerReleased [first, second]
+        expectListenerClosed port
+        expectCanRestart port
+
+  it "keeps normal readers usable beyond the queue capacity over time and preserves FIFO" $
+    withServer $ \port server -> withPair port $ \first second -> do
+      forM_ [1 :: Int .. 200] $ \_ ->
+        forM_ [first, second] $ \connection -> do
+          sendText connection "UNKNOWN\nFIRE A1\n"
+          expectLine connection "ERROR INVALID_COMMAND"
+          expectLine connection "ERROR FLEETS_NOT_READY"
+      quitAndWait second [first, second] "P1" server
+
+flood :: Socket -> IO ()
+flood connection = sendText connection (concat (replicate 50000 "UNKNOWN\n"))
+
+-- Already-buffered errors may precede FIN; a reset is also valid after the
+-- overload monitor closes a socket with unread input. Neither may hang.
+expectPeerReleased :: Socket -> Expectation
+expectPeerReleased connection = do
+  result <- awaitSocket "C-07 peer socket released" connection (try drain :: IO (Either IOException ()))
+  result `shouldSatisfy` either (const True) (== ())
+  where
+    drain = do
+      bytes <- recv connection 4096
+      if BS.null bytes then pure () else drain
 
 placementLine :: Int -> String
 placementLine row = "PLACE " ++ concat

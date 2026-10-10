@@ -1,0 +1,32 @@
+# Host state and credentials must never enter either service's build context.
+**/.git
+**/.agents
+**/.codex
+**/.aws
+**/.env
+**/.env.*
+!.env.example
+**/.docker-runtime
+
+# GHC/Stack and JavaScript artifacts must be rebuilt for Linux.
+**/.stack-work
+**/.stack
+**/.cabal
+**/.cache
+**/dist-newstyle
+**/node_modules
+**/.pnpm-store
+**/.vite
+**/coverage
+frontend/dist
+frontend/test-results
+battleship-haskell.cabal
+**/*.hi
+**/*.o
+**/*.dyn_hi
+**/*.dyn_o
+**/*.exe
+
+# Keep docs/*.md and tests, exclude demo outputs and checkout bundles.
+**/*.log
+**/*.bundle

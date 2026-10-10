@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 module IntegrationSpec (spec) where
 
 import Control.Monad (forM_, forever, when)
@@ -6,22 +7,26 @@ import qualified Control.Concurrent.Async
 import Control.Concurrent.STM
 import Control.Exception (IOException, catch, finally, throwIO)
 import Data.IORef (modifyIORef', newIORef, readIORef)
+import Data.Char (toUpper)
 import Data.List (isInfixOf, isPrefixOf, isSuffixOf, stripPrefix, tails)
 import qualified Data.ByteString.Char8 as BSC
 import Network.Socket (PortNumber, withSocketsDo)
 import Network.Socket.ByteString (sendAll)
-import ServerSpec (await, expectClosed, expectLine, withClient, withServer)
+import ServerSpec (await, expectClosed, expectLine, withClient, withServer, withReadyFile)
+import System.Directory (doesFileExist)
+import System.Environment (getEnvironment)
 import System.Exit (ExitCode (ExitFailure, ExitSuccess))
 import System.IO (Handle, hClose, hFlush, hGetChar, hGetContents, hGetContents', hGetLine, hPutStr, hPutStrLn, hSetEncoding, utf8)
 import System.IO.Error (isEOFError)
 import System.Process
-  ( CreateProcess (std_err, std_in, std_out), ProcessHandle, StdStream (CreatePipe), proc,
+  ( CreateProcess (env, std_err, std_in, std_out), ProcessHandle, StdStream (CreatePipe), proc,
     getProcessExitCode, readProcessWithExitCode, terminateProcess, waitForProcess, withCreateProcess )
 import Test.Hspec (Expectation, Spec, describe, it, shouldBe, shouldSatisfy)
 import Text.Read (readMaybe)
 
 spec :: Spec
 spec = do
+  dk02ExecutableSpec
   describe "C-01 executable smoke tests" $ do
     it "server --help starts and exits successfully" $
       checkExecutable "battleship-server" ["--help"]
@@ -363,6 +368,67 @@ d06Spec = describe "D-06 three production executables driven by output" $ do
 firePrompt :: String
 firePrompt = "Nhập A1..J10 hoặc FIRE A1; QUIT để rời trận:"
 
+dk02ExecutableSpec :: Spec
+dk02ExecutableSpec = describe "DK-02 server executable configuration" $ do
+  forM_ [Nothing, Just "localhost", Just "127.0.0.1", Just "0.0.0.0"] $ \host ->
+    it ("uses bind env " ++ show host ++ " with readiness and unchanged TCP protocol") $ withReadyFile $ \marker -> do
+      withServerExecutableConfig host (Just marker) $ \port server -> do
+        BSC.readFile marker >>= (`shouldBe` BSC.pack "ready\n")
+        withClient port $ \first -> do
+          expectLine first "WELCOME 1 P1"
+          withClient port $ \second -> do
+            expectLine second "WELCOME 1 P2"
+            withClient port $ \third -> expectLine third "ERROR SERVER_FULL" >> expectClosed third
+            sendAll first (BSC.pack "FIRE A1\n")
+            expectLine first "ERROR FLEETS_NOT_READY"
+            sendAll second (BSC.pack "QUIT\n")
+            forM_ [first, second] $ \connection -> do
+              expectLine connection "GAME_OVER P1 OPPONENT_LEFT"
+              expectClosed connection
+        await "DK-02 configured executable exit" (waitForProcess server) >>= (`shouldBe` ExitSuccess)
+      doesFileExist marker >>= (`shouldBe` False)
+
+  forM_ ["", "256.1.1.1", "127.0.0", "127.00.0.1", " 127.0.0.1", "127.0.0.1:4000",
+         "http://127.0.0.1:4000", "::1", "haskell"] $ \host ->
+    it ("rejects bad env before bind or readiness IO: " ++ show host) $ withReadyFile $ \marker ->
+      withServer $ \occupiedPort _ -> do
+        -- If validation ran after bind, this would report the occupied port.
+        writeFile marker "untouched"
+        environment <- serverEnvironment (Just host) (Just marker)
+        (code, output, errors) <- readServerProcess environment [show occupiedPort]
+        (code, output) `shouldBe` (ExitFailure 1, "")
+        errors `shouldSatisfy` isPrefixOf "BATTLESHIP_BIND_HOST"
+        BSC.readFile marker >>= (`shouldBe` BSC.pack "untouched")
+
+  forM_ ["", "relative-ready"] $ \path ->
+    it ("rejects invalid readiness env before listen: " ++ show path) $ do
+      environment <- serverEnvironment Nothing (Just path)
+      (code, output, errors) <- readServerProcess environment ["0"]
+      (code, output) `shouldBe` (ExitFailure 1, "")
+      errors `shouldSatisfy` isPrefixOf "BATTLESHIP_READY_FILE"
+
+  it "reports the configured endpoint on bind failure and clears an old marker" $ withReadyFile $ \marker ->
+    withServer $ \port _ -> do
+      writeFile marker "stale"
+      environment <- serverEnvironment (Just "0.0.0.0") (Just marker)
+      (code, output, errors) <- readServerProcess environment [show port]
+      (code, output) `shouldBe` (ExitFailure 1, "")
+      errors `shouldSatisfy` isInfixOf ("Cannot listen on 0.0.0.0:" ++ show port)
+      doesFileExist marker >>= (`shouldBe` False)
+
+#ifndef mingw32_HOST_OS
+  it "handles SIGTERM by removing readiness and closing both clients before exit" $ withReadyFile $ \marker ->
+    withServerExecutableConfig (Just "0.0.0.0") (Just marker) $ \port server ->
+      withClient port $ \first -> do
+        expectLine first "WELCOME 1 P1"
+        withClient port $ \second -> do
+          expectLine second "WELCOME 1 P2"
+          terminateProcess server
+          await "DK-02 SIGTERM clean exit" (waitForProcess server) >>= (`shouldBe` ExitSuccess)
+          doesFileExist marker >>= (`shouldBe` False)
+          mapM_ expectClosed [first, second]
+#endif
+
 -- Each line is sent only after the corresponding observed prompt/response.
 -- In particular, placement prompts have no LF, so read characters, not lines.
 data LiveCLI = LiveCLI
@@ -431,20 +497,48 @@ fire shooter opponent position outcome = do
   cliAwait opponent ("Đối thủ bắn " ++ position ++ ": " ++ outcome)
 
 withServerExecutable :: (PortNumber -> ProcessHandle -> IO a) -> IO a
-withServerExecutable action = withSocketsDo $ withCreateProcess
-  (proc "battleship-server" ["0"]) { std_out = CreatePipe, std_err = CreatePipe } $
+withServerExecutable = withServerExecutableConfig Nothing Nothing
+
+withServerExecutableConfig :: Maybe String -> Maybe FilePath -> (PortNumber -> ProcessHandle -> IO a) -> IO a
+withServerExecutableConfig host marker action = withSocketsDo $ do
+  environment <- serverEnvironment host marker
+  withCreateProcess
+    (proc "battleship-server" ["0"]) { env = Just environment, std_out = CreatePipe, std_err = CreatePipe } $
+    \_ output errors process -> case (output, errors) of
+      (Just stdoutHandle, Just stderrHandle) ->
+        Control.Concurrent.Async.withAsync (hGetContents' stderrHandle) $ \errorReader ->
+          (do
+            announcement <- await "D-06 executable listen" (hGetLine stdoutHandle)
+            let expected = "Battleship server listening on " ++ maybe "127.0.0.1" id host ++ ":"
+            port <- case stripPrefix expected announcement >>= readMaybe of
+              Just actual | actual > 0 -> pure actual
+              _ -> ioError (userError "D-06 invalid server port")
+            result <- action port process
+            await "D-06 server stderr" (Control.Concurrent.Async.wait errorReader) >>= (`shouldBe` "")
+            pure result) `finally` stopProcess process
+      _ -> ioError (userError "D-06 missing server pipes")
+
+-- Keep executable cases independent of Docker env exported by the developer.
+serverEnvironment :: Maybe String -> Maybe FilePath -> IO [(String, String)]
+serverEnvironment host marker = do
+  inherited <- getEnvironment
+  pure (filter (\(name, _) -> map toUpper name `notElem` ["BATTLESHIP_BIND_HOST", "BATTLESHIP_READY_FILE"]) inherited
+    ++ [("BATTLESHIP_BIND_HOST", value) | Just value <- [host]]
+    ++ [("BATTLESHIP_READY_FILE", value) | Just value <- [marker]])
+
+-- Closing pipes can block on Windows; a process watchdog makes failures bounded.
+readServerProcess :: [(String, String)] -> [String] -> IO (ExitCode, String, String)
+readServerProcess environment arguments = withCreateProcess
+  (proc "battleship-server" arguments) { env = Just environment, std_out = CreatePipe, std_err = CreatePipe } $
   \_ output errors process -> case (output, errors) of
     (Just stdoutHandle, Just stderrHandle) ->
-      Control.Concurrent.Async.withAsync (hGetContents' stderrHandle) $ \errorReader ->
+      Control.Concurrent.Async.withAsync (threadDelay 5000000 >> terminateProcess process) $ \_ ->
         (do
-          announcement <- await "D-06 executable listen" (hGetLine stdoutHandle)
-          port <- case stripPrefix "Battleship server listening on 127.0.0.1:" announcement >>= readMaybe of
-            Just actual | actual > 0 -> pure actual
-            _ -> ioError (userError "D-06 invalid server port")
-          result <- action port process
-          await "D-06 server stderr" (Control.Concurrent.Async.wait errorReader) >>= (`shouldBe` "")
-          pure result) `finally` stopProcess process
-    _ -> ioError (userError "D-06 missing server pipes")
+          (stdoutText, stderrText) <- Control.Concurrent.Async.concurrently
+            (hGetContents' stdoutHandle) (hGetContents' stderrHandle)
+          code <- await "DK-02 diagnostic process exit" (waitForProcess process)
+          pure (code, stdoutText, stderrText)) `finally` stopProcess process
+    _ -> ioError (userError "DK-02 missing diagnostic pipes")
 
 stopProcess :: ProcessHandle -> IO ()
 stopProcess process = do

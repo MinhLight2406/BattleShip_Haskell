@@ -13,12 +13,17 @@ import Data.Proxy (Proxy (..))
 import Data.Typeable (typeRep)
 import RulesSpec (b04Cases, b04Trace)
 import Test.Hspec (Spec, describe, it, shouldBe, shouldSatisfy)
+import Test.Hspec.QuickCheck (modifyMaxSuccess)
+import qualified Test.QuickCheck as QC
+import TestSupport.Generators
+  (genValidFleet, genFleetKeepingCarrier, legalBoardCells, referenceCells, validGeneratedFleet)
 
 spec :: Spec
 spec = do
   b03Spec
   b04Spec
   b05Spec
+  b06Spec
 
 b03Spec :: Spec
 b03Spec = describe "B-03 private player views" $ do
@@ -191,6 +196,170 @@ b05Spec = describe "B-05 event/view consistency and secret geometry" $ do
         outgoingShotsView projected `shouldBe`
           Map.fromList ([(Coord column 1, Hit) | column <- [1 .. 4]] ++ [(Coord 5 1, Sunk Carrier)])
         Set.size (enemyCells `Set.difference` Map.keysSet (outgoingShotsView projected)) `shouldBe` 12
+
+b06Spec :: Spec
+b06Spec = describe "B-06 QuickCheck private views" $ modifyMaxSuccess (max 1000) $
+  forM_ [P1, P2] $ \viewer -> describe (show viewer) $ do
+    it "preserves only the viewer's own accepted fleet throughout valid play" $
+      forGameTrace viewer $ everyObservation $ \state observed ->
+        let projected = viewFor viewer state
+        in QC.conjoin
+          [ viewPlayer projected QC.=== viewer
+          , ownFleetView projected QC.=== ownFleetView observed ]
+
+    it "matches outgoing and incoming histories reconstructed from shot events" $
+      forGameTrace viewer $ everyObservation $ \state observed ->
+        let projected = viewFor viewer state
+        in QC.conjoin
+          [ outgoingShotsView projected QC.=== outgoingShotsView observed
+          , incomingShotsView projected QC.=== incomingShotsView observed ]
+
+    it "returns exactly the permitted public observations, including phase and readiness" $
+      forGameTrace viewer $ everyObservation $ \state observed ->
+        viewFor viewer state QC.=== observed
+
+    it "cannot distinguish genuinely changed hidden cells with identical events, including Sunk" $
+      QC.checkCoverage $ QC.forAll (genPrivatePair viewer) $ \(first, second) ->
+        case (replayFor viewer first, replayFor viewer second) of
+          (Right left, Right right) ->
+            let (finalLeft, _, _) = last left
+                (finalRight, _, _) = last right
+                enemyCells state = maybe Set.empty cells (playerFleet (playerStateFor (otherPlayer viewer) state))
+                oldCells = enemyCells finalLeft
+                newCells = enemyCells finalRight
+                shots = Map.keysSet (playerShots (playerStateFor viewer finalLeft))
+                moved = Set.union (oldCells `Set.difference` newCells) (newCells `Set.difference` oldCells)
+                sawSunk = any (\(_, events, _) -> any isCarrierSunk events) left
+                isCarrierSunk (ShotResolved _ _ (Sunk Carrier)) = True
+                isCarrierSunk _ = False
+                phase = gamePhase finalLeft
+            in QC.cover 15 sawSunk "observed Sunk Carrier"
+               $ QC.cover 10 (case phase of Finished _ AllShipsSunk -> True; _ -> False) "finished by sinking"
+               $ QC.cover 10 (case phase of Finished _ OpponentLeft -> True; _ -> False) "finished by quit"
+               $ QC.cover 10 (case phase of Turn _ -> True; _ -> False) "still playing"
+               $ QC.conjoin
+                 [ QC.counterexample "Hidden geometry did not actually change" (not (Set.null moved))
+                 , QC.counterexample "Private-pair generator violated the independent fleet contract"
+                     (all validGeneratedFleet [request | (_, PlaceFleet request) <- first ++ second])
+                 , QC.counterexample "Changed cells were already observed" (Set.null (Set.intersection moved shots))
+                 , QC.counterexample "Too few unshot cells for a meaningful privacy check"
+                     (Set.size (oldCells `Set.difference` shots) >= 12 && Set.size (newCells `Set.difference` shots) >= 12)
+                 , map (\(_, events, _) -> events) left QC.=== map (\(_, events, _) -> events) right
+                 , map (\(_, _, observed) -> observed) left QC.=== map (\(_, _, observed) -> observed) right
+                 , map (\(state, _, _) -> viewFor viewer state) left QC.===
+                     map (\(state, _, _) -> viewFor viewer state) right ]
+          result -> QC.counterexample ("Generated private scripts failed: " ++ show result) False
+
+    it "covers placement, active play, both winners and both termination reasons" $
+      QC.checkCoverage $ forGameTrace viewer $ \observations ->
+        let (final, _, _) = last observations
+            phase = gamePhase final
+            outcomes = [outcome | (_, events, _) <- observations, ShotResolved _ _ outcome <- events]
+        in QC.cover 15 (phase == Placing) "placing"
+           $ QC.cover 15 (case phase of Turn _ -> True; _ -> False) "playing"
+           $ QC.cover 30 (case phase of Finished _ _ -> True; _ -> False) "finished"
+           $ QC.cover 15 (case phase of Finished _ AllShipsSunk -> True; _ -> False) "all ships sunk"
+           $ QC.cover 15 (case phase of Finished _ OpponentLeft -> True; _ -> False) "opponent left"
+           $ QC.cover 15 (case phase of Finished P1 _ -> True; _ -> False) "P1 winner"
+           $ QC.cover 15 (case phase of Finished P2 _ -> True; _ -> False) "P2 winner"
+           $ QC.cover 10 (Miss `elem` outcomes) "Miss"
+           $ QC.cover 10 (Hit `elem` outcomes) "Hit"
+           $ QC.cover 10 (any (\outcome -> case outcome of Sunk _ -> True; _ -> False) outcomes) "Sunk"
+           $ QC.cover 15 (Win `elem` outcomes) "Win"
+           $ QC.property True
+
+-- Scripts carry reproducible inputs; all states and observations are derived
+-- by step. Four equally likely endings exercise partial and terminal games.
+genGameCommands :: QC.Gen [(PlayerId, Command)]
+genGameCommands = do
+  firstFleet <- genValidFleet
+  secondFleet <- genValidFleet
+  placementCommands <- QC.shuffle [(P1, PlaceFleet firstFleet), (P2, PlaceFleet secondFleet)]
+  winner <- QC.elements [P1, P2]
+  let winnerFleet = if winner == P1 then firstFleet else secondFleet
+      enemyFleet = if winner == P1 then secondFleet else firstFleet
+  hits <- QC.shuffle (concatMap referenceCells enemyFleet)
+  winnerWater <- QC.shuffle (waterOutside [enemyFleet])
+  enemyWater <- QC.shuffle (waterOutside [winnerFleet])
+  missCount <- QC.chooseInt (0, 3)
+  let (opening, replies) = case enemyWater of
+        firstWater : remaining
+          | winner == P2 -> ([(P1, Fire firstWater)], remaining)
+          | otherwise -> ([], enemyWater)
+        [] -> error "Valid 17-cell fleet must leave water for the opening"
+      misses = concat [[(winner, Fire target), (otherPlayer winner, Fire reply)] |
+                       (target, reply) <- take missCount (zip winnerWater replies)]
+      complete = placementCommands ++ opening ++ misses ++ [(winner, Fire coordinate) | coordinate <- hits]
+  QC.oneof
+    [ do count <- QC.chooseInt (0, 1); pure (take count complete)
+    , do count <- QC.chooseInt (2, length complete - 1); pure (take count complete)
+    , do count <- QC.chooseInt (0, length complete - 1)
+         quitter <- QC.elements [P1, P2]
+         pure (take count complete ++ [(quitter, Quit)])
+    , pure complete ]
+
+-- The viewer observes only common water and the unchanged Carrier. The other
+-- player may sink the viewer's whole fleet; twelve enemy cells remain secret
+-- even at that terminal state. No altered GameState or filtered failed run.
+genPrivatePair :: PlayerId -> QC.Gen ([(PlayerId, Command)], [(PlayerId, Command)])
+genPrivatePair viewer = do
+  own <- genValidFleet
+  original <- genValidFleet
+  changed <- genFleetKeepingCarrier original
+  let carrier = concatMap referenceCells [placement | placement <- original, placementShip placement == Carrier]
+      enemy = otherPlayer viewer
+  hits <- QC.shuffle carrier
+  ownWater <- QC.shuffle (waterOutside [own])
+  commonWater <- QC.shuffle (waterOutside [original, changed])
+  hitCount <- QC.frequency [(1, QC.chooseInt (1, 4)), (1, pure 5)]
+  winningShots <- QC.shuffle (concatMap referenceCells own)
+  ownFirst <- QC.elements [False, True]
+  let (opening, reply) = case ownWater of
+        firstWater : secondWater : _
+          | viewer == P2 -> ([(P1, Fire firstWater)], secondWater)
+          | otherwise -> ([], firstWater)
+        _ -> error "Valid 17-cell fleet must leave at least two water cells"
+      (miss, passTurn) = case commonWater of
+        firstWater : secondWater : _ -> (firstWater, secondWater)
+        _ -> error "Two valid fleets must leave common water"
+      history = opening ++ [(viewer, Fire miss), (enemy, Fire reply)]
+        ++ [(viewer, Fire coordinate) | coordinate <- take hitCount hits]
+  ending <- QC.oneof
+    [ pure []
+    , do quitter <- QC.elements [P1, P2]; pure [(quitter, Quit)]
+    , pure ([(viewer, Fire passTurn)] ++ [(enemy, Fire coordinate) | coordinate <- winningShots]) ]
+  let commands opponent =
+        (if ownFirst then [(viewer, PlaceFleet own), (enemy, PlaceFleet opponent)]
+                     else [(enemy, PlaceFleet opponent), (viewer, PlaceFleet own)]) ++ history ++ ending
+  pure (commands original, commands changed)
+
+waterOutside :: [FleetPlacement] -> [Coord]
+waterOutside fleets = [coordinate | coordinate <- legalBoardCells,
+                      coordinate `notElem` concatMap (concatMap referenceCells) fleets]
+
+type Observation = (GameState, [Event], PlayerView)
+
+replayFor :: PlayerId -> [(PlayerId, Command)] -> Either String [Observation]
+replayFor viewer = go initialGameState [] (PlayerView viewer Placing Nothing Map.empty Map.empty False)
+  where
+    go state events observed [] = Right [(state, events, observed)]
+    go state events observed ((actor, command) : remaining) = do
+      (next, emitted) <- either (Left . show) Right (step actor command state)
+      let nextObserved = foldl (viewAfterEvent command) observed emitted
+      ((state, events, observed) :) <$> go next emitted nextObserved remaining
+
+forGameTrace :: PlayerId -> ([Observation] -> QC.Property) -> QC.Property
+forGameTrace viewer assertion = QC.forAll genGameCommands $ \commands ->
+  case replayFor viewer commands of
+    Left fault -> QC.counterexample ("Generated script was rejected: " ++ fault) False
+    Right observations ->
+      QC.counterexample "Script generator violated the independent fleet contract"
+        (all validGeneratedFleet [request | (_, PlaceFleet request) <- commands]) QC..&&. assertion observations
+
+everyObservation :: (GameState -> PlayerView -> QC.Property) -> [Observation] -> QC.Property
+everyObservation assertion observations = QC.conjoin
+  [ QC.counterexample ("Transition " ++ show index ++ ", phase " ++ show (gamePhase state)) (assertion state observed)
+  | (index, (state, _, observed)) <- zip [0 :: Int ..] observations ]
 
 -- Test-only projection from observations, not GameState. FleetAccepted carries
 -- no geometry: only the owner's already-known PLACE request may supply it.
