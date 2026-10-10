@@ -74,7 +74,7 @@ Các biến này chỉ cấu hình ứng dụng; chúng **không tự publish/fo
 
 Bind `0.0.0.0` cho phép công bố localhost hoặc IP LAN cụ thể. Handshake vẫn yêu cầu Origin nằm trong danh sách cho phép và Host cùng authority với Origin. Khi đặt `WEB_PUBLIC_PORT`, origin nội bộ và origin Vite `:5173` không được tự cho phép. `GET /healthz` trả `{"status":"ok"}` mà không kết nối Haskell hoặc chiếm P1/P2; endpoint này chỉ kiểm tra bridge.
 
-Để cập nhật IP host trong container, dùng `LAN_ORIGINS_FILE` thay cho `PUBLIC_ORIGIN`. Bridge đọc file trước khi listen và mỗi 2 giây; file lỗi/quá hạn sẽ bỏ origin LAN, giữ localhost và các phiên hiện có. Schema, giới hạn và TTL nằm trong hợp đồng Docker. Reader đã có ở DK-03; helper tạo/cập nhật file thuộc DK-06.
+Để cập nhật IP host trong container, dùng `LAN_ORIGINS_FILE` thay cho `PUBLIC_ORIGIN`. Bridge đọc file trước khi listen và mỗi 2 giây; file lỗi/quá hạn sẽ bỏ origin LAN, giữ localhost và các phiên hiện có. Schema, giới hạn và TTL nằm trong hợp đồng Docker. Reader đã có ở DK-03; helper tạo/cập nhật file đã triển khai ở DK-06 bên dưới.
 
 ### Image Haskell — DK-04
 
@@ -82,7 +82,23 @@ Bind `0.0.0.0` cho phép công bố localhost hoặc IP LAN cụ thể. Handshak
 
 ### Image web — DK-05
 
-`docker/web.Dockerfile` ghim Node 24.21.0 bằng digest và pnpm 11.25.0, cài bằng `pnpm-lock.yaml` với `--frozen-lockfile`. Stage test chạy TypeScript, Vite và 36 unit test; runtime chỉ chứa bridge, `dist` và dependency production, chạy user `node` (UID/GID 1000), bridge làm PID 1. Đã nghiệm thu Linux amd64: **36/36 unit test, 6/6 test runtime xanh**; HTML/JS/CSS/PNG hoạt động, cấu hình sai báo lỗi, SIGTERM/SIGINT dọn HTTP/WebSocket/TCP thật. Lệnh build/demo và test ở [docker/README.md](docker/README.md#image-web--dk-05). Compose và helper cập nhật IP host thuộc DK-06/DK-07.
+`docker/web.Dockerfile` ghim Node 24.21.0 bằng digest và pnpm 11.25.0, cài bằng `pnpm-lock.yaml` với `--frozen-lockfile`. Stage test chạy TypeScript, Vite và 36 unit test; runtime chỉ chứa bridge, `dist` và dependency production, chạy user `node` (UID/GID 1000), bridge làm PID 1. Đã nghiệm thu Linux amd64: **36/36 unit test, 6/6 test runtime xanh**; HTML/JS/CSS/PNG hoạt động, cấu hình sai báo lỗi, SIGTERM/SIGINT dọn HTTP/WebSocket/TCP thật. Lệnh build/demo và test ở [docker/README.md](docker/README.md#image-web--dk-05). Helper cập nhật IP host có ở DK-06 bên dưới; Compose production thuộc DK-07.
+
+### IP Windows tự cập nhật cho Docker — DK-06
+
+Helper `scripts/Start-LanCompose.ps1` chạy trên Windows PowerShell 5.1+, lấy IPv4 host, ghi `origins.json` UTF-8 nguyên tử mỗi 2 giây và tạo env-file hiệu lực; không sửa `.env`. Giữ terminal helper mở trong trận. Có thể chọn adapter bằng `-LanInterface 'Wi-Fi'`, đổi cổng bằng `-PublicPort 8081`; không hardcode IP. Khi có nhiều IP host/VPN/virtual adapter, helper in các link và nhắc chọn adapter phù hợp.
+
+```powershell
+# Dùng ngay ở DK-06: tạo cấu hình và theo dõi IP, chưa khởi chạy Compose.
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/Start-LanCompose.ps1 -WatchOnly -LanInterface 'Wi-Fi'
+# Hai chế độ tĩnh vẫn có: chuẩn bị localhost hoặc origin thủ công.
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/Start-LanCompose.ps1 -WatchOnly -Mode Localhost
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/Start-LanCompose.ps1 -WatchOnly -Mode Manual -PublicOrigin 'http://<IPv4-host>:8081'
+```
+
+Mặc định dùng `.docker-runtime/lan/`, đã được Git/Docker ignore. Thư mục này cần được mount **cả thư mục** chỉ đọc vào web tại `/run/battleship-lan`, đồng thời đặt `PUBLIC_ORIGIN=` và `LAN_ORIGINS_FILE=/run/battleship-lan/origins.json`. Reader bridge hiện có tự thay allowlist, giữ TCP/token/deadline 5 phút và không restart. Sau DK-07 có `compose.yaml`, bỏ `-WatchOnly` để helper khởi chạy Compose đúng một lần rồi tiếp tục theo dõi. Hiện chưa có Compose production nên chế độ mặc định sẽ báo rõ cần `-WatchOnly`.
+
+Kiểm thử trên Windows host: `pnpm --dir frontend test:lan-helper`; kiểm thử mount/Compose parser/resume với hai image DK-04/05: `node --test docker/test/lan-runtime.test.mjs`. Hợp đồng, lựa chọn chế độ, ưu tiên cấu hình và phạm vi nghiệm thu tại [docs/docker_deployment.md](docs/docker_deployment.md#dk-06-helper-windows-đã-triển-khai).
 
 Test giao diện và tích hợp (chạy từ gốc repository sau khi build):
 
