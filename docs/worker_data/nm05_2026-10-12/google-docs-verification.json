@@ -1,0 +1,59 @@
+{
+  "documentId": "1-T7iROKnpNmbHCWr-XmAnOSihwIi-Y5PacRBFk4Xyhw",
+  "document_url": "https://docs.google.com/document/d/1-T7iROKnpNmbHCWr-XmAnOSihwIi-Y5PacRBFk4Xyhw",
+  "tabId": "t.aexr75u196ee",
+  "title": "NM-05 — Worker sở hữu trận và locality",
+  "revisionId": "AHj4eMTx0cULSQh0bhJp_-zJxSvRWangOp_CePOrl2wt5vfLUWq_Ys3Uoapc4ETtLIFP7JoyO_0Jt3Jrw0XfVPFKgZazNXGASpnU2WYEaicY",
+  "checks": {
+    "correctParent": true,
+    "correctIndex": true,
+    "textMatches": true,
+    "preservedAllOldTabs": true,
+    "nativeHeadings": 15,
+    "expectedHeadings": 15,
+    "nativeBullets": 23,
+    "expectedBullets": 23
+  },
+  "preserved": [
+    {
+      "tabId": "t.0",
+      "unchanged": true
+    },
+    {
+      "tabId": "t.3f8lnf480yal",
+      "unchanged": true
+    },
+    {
+      "tabId": "t.tp47wqncwp94",
+      "unchanged": true
+    },
+    {
+      "tabId": "t.z2vxki9p1hdu",
+      "unchanged": true
+    },
+    {
+      "tabId": "t.smgi9li6oqib",
+      "unchanged": true
+    },
+    {
+      "tabId": "t.bskjwjzb41bq",
+      "unchanged": true
+    },
+    {
+      "tabId": "t.m9mq874psso8",
+      "unchanged": true
+    },
+    {
+      "tabId": "t.pte5hi1m7lt0",
+      "unchanged": true
+    },
+    {
+      "tabId": "t.boqulsoufewe",
+      "unchanged": true
+    },
+    {
+      "tabId": "t.h4ztyl55uk",
+      "unchanged": true
+    }
+  ]
+}

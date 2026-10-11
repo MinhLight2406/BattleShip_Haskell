@@ -1,18 +1,18 @@
 # Kiến trúc điều phối Battleship
 
-Hiện trạng đối chiếu ngày 2026-10-10, source nền `8bd7da9`: một core Haskell, hai người, một trận/lần chạy core. Có client terminal trực tiếp và client React qua Node bridge, native hoặc Docker hai service. Một TVar GameState là nguồn sự thật, hai TBQueue hữu hạn đến writer riêng; bridge giữ phiên web/replay riêng và cấu hình LAN, không quyết định luật. Các mục lõi dưới đây mô tả cài đặt C-04/C-07; phần cuối bổ sung UI/LAN/Docker hiện hành. Lý do/đánh đổi xem [design_decisions.md](design_decisions.md), tổng thể xem [report_final.md](report_final.md).
+Hiện trạng NM-05 ngày 2026-10-12 trên `Update_NUMA`: một core Haskell, hai người, một trận/lần chạy. Reader gửi mailbox hữu hạn tới worker xử lý trên capability chọn trước; worker khởi tạo coordinator và là nơi duy nhất submit gameplay trong server. Một TVar GameState, hai outbox hữu hạn và writer riêng; bridge giữ phiên web/replay/LAN, không quyết định luật. Cài đặt UI/LAN/Docker bên dưới tiếp tục áp dụng. Phân tích locality và bằng chứng mới xem [NM-05](worker_locality.md); hồ sơ `8bd7da9` và báo cáo cũ là snapshot theo thời điểm.
 
 ## Transport C-02 và điều phối C-03/C-04 hiện tại
 
 Đợt tích hợp từ `frontend-ui` bổ sung React qua WebSocket–TCP; sau đó có LAN, resume 5 phút và Docker. Server/giao dịch STM tiếp tục cùng lõi luật. Hồ sơ theo thời điểm ở [frontend_integration.md](frontend_integration.md), cấu hình hiện hành ở [docker_deployment.md](docker_deployment.md).
 
-ServerMain đọc port/môi trường, dùng `parseServerConfig` rồi gọi `runServerConfigured`. Native mặc định `127.0.0.1`; Docker cấu hình `0.0.0.0`. `runServer`/`runServerWith` vẫn giữ API loopback cho test/caller cũ; callback sau listen báo port thực. Readiness marker tùy chọn được ghi nguyên tử sau listen và xóa khi cleanup. Accept theo P1/P2; socket/reader/writer trong bracket/withAsync/link. Đủ hai slot thì acceptor gửi `ERROR SERVER_FULL`, đóng socket thứ ba. Một client không gửi dữ liệu không chặn nhận client tiếp theo.
+ServerMain đọc port/môi trường, parseServerConfig và parseGameRuntimeConfig rồi gọi runServerWithRuntime. Native mặc định `127.0.0.1`; Docker cấu hình `0.0.0.0`. API runServer/runServerWith/runServerConfigured vẫn tương thích, chọn worker capability 0. Worker được tạo/kiểm tra trước listener; marker sau listen và callback báo port thực. Socket/reader/writer vẫn trong bracket/withAsync/link; worker dùng withAsyncOn và watcher lỗi có phạm vi. Đủ hai slot thì từ chối socket thứ ba trực tiếp. WELCOME đi qua worker trước khi mở reader/writer của slot.
 
-Coordinator giữ đúng một TVar GameState và hai TBQueue (Maybe ByteString). Server gọi atomically cho mỗi submitPayload/submitCommand: đọc state, parse/gọi step, encode toàn bộ batch, kiểm tra chỗ cho từng người rồi mới ghi state và xếp tất cả frame trong cùng giao dịch. Parser/luật lỗi chỉ xếp lỗi actor-only và giữ state nếu đủ chỗ; nếu queue quá tải, hủy batch gốc và áp dụng Quit theo C-07. Encode/hợp đồng batch lỗi trả Left ProtocolError mà không ghi state hoặc queue. Hai transaction tranh TVar phải chạy lại theo state đã commit, không cùng tiêu lượt cũ. Không dùng unsafeIOToSTM hoặc socket IO trong giao dịch.
+Coordinator giữ đúng một TVar GameState và hai TBQueue (Maybe ByteString). Worker gọi atomically cho mỗi request: đọc state, parse/gọi step, encode toàn bộ batch, kiểm tra chỗ rồi commit state/frame/ack. Parser/luật lỗi chỉ xếp lỗi actor-only và giữ state nếu đủ chỗ; quá tải hủy batch gốc, áp dụng Quit theo C-07. Encode/hợp đồng lỗi rollback và supervisor dừng phiên. State và strict frame buffer được buộc tính trước publication. API STM cũ vẫn dùng trực tiếp trong test/benchmark; STM vẫn revalidate với writer/control, không có IO mạng hoặc unsafeIOToSTM.
 
-Reader dùng `Protocol.feedFrames`, giữ buffer tối đa 256 byte hoặc 257 nếu cuối là CR chờ LF; mỗi recv lấy tối đa phần còn lại của frame 258 byte. Frame đủ LF đi qua atomically submitPayload → parseCommand → step → encodeEvent. EOF bỏ tail và submitCommand Quit. Mỗi writer lấy một frame bằng atomically nextFrame, rồi sendAll ngoài STM; chỉ một writer ghi mỗi socket nên không xen byte. Send lỗi đóng đúng socket và submit Quit của actor đó; writer hỏng bỏ frame còn lại đến marker cuối, không cản writer kia.
+Reader dùng `Protocol.feedFrames`, giữ buffer tối đa 256 byte hoặc 257 nếu cuối là CR chờ LF; mỗi recv lấy tối đa phần còn lại của frame 258 byte. Frame đủ LF gửi Payload vào mailbox 32 request rồi chờ ack xử lý; worker thực hiện parse/step/encode. Wire QUIT đi FIFO; EOF bỏ tail và thêm actor vào control Set độc lập với mailbox. Dòng quá dài được worker xếp lỗi trước control disconnect. Reader không submit coordinator trực tiếp. Mỗi writer lấy frame bằng atomically nextWorkerFrame, rồi sendAll ngoài STM; một writer/socket giữ nguyên thứ tự byte. Send lỗi đóng socket và báo disconnect actor qua control, không cản writer đối thủ.
 
-`runServer = runServerWith Rules.step initialGameState` là điểm nối lõi thật. runServerWith giữ chữ ký cũ để test dùng stub/fixture; tạo một Coordinator bằng atomically newCoordinator. Lobby không giữ GameState. MVar chỉ bảo vệ registry socket, danh sách writer đã drain và cờ stopped khi cleanup/lỗi nội bộ; không quyết định lượt/winner. Hai API coordinate/applyCommand thuần vẫn được giữ để đối chiếu và dùng lại prepare/encode với API STM; không viết lại luật.
+`runServer = runServerWith Rules.step initialGameState` vẫn nối lõi thật. runServerWith giữ chữ ký để test dùng fixture; worker tạo coordinator trong phạm vi capability đã chọn. Lobby không giữ GameState. MVar bảo vệ registry socket, writer đã drain và cờ stopped, không quyết định lượt/winner. Hai API coordinate/applyCommand thuần vẫn dùng chung prepare/encode với API STM; không viết lại luật.
 
 WELCOME được xếp đầu kênh khi admission trong STM; frame trước đó cho socket chưa có bị bỏ. Admission kiểm tra Finished nên không tạo người thay thế sau khi kết thúc. Transaction cuối xếp SHOT WIN/GAME_OVER trước marker Nothing cho mỗi queue. Supervisor chỉ dừng khi mọi writer đã được admission drain marker; nếu admission muộn đụng Finished, acceptor chờ writer hiện hữu thay vì hủy batch cuối. EOF/QUIT sau Finished không tạo thêm event hoặc đổi winner. Cleanup shutdown/close socket trước khi join worker để đánh thức IO Windows.
 
@@ -50,14 +50,16 @@ renderBoards chỉ nhận PlayerView, dùng cùng renderGrid với preview rende
 
 ClientMain không tham số, [PORT], --play [PORT] hoặc --place [PORT] đều mở phiên tương tác. Chế độ một lệnh vẫn dùng [PORT] "COMMAND". Người chơi nhập A1 H cho tàu và chỉ A6 cho phát bắn; Protocol tự encode thông điệp TCP.
 
-## Kiến trúc STM C-04
+## Kiến trúc STM qua worker NM-05
 
 ```mermaid
 flowchart LR
     P1["Client P1"] -->|"PLACE / FIRE"| N1["Reader P1"]
     P2["Client P2"] -->|"PLACE / FIRE"| N2["Reader P2"]
-    N1 -->|"PlayerId do server gán + payload"| CO["Coordinator.submitPayload<br/>atomically: parse / step / enqueue"]
-    N2 --> CO
+    N1 -->|"PlayerId + payload; chờ ack"| MB["TBQueue mailbox 32"]
+    N2 --> MB
+    MB --> GW["GameWorker: withAsyncOn capability"]
+    GW --> CO["Coordinator.submitPayload<br/>atomically: parse / step / enqueue / ack"]
     CO <-->|"đọc/ghi"| GS[("TVar GameState<br/>P1, P2, Phase")]
     CO --> STEP["Rules.step<br/>hàm thuần"]
     STEP --> BOARD["Board / Types"]
@@ -124,7 +126,7 @@ viewFor :: PlayerId -> GameState -> PlayerView
 
 - `Coord` dùng cột/hàng bắt đầu từ 1; `A1 = Coord 1 1`, `J10 = Coord 10 10`. Giá trị ngoài bàn vẫn biểu diễn được để trả `InvalidCoordinate`; A-02/Rules phải kiểm tra trước khi dùng.
 - `ShipPlacement` gồm ID, điểm đầu, hướng; độ dài lấy từ `shipLength`, không nhận độ dài tự chọn. `FleetPlacement` là danh sách để không mất tàu trùng ID trước bước kiểm tra.
-- `Fleet` bọc `Map ShipId (Set Coord)`, được `Board.placeFleet` A-02 tạo sau khi kiểm tra đủ năm tàu, đúng độ dài/hình dạng, trong bàn, không chồng. Cho phép chạm cạnh/góc như R-01. Types chỉ xuất type Fleet và hàm đọc fleetShips; constructor/record update nằm trong module private Internal.Fleet. Rules và fixture phải tạo qua placeFleet, không import Internal.
+- `Fleet` giữ `Map ShipId (Set Coord)` và, từ NM-06, tập 17 ô tính sẵn cùng bảng UArray Int Word8 100 ô. `Board.placeFleet` tạo cả geometry/metadata sau khi kiểm tra đủ năm tàu, đúng độ dài/hình dạng, trong bàn, không chồng. Cho phép chạm cạnh/góc như R-01. Types chỉ xuất type Fleet/hàm đọc fleetShips; Board có fleetCells/shipAt đọc có kiểm tra. Constructor/record update nằm trong module private Internal.Fleet. Rules và fixture phải tạo qua placeFleet, không import Internal. Bảng tra cứu này là dữ liệu chương trình, không phải cache CPU; xem [NM-06](fleet_index.md).
 - `PlayerState` giữ `Maybe Fleet` và lịch sử bắn vào đối thủ `Map Coord Outcome`. `Nothing` nghĩa là chưa đặt tàu; chỉ `Right fleet` của `placeFleet` được gắn bằng `Just`. Các ô bị đối thủ bắn trên bàn mình lấy từ lịch sử của người kia qua `shotsReceived :: PlayerId -> GameState -> Map Coord Outcome`, tránh lưu hai bản dữ liệu có thể lệch nhau.
 - `GameState` luôn có `gamePlayer1`, `gamePlayer2`, `gamePhase`. `setPlayerState` chỉ thay một record, không kiểm tra luật/chuyển giai đoạn. `Turn` đòi hỏi cả hai đội tàu đã hợp lệ; `Finished winner AllShipsSunk` không có lượt tiếp theo. `Finished winner OpponentLeft` cũng có thể xảy ra khi đang đặt tàu.
 - `Left GameError` không trả trạng thái mới: C giữ nguyên toàn bộ trạng thái cũ, chỉ báo lỗi cho người gửi. `Right` trả trạng thái/sự kiện mới. Rules chọn thứ tự kiểm tra lỗi; A-01 chưa chốt ưu tiên nếu một lệnh mắc nhiều lỗi.

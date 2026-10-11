@@ -6,7 +6,7 @@ import Control.Concurrent (threadDelay)
 import Control.Concurrent.Async (Async, cancel, mapConcurrently, race, wait, withAsync)
 import Control.Concurrent.MVar (newEmptyMVar, putMVar, readMVar)
 import Control.Exception (IOException, bracket, bracketOnError, catch, try)
-import Control.Monad (forM_, void)
+import Control.Monad (forM_, forever, void)
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Char8 as BSC
 import Data.List (isInfixOf, sort)
@@ -441,7 +441,9 @@ c07Spec = describe "C-07 slow TCP clients" $ do
       quitAndWait second [first, second] "P1" server
 
 flood :: Socket -> IO ()
-flood connection = sendText connection (concat (replicate 50000 "UNKNOWN\n"))
+-- Finite input can fit in the kernel buffer without ever blocking a writer.
+-- Keep pressure until closure; the caller's unchanged deadline bounds the test.
+flood connection = forever (sendText connection (concat (replicate 1024 "UNKNOWN\n")))
 
 -- Already-buffered errors may precede FIN; a reset is also valid after the
 -- overload monitor closes a socket with unread input. Neither may hang.

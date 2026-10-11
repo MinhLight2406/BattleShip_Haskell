@@ -1,0 +1,178 @@
+{
+  "schemaVersion": 1,
+  "finishedAt": "2026-10-11T19:24:14.546Z",
+  "results": [
+    {
+      "mode": "scan",
+      "samples": 30,
+      "medianUsPerCommand": 0.054467314961751306,
+      "median95CI": [
+        0.053795129801432286,
+        0.057000482177734374
+      ],
+      "p95SampleUsPerCommand": 0.08560811131286616,
+      "p95ResponseUs": null,
+      "blockMedians": [
+        0.07240478963216146,
+        0.05389038101196289,
+        0.05364534286499023
+      ],
+      "stabilitySpread": 0.3444165878260148,
+      "stable": false,
+      "allocatedBytesPerCommand": {
+        "median": 288.92280029296876,
+        "availableSamples": 30
+      },
+      "cpuSeconds": {
+        "median": 0.5352819445,
+        "availableSamples": 30
+      },
+      "gcCpuSecondsAccounting": {
+        "median": 0.004264844,
+        "availableSamples": 30
+      },
+      "gcCpuSecondsProcess": {
+        "median": null,
+        "availableSamples": 0
+      },
+      "maxLiveBytesProcess": {
+        "median": 65328,
+        "availableSamples": 30
+      },
+      "maxMemoryBytesProcess": {
+        "median": 6291456,
+        "availableSamples": 30
+      },
+      "retainedBytesPerFleet": null
+    },
+    {
+      "mode": "union",
+      "samples": 30,
+      "medianUsPerCommand": 0.7672457160949707,
+      "median95CI": [
+        0.7304063758850097,
+        0.7873930994669596
+      ],
+      "p95SampleUsPerCommand": 1.1460638628641762,
+      "p95ResponseUs": null,
+      "blockMedians": [
+        1.0028586603800456,
+        0.732009573618571,
+        0.7277980791727702
+      ],
+      "stabilitySpread": 0.3585038996467046,
+      "stable": false,
+      "allocatedBytesPerCommand": {
+        "median": 4597.399190266927,
+        "availableSamples": 30
+      },
+      "cpuSeconds": {
+        "median": 0.3010843875,
+        "availableSamples": 30
+      },
+      "gcCpuSecondsAccounting": {
+        "median": 0.0025979545,
+        "availableSamples": 30
+      },
+      "gcCpuSecondsProcess": {
+        "median": null,
+        "availableSamples": 0
+      },
+      "maxLiveBytesProcess": {
+        "median": 70152,
+        "availableSamples": 30
+      },
+      "maxMemoryBytesProcess": {
+        "median": 6291456,
+        "availableSamples": 30
+      },
+      "retainedBytesPerFleet": null
+    },
+    {
+      "mode": "construct",
+      "samples": 30,
+      "medianUsPerCommand": 2.7570802892049153,
+      "median95CI": [
+        2.6993041915893556,
+        2.959412857055664
+      ],
+      "p95SampleUsPerCommand": 3.664578744506836,
+      "p95ResponseUs": null,
+      "blockMedians": [
+        3.3855093053181964,
+        2.6993041915893556,
+        2.6982967224121097
+      ],
+      "stabilitySpread": 0.2492537433881784,
+      "stable": false,
+      "allocatedBytesPerCommand": {
+        "median": 15736.132120768229,
+        "availableSamples": 30
+      },
+      "cpuSeconds": {
+        "median": 0.5419072835000001,
+        "availableSamples": 30
+      },
+      "gcCpuSecondsAccounting": {
+        "median": 0.005722133,
+        "availableSamples": 30
+      },
+      "gcCpuSecondsProcess": {
+        "median": null,
+        "availableSamples": 0
+      },
+      "maxLiveBytesProcess": {
+        "median": 70272,
+        "availableSamples": 30
+      },
+      "maxMemoryBytesProcess": {
+        "median": 6291456,
+        "availableSamples": 30
+      },
+      "retainedBytesPerFleet": null
+    },
+    {
+      "mode": "retain",
+      "samples": 30,
+      "medianUsPerCommand": 4.832386291666667,
+      "median95CI": [
+        4.667126875,
+        5.286591958333334
+      ],
+      "p95SampleUsPerCommand": 8.524303974999999,
+      "p95ResponseUs": null,
+      "blockMedians": [
+        6.032172625,
+        4.696729333333334,
+        4.675669666666666
+      ],
+      "stabilitySpread": 0.2807107868575388,
+      "stable": false,
+      "allocatedBytesPerCommand": {
+        "median": 15762.158,
+        "availableSamples": 30
+      },
+      "cpuSeconds": {
+        "median": 0.0579252225,
+        "availableSamples": 30
+      },
+      "gcCpuSecondsAccounting": {
+        "median": 0.0338636865,
+        "availableSamples": 30
+      },
+      "gcCpuSecondsProcess": {
+        "median": null,
+        "availableSamples": 0
+      },
+      "maxLiveBytesProcess": {
+        "median": 16294056,
+        "availableSamples": 30
+      },
+      "maxMemoryBytesProcess": {
+        "median": 38797312,
+        "availableSamples": 30
+      },
+      "retainedBytesPerFleet": 1352.656
+    }
+  ]
+}

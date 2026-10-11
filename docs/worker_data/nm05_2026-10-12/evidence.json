@@ -1,0 +1,185 @@
+{
+  "schemaVersion": 1,
+  "branch": "Update_NUMA",
+  "status": "Functional gates passed; performance measured and repeated, worker timing remains inconclusive under NM-01 noise criterion.",
+  "tests": {
+    "worker": 25,
+    "windowsFunctional": 934,
+    "linuxFunctional": 935,
+    "fixture": 18,
+    "node": 80,
+    "frontend": 36,
+    "compose": 3
+  },
+  "sourceHashes": {
+    "src/Battleship/GameWorker.hs": "3cb10f857e4a138ef6505ceb363f583f49d0cf6f6492cace54ab47d2ce3a0085",
+    "src/Battleship/Coordinator.hs": "2e692c264f3873110ac1f1f383c58b4483a4c5164454aeef892b8e070645df07",
+    "src/Battleship/Server.hs": "69f94fa010a31405229be32f7b2ba18e0d5502ae063b74648dc098d6339f02b9",
+    "app/ServerMain.hs": "3a9a9b6bb73794092b221998b810a02a62ef4558a26b8a0db850b162b4e5fa6b",
+    "test/GameWorkerSpec.hs": "6cb84fc6205c3ca78bc63c9aa90aba8ad44dc30b99bff7e58756154459e57fef",
+    "test/ServerSpec.hs": "a76eab700e133e62b9107b6a8b10f0d90a7c3fc9f5c689938e39fda4758fa90f",
+    "test/IntegrationSpec.hs": "f328d7e7643b4de8ff0fdcb07409216afec24e4bdc602f296f67873082c44b29",
+    "bench/Fixtures.hs": "9d36b04d924f55c669f942c374e8dfb46c1ec27922d69ba4fefd7f3c84ad4dd6",
+    "bench/FixturesSpec.hs": "3705fc912db8514589691249cc04bca3e294d206cbb924294f8e90912dff7298",
+    "bench/Main.hs": "5da45df3a70b9b3a0b3c73418b84a878f8b212b295da2f838b2dbd64f9afa242",
+    "package.yaml": "de4f4e4b334267ea1b82ff9affe4cfb05496fba04b2a20061060813338bbfc94",
+    "compose.yaml": "c6a97b4c1f2ef47f4572cf22fa2e65c5d758f893d35c66b60f0372d1b92d2036",
+    "scripts/start-affinity.mjs": "30649624c53f0da84811a1b8592330c66dcd4636da7942353139155111ac18f3",
+    "scripts/benchmark-runtime.mjs": "6d8f97896530bcc39414af4855e0eb5ce15454b80039feb6d5ee36d886bb7aa3"
+  },
+  "gateLogs": {
+    "windows-build-verified.log": {
+      "sha256": "044b66b7146708b9bfc5ab7f7e98358bd8b4b9a602522cef37497c01379d79dc",
+      "summary": []
+    },
+    "windows-test-verified.log": {
+      "sha256": "172773782dbae13d574a3b26195faeb5c49c0c413e811b50c48c8fcd7db3e8e0",
+      "summary": [
+        "18 examples, 0 failures",
+        "battleship-haskell> Test suite battleship-benchmark-test passed",
+        "934 examples, 0 failures",
+        "battleship-haskell> Test suite battleship-test passed"
+      ]
+    },
+    "linux-build-test-release.log": {
+      "sha256": "304edbb48a76c9dec83717a2413662c13a0c0f88b3cb8cb1a2e32dd5b3b241e5",
+      "summary": [
+        "#12 45.72 18 examples, 0 failures",
+        "#12 45.73 battleship-haskell> Test suite battleship-benchmark-test passed",
+        "#12 157.1 935 examples, 0 failures",
+        "#12 157.1 battleship-haskell> Test suite battleship-test passed"
+      ]
+    },
+    "node-unit-release.log": {
+      "sha256": "6523efb33538b08a7db0a23d13cc37a0739cb12087fb05087fe3a61adfd8fd2b",
+      "summary": [
+        "ℹ tests 80",
+        "ℹ pass 80",
+        "ℹ fail 0"
+      ]
+    },
+    "frontend-unit.log": {
+      "sha256": "88838afa16b000ff47a490776a74ef64e6cf0c273946553a39310b9a81d8608a",
+      "summary": [
+        "ℹ tests 36",
+        "ℹ pass 36",
+        "ℹ fail 0"
+      ]
+    },
+    "compose-test-release.log": {
+      "sha256": "c488498b0e5a461afa827b5f98cc4aa1277db23be46a43d3c7c7d04cb429984e",
+      "summary": [
+        "ℹ tests 3",
+        "ℹ pass 3",
+        "ℹ fail 0"
+      ]
+    },
+    "benchmark-build-release.log": {
+      "sha256": "d56f1eb0856ac719a6f262786f980c5889493e262467544a107a6e95ae710d7d",
+      "summary": []
+    },
+    "benchmark-run-release.log": {
+      "sha256": "b2a07ff9248c333a2bab8b503c569f0c68b767e8b9be987c1461730cac2edd9e",
+      "summary": [
+        "Completed; results preserved in docs/worker_data/nm05_2026-10-12."
+      ]
+    },
+    "worker-repeat.log": {
+      "sha256": "e5e35049548b58ae529618a115fade91943f464d62113f6b9753832c95bcf4f5",
+      "summary": [
+        "Completed; results preserved in docs/worker_data/nm05_2026-10-12."
+      ]
+    }
+  },
+  "artifacts": {
+    "container.json": "053a9ba6d6d5df86eb25bb7d046757daab5247f848f7fee4f5a7b68c9f639f67",
+    "rts.json": "ddd741128216a4583724924ed4dd47061d76dcde45138a5532eaa75239d650ae",
+    "shutdown-restart.json": "58c8914cf1f4ddb9194136c191881d04ebc0ba8903b1019bf1d09f3d2c69200a",
+    "comparisons.json": "850574b7400b0821b421acdcb1762d9dee47aac03354ca194c70f0513ebae8ba",
+    "repeat-worker.mjs": "ca298c9cf45f234aa0c85aefc873dbe16d2231d906a900a1c8ff3ece81671f1e",
+    "cached-verification.Dockerfile": "ecf55609752fc97158afab8b86f13960689008bcce6ded764f865b7d006812dd",
+    "google-docs-verification.json": "56b7d1e2021cd396522e99d4b51bf1f3ea9694f3f930134992dee0713f59b5f8",
+    "README.md": "df27dbc57e409b3cf1e8fd9224ef7ff059db3c30bb07e1f61827d5d25bfe0c4b"
+  },
+  "initialFailedGates": {
+    "linux-build-test.log": "9edd7d5e6f9d17c9df39f6725cc5523a9fee56b6bad518c58446df6f85556341",
+    "linux-build-test-final.log": "e33d75b9ae178645bdbb4af3080114eb7ed855cf593a98801d0cc94f4f668610"
+  },
+  "initialFailedGatesDetail": [
+    {
+      "gate": "linux-build-test.log",
+      "seed": 330315545,
+      "failure": "C-07 both slow shutdown deadline",
+      "fix": "Finite flood may remain buffered; use continuous bounded blocks until server closes."
+    },
+    {
+      "gate": "linux-build-test-final.log",
+      "seed": 1148757355,
+      "failure": "C-07 two flooding senders deadline",
+      "fix": "Request a 64 KiB TCP send buffer; retain 2 s send watchdog and 10 s test deadlines."
+    }
+  ],
+  "limits": {
+    "ramNUMAPlacementVerified": false,
+    "cacheOrMigrationCountersMeasured": false,
+    "physicalWiFiGameRun": false,
+    "freshNoCacheLinuxBuild": false
+  },
+  "linuxBuild": "Cached DK-04 compiler/dependencies; full current source stack build/test -Werror; original production runtime stage.",
+  "performanceFirst": {
+    "samples": 450,
+    "warmups": 75,
+    "groups": 15,
+    "startedAt": "2026-10-11T17:29:47.737Z",
+    "finishedAt": "2026-10-11T17:46:39.356Z",
+    "unstableGroups": [
+      "worker/N1",
+      "worker/N2",
+      "worker/default"
+    ]
+  },
+  "performanceFirstHashes": {
+    "manifest.json": "264fa7ed357d7224382c848f16fc88414a6f8fc79205ac538d36b064bc3c5c9c",
+    "fixtures.json": "f2ba5c5403ec9d965520b7df7e5456f1bc1474e7b886a6af30f87253b895da99",
+    "samples.jsonl": "e74dfac9dc79620afffed613eca0f5412cb7d1dee98f97d351b77fe3b6d7dcd2",
+    "summary.json": "5081eea9756e0d1143978c64244f2fe774ffc1ce7d16d54373b4019c874f34c5"
+  },
+  "sourceHEAD": "94a7aaaf68860a55cb7528c76f7c30f8fc1b6023",
+  "sourceDirty": true,
+  "performanceRepeat": {
+    "samples": 90,
+    "warmups": 15,
+    "groups": 3,
+    "startedAt": "2026-10-11T17:47:58.645Z",
+    "finishedAt": "2026-10-11T17:52:55.853Z",
+    "unstableGroups": [
+      "worker/N1",
+      "worker/N2",
+      "worker/default"
+    ],
+    "reason": "Repeat complete worker layer after first run exceeded NM-01 10% block median spread; no sample discarded."
+  },
+  "images": {
+    "haskellRuntime": "sha256:6d4868f0558185e6c78b64c1bdfc42c4d827224adc8a6bb95c4eb0baabe65a83",
+    "benchmark": "sha256:f452fd4ffba8232c96c6255b720aca40223012a5d66e2241e68bdeda823cad08",
+    "web": "sha256:b01ac11fc67f9725546fe9969a9a070b532fe76f30501bab834a3e781bddf949"
+  },
+  "performanceRepeatHashes": {
+    "manifest.json": "f829ba1db924d6eb97719b2da0bd23e2f4cf8e2043f1b4d2fba680ff0742cf49",
+    "samples.jsonl": "e3075614769d05810f64da320dd0aea38c16077900b69a3f7d9cd155f2abb913",
+    "summary.json": "bfcc7276e47ed886ee9182cbfe611f66cddce7d48583a963d41e38b1f15cec4b"
+  },
+  "reportSha256": "7ce36f321784653c8857c264c6c9b0908f993b4189ef72e83202749ca71c37f8",
+  "cleanupVerified": {
+    "dockerPsEmpty": true,
+    "ownedContainersRemaining": 0,
+    "checkedAt": "2026-10-11T17:57:48Z"
+  },
+  "googleDocs": {
+    "documentId": "1-T7iROKnpNmbHCWr-XmAnOSihwIi-Y5PacRBFk4Xyhw",
+    "parentTabId": "t.bskjwjzb41bq",
+    "newTabId": "t.aexr75u196ee",
+    "readbackVerified": true,
+    "oldTabsPreserved": 10
+  }
+}

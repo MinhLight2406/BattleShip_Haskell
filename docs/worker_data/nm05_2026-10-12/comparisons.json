@@ -1,0 +1,141 @@
+{
+  "schemaVersion": 1,
+  "unit": "microseconds per command",
+  "timingConclusion": "Insufficient evidence: all worker groups exceed NM-01 10% noise threshold in both complete runs.",
+  "baselineScope": "Historical NM-03 source; current source also adds structural forcing and SO_SNDBUF. Cross-run differences cannot be attributed solely to the worker.",
+  "matchedScope": "Current coordinator vs worker share source/compiler/strictness/workload, but worker includes per-match startup/shutdown, queues, ack and supervision; worker timing unstable.",
+  "profiles": [
+    {
+      "profile": "N1",
+      "coordinatorMedianUsPerCommand": 8.455610168253969,
+      "workerFirstMedianUsPerCommand": 16.616202839931155,
+      "workerRepeatMedianUsPerCommand": 14.339516919104991,
+      "workerFirstSpread": 0.17914461558391068,
+      "workerRepeatSpread": 0.1739407212362777,
+      "workerTimingStable": false,
+      "allocationBytesPerCommand": {
+        "coordinator": 61115.40307301587,
+        "workerRepeat": 64549.432289156626,
+        "observedPercentChange": 5.618925906515004
+      },
+      "historicalComparison": [
+        {
+          "mode": "core",
+          "nm03MedianUs": 8.200843756288428,
+          "nm05FirstMedianUs": 5.6982815916296765,
+          "observedPercentChange": -30.51591078954261,
+          "causalWorkerConclusion": false
+        },
+        {
+          "mode": "coordinator",
+          "nm03MedianUs": 12.166930566691413,
+          "nm05FirstMedianUs": 8.455610168253969,
+          "observedPercentChange": -30.50334164475037,
+          "causalWorkerConclusion": false
+        },
+        {
+          "mode": "tcp",
+          "nm03MedianUs": 33592.72654,
+          "nm05FirstMedianUs": 33522.51774,
+          "observedPercentChange": -0.2090000045587237,
+          "causalWorkerConclusion": false
+        },
+        {
+          "mode": "web",
+          "nm03MedianUs": 33585.19834,
+          "nm05FirstMedianUs": 33593.71552,
+          "observedPercentChange": 0.025359921694589893,
+          "causalWorkerConclusion": false
+        }
+      ]
+    },
+    {
+      "profile": "N2",
+      "coordinatorMedianUsPerCommand": 10.505945907936507,
+      "workerFirstMedianUsPerCommand": 25.35308717728055,
+      "workerRepeatMedianUsPerCommand": 22.195475679862305,
+      "workerFirstSpread": 0.11052733578286156,
+      "workerRepeatSpread": 0.16757038402298152,
+      "workerTimingStable": false,
+      "allocationBytesPerCommand": {
+        "coordinator": 61115.82999365079,
+        "workerRepeat": 64559.79703958692,
+        "observedPercentChange": 5.635147303560983
+      },
+      "historicalComparison": [
+        {
+          "mode": "core",
+          "nm03MedianUs": 11.048353042668158,
+          "nm05FirstMedianUs": 7.267139325723948,
+          "observedPercentChange": -34.224229641661175,
+          "causalWorkerConclusion": false
+        },
+        {
+          "mode": "coordinator",
+          "nm03MedianUs": 15.771411898045038,
+          "nm05FirstMedianUs": 10.505945907936507,
+          "observedPercentChange": -33.3861421168083,
+          "causalWorkerConclusion": false
+        },
+        {
+          "mode": "tcp",
+          "nm03MedianUs": 33631.557360000006,
+          "nm05FirstMedianUs": 33620.81154,
+          "observedPercentChange": -0.03195159797382274,
+          "causalWorkerConclusion": false
+        },
+        {
+          "mode": "web",
+          "nm03MedianUs": 33655.896779999995,
+          "nm05FirstMedianUs": 33609.52316,
+          "observedPercentChange": -0.1377875036375653,
+          "causalWorkerConclusion": false
+        }
+      ]
+    },
+    {
+      "profile": "default",
+      "coordinatorMedianUsPerCommand": 22.599161253968255,
+      "workerFirstMedianUsPerCommand": 63.19773298909926,
+      "workerRepeatMedianUsPerCommand": 55.808110694205396,
+      "workerFirstSpread": 0.3073289692194545,
+      "workerRepeatSpread": 0.20755714498644598,
+      "workerTimingStable": false,
+      "allocationBytesPerCommand": {
+        "coordinator": 61115.375644444444,
+        "workerRepeat": 64613.52858290304,
+        "observedPercentChange": 5.723850833888466
+      },
+      "historicalComparison": [
+        {
+          "mode": "core",
+          "nm03MedianUs": 25.02876243711571,
+          "nm05FirstMedianUs": 16.953200551680407,
+          "observedPercentChange": -32.265126594752736,
+          "causalWorkerConclusion": false
+        },
+        {
+          "mode": "coordinator",
+          "nm03MedianUs": 31.83719707993071,
+          "nm05FirstMedianUs": 22.599161253968255,
+          "observedPercentChange": -29.016485976354556,
+          "causalWorkerConclusion": false
+        },
+        {
+          "mode": "tcp",
+          "nm03MedianUs": 33638.212419999996,
+          "nm05FirstMedianUs": 33611.18242,
+          "observedPercentChange": -0.08035504283790962,
+          "causalWorkerConclusion": false
+        },
+        {
+          "mode": "web",
+          "nm03MedianUs": 33724.98798,
+          "nm05FirstMedianUs": 33631.25775999999,
+          "observedPercentChange": -0.2779251398268512,
+          "causalWorkerConclusion": false
+        }
+      ]
+    }
+  ]
+}

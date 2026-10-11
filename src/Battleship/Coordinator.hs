@@ -14,6 +14,8 @@ import Control.Monad (filterM, forM_, void)
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Char8 as BSC
 import Data.Maybe (fromMaybe)
+import qualified Data.Map.Strict as Map
+import qualified Data.Set as Set
 import Numeric.Natural (Natural)
 
 -- End markers share the FIFO with frames, so writers drain GAME_OVER first.
@@ -35,8 +37,9 @@ newCoordinator = newCoordinatorWithCapacity 128
 newCoordinatorWithCapacity :: Natural -> GameState -> STM Coordinator
 newCoordinatorWithCapacity capacity initial
   | capacity < 5 = throwSTM (userError "Outbox capacity must be at least 5")
-  | otherwise = Coordinator <$> newTVar initial <*> newTBQueue capacity
+  | otherwise = forceState initial `seq` (Coordinator <$> newTVar initial <*> newTBQueue capacity
       <*> newTBQueue capacity <*> pure capacity <*> newTVar []
+      )
 
 readGameState :: Coordinator -> STM GameState
 readGameState = readTVar . gameState
@@ -136,12 +139,32 @@ wouldOverflow coordinator frames recipient = do
 -- submissions/readers trigger STM revalidation, never a partial publication.
 commitBatch :: Coordinator -> (Maybe GameState, [(PlayerId, BS.ByteString)]) -> STM (Either ProtocolError Bool)
 commitBatch coordinator (accepted, frames) = do
+  -- Traverse state and strict frame buffers before publication. The worker
+  -- evaluates these thunks; writers do not inherit deferred rule computation.
+  let forced = maybe () forceState accepted `seq`
+        foldr (\(_, bytes) rest -> BS.length bytes `seq` rest) () frames
+  forced `seq` pure ()
   forM_ accepted (writeTVar (gameState coordinator))
   forM_ frames $ \(recipient, frame) -> writeTBQueue (outbox coordinator recipient) (Just frame)
   let finished = maybe False terminal accepted
   if finished then forM_ [P1, P2] $ \recipient -> writeTBQueue (outbox coordinator recipient) Nothing
   else pure ()
   pure (Right (not finished))
+
+forceState :: GameState -> ()
+forceState state = phase (gamePhase state) `seq` player (gamePlayer1 state) `seq` player (gamePlayer2 state)
+  where
+    phase Placing = ()
+    phase (Turn actor) = actor `seq` ()
+    phase (Finished actor reason) = actor `seq` reason `seq` ()
+    player value = fleet (playerFleet value) `seq`
+      Map.foldrWithKey (\cell outcome rest -> coord cell `seq` result outcome `seq` rest) () (playerShots value)
+    fleet Nothing = ()
+    fleet (Just value) = Map.foldrWithKey (\ship cells rest -> ship `seq`
+      Set.foldr (\cell remaining -> coord cell `seq` remaining) () cells `seq` rest) () (fleetShips value)
+    coord (Coord column row) = column `seq` row `seq` ()
+    result (Sunk ship) = ship `seq` ()
+    result outcome = outcome `seq` ()
 
 terminal :: GameState -> Bool
 terminal state = case gamePhase state of

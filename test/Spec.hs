@@ -3,6 +3,8 @@ module Main (main) where
 import qualified BoardSpec
 import qualified ClientSpec
 import qualified CoordinatorSpec
+import qualified GameWorkerSpec
+import qualified FleetIndexSpec
 import qualified IntegrationSpec
 import qualified ProtocolSpec
 import qualified RulesSpec
@@ -16,11 +18,13 @@ main :: IO ()
 main = hspec $ do
   TypesSpec.spec
   BoardSpec.spec
+  FleetIndexSpec.spec
   RulesSpec.spec
   ViewSpec.spec
   ProtocolSpec.spec
   SharedContractSpec.spec
   CoordinatorSpec.spec
+  GameWorkerSpec.spec
   ServerSpec.spec
   ClientSpec.spec
   IntegrationSpec.spec

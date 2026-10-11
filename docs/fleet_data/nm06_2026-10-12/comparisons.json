@@ -1,0 +1,62 @@
+{
+  "schemaVersion": 1,
+  "lookup": {
+    "observedPercentChange": -82.96698780480524,
+    "paired95CI": [
+      -83.97410312110063,
+      -81.90128958918497
+    ],
+    "bootstrapDraws": 2000,
+    "seed": 20261011,
+    "timingEligible": false
+  },
+  "occupied": {
+    "observedPercentChange": -73.47492747163918,
+    "paired95CI": [
+      -75.11232601748831,
+      -72.43701722254984
+    ],
+    "bootstrapDraws": 2000,
+    "seed": 20261011,
+    "timingEligible": true
+  },
+  "game": [
+    {
+      "profile": "N1",
+      "observedPercentChange": -7.7367647949095675,
+      "paired95CI": [
+        -8.560279448483577,
+        -6.438762613032978
+      ],
+      "bootstrapDraws": 2000,
+      "seed": 20261011,
+      "timingEligible": true,
+      "allocationPercentChange": -3.3191667430942373
+    },
+    {
+      "profile": "N2",
+      "observedPercentChange": -7.377243633114028,
+      "paired95CI": [
+        -8.825672345384389,
+        -5.595520127583012
+      ],
+      "bootstrapDraws": 2000,
+      "seed": 20261011,
+      "timingEligible": true,
+      "allocationPercentChange": -3.3191667430942373
+    },
+    {
+      "profile": "default",
+      "observedPercentChange": -7.734822922463646,
+      "paired95CI": [
+        -9.652870483869426,
+        -4.588644985111042
+      ],
+      "bootstrapDraws": 2000,
+      "seed": 20261011,
+      "timingEligible": true,
+      "allocationPercentChange": -3.3191667430942373
+    }
+  ],
+  "note": "Timing requires BOTH complete groups to meet <=10% noise; CI alone cannot override failed stability. No causal CPU-cache claim."
+}

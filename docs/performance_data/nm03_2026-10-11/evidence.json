@@ -1,0 +1,80 @@
+{
+  "schemaVersion": 1,
+  "image": {
+    "name": "battleship-benchmark:nm03",
+    "id": "sha256:99462ab80cbbe8f8c1bdbd10cf73030f11f413b4a06f037d464268289a37509c",
+    "architecture": "amd64",
+    "os": "linux",
+    "user": "node"
+  },
+  "baseImages": {
+    "haskellTest": "sha256:11c0b31fa0888f820f6f285f46bd3365b13f37ae4d2f9e7d213f7fb881a8008e",
+    "web": "sha256:b01ac11fc67f9725546fe9969a9a070b532fe76f30501bab834a3e781bddf949"
+  },
+  "docker": {
+    "desktop": "4.94.0 (241994)",
+    "engine": "29.8.2",
+    "context": "desktop-linux"
+  },
+  "tests": {
+    "windowsFunctional": 907,
+    "linuxFunctional": 908,
+    "benchmarkFixture": 15,
+    "nodeTopologyAndBenchmark": 54,
+    "frontend": 36,
+    "failures": 0
+  },
+  "artifactsSha256": {
+    "manifest.json": "727292be3520d6e6780dfbbe9d9b48e51b01f3340cc5b7599a304eb0843f2bcb",
+    "fixtures.json": "f2ba5c5403ec9d965520b7df7e5456f1bc1474e7b886a6af30f87253b895da99",
+    "summary.json": "7692886c5326de83b0f6c8080998950d5db04af9ea413916a1d611a30d62db32",
+    "samples.jsonl": "cf7f564ddd88933b34cb4e11dca33de9cc061fe44eb56b4d8d970d11e6e63878",
+    "comparisons.json": "173a5304290014c334635829966244c38a97e14fd466880d1ab162c577ccd280"
+  },
+  "cleanup": {
+    "benchmarkExitCode": 0,
+    "temporaryBenchmarkContainerAbsent": true
+  },
+  "runPolicy": {
+    "network": "none (loopback only)",
+    "filesystem": "read-only, tmpfs /tmp, /results writable",
+    "concurrentBuildOrTestDuringMeasuredRun": false,
+    "imageBuild": "cached DK-04 Linux compiler/dependencies; current mounted source verified against embedded build-source hashes",
+    "physicalNUMAValidated": false,
+    "realLANValidatedByThisRun": false
+  },
+  "gateLogExcerpts": {
+    "build-windows-final.log": {
+      "sha256": "f4f053a0e9ec7a598e3e831fe3ab67dfd5948faf99bd98916e9724486c294797",
+      "tail": "[2 of 2] Linking C:\\\\Users\\\\nhatm\\\\Downloads\\\\Laa\\\\Project\\\\BattleShip_Haskell\\\\.stack-work\\\\dist\\\\1a191874\\\\build\\\\battleship-client\\\\battleship-client.exe [Objects changed]\nPreprocessing executable 'battleship-server' for battleship-haskell-0.1.0.0...\nBuilding executable 'battleship-server' for battleship-haskell-0.1.0.0...\n[1 of 1] Compiling Main\n[2 of 2] Linking C:\\\\Users\\\\nhatm\\\\Downloads\\\\Laa\\\\Project\\\\BattleShip_Haskell\\\\.stack-work\\\\dist\\\\1a191874\\\\build\\\\battleship-server\\\\battleship-server.exe [Objects changed]\nPreprocessing benchmark 'battleship-benchmark' for battleship-haskell-0.1.0.0...\nBuilding benchmark 'battleship-benchmark' for battleship-haskell-0.1.0.0...\n[3 of 3] Compiling Main [Source file changed]\n[4 of 4] Linking C:\\\\Users\\\\nhatm\\\\Downloads\\\\Laa\\\\Project\\\\BattleShip_Haskell\\\\.stack-work\\\\dist\\\\1a191874\\\\build\\\\battleship-benchmark\\\\battleship-benchmark.exe [Objects changed]\nbattleship-haskell> copy/register\nInstalling library in C:\\Users\\nhatm\\Downloads\\Laa\\Project\\BattleShip_Haskell\\.stack-work\\install\\f817aa4e\\lib\\x86_64-windows-ghc-9.10.3-b42a\\battleship-haskell-0.1.0.0-6UTzbgPiSmuKMqxKnWN7KO\nInstalling executable battleship-client in C:\\Users\\nhatm\\Downloads\\Laa\\Project\\BattleShip_Haskell\\.stack-work\\install\\f817aa4e\\bin\nInstalling executable battleship-server in C:\\Users\\nhatm\\Downloads\\Laa\\Project\\BattleShip_Haskell\\.stack-work\\install\\f817aa4e\\bin\nRegistering library for battleship-haskell-0.1.0.0..."
+    },
+    "test-windows.log": {
+      "sha256": "1fe717f9d896e6e0426eae205643012485d059ccc9bf99cbdb2f90efc87c5a9b",
+      "tail": "  plays placement, repair, miss, hit, sunk and win with coordinates only; both clients show private boards [v]\nD-06 three production executables driven by output\n  repairs errors, changes turns and lets P2 win a new mixed fleet game without an input script [v]\n  stops the server when the first real client closes while waiting for the second [v]\n  P1 closes midgame; the other interactive process sees victory and exits [v]\n  P2 closes midgame; the other interactive process sees victory and exits [v]\n\nFinished in 129.2825 seconds\n907 examples, 0 failures\n\n\n\nbattleship-haskell> Test suite battleship-test passed\nCompleted 2 action(s)."
+    },
+    "fixture-windows-final.log": {
+      "sha256": "001bd96f46c47f0f29c159a9c5a946ae4d48a8d73472c55b5928aaf71e5ece32",
+      "tail": "    completes a game with concrete error/hit/miss/sunk/win expectations [v]\n    agrees with real STM coordinator and all filtered response batches [v]\n    has a stable checksum across fresh executions [v]\n  uses distinct workloads for the fixed seeds [v]\n  fully forces a fleet field in the second player's view [v]\n  fully forces a nested ship ID in a shot outcome [v]\n\nFinished in 0.0388 seconds\n15 examples, 0 failures\n\n\n\nbattleship-haskell> Test suite battleship-benchmark-test passed\nCompleted 2 action(s)."
+    },
+    "build-linux-final.log": {
+      "sha256": "4abc7764efc96a38cd13f38776bc3fde31f4441b51ab7dc1c52bd491d367e77d",
+      "tail": "#15 exporting to image\n#15 exporting layers\n#15 exporting layers 0.5s done\n#15 exporting manifest sha256:fb35b3de5f49a2176c6bb4da1002b614b870162ceb80178b472607218ce5aa87 0.0s done\n#15 exporting config sha256:3213254f032abec2d3dbdf23e2e5d121cdb261821d1554c9bb40127525211e6e 0.0s done\n#15 exporting attestation manifest sha256:556ae4688cee2b2d188933d55a732377de51c714ed26ed7148e050c0a7f0dc64 0.0s done\n#15 exporting manifest list sha256:99462ab80cbbe8f8c1bdbd10cf73030f11f413b4a06f037d464268289a37509c\n#15 exporting manifest list sha256:99462ab80cbbe8f8c1bdbd10cf73030f11f413b4a06f037d464268289a37509c 0.0s done\n#15 naming to docker.io/library/battleship-benchmark:nm03 done\n#15 unpacking to docker.io/library/battleship-benchmark:nm03\n#15 unpacking to docker.io/library/battleship-benchmark:nm03 0.2s done\n#15 DONE 0.9s\n\nView build details: docker-desktop://dashboard/build/desktop-linux/desktop-linux/sca2rl8oz6nwg2pgbc4eowckp"
+    },
+    "test-linux.log": {
+      "sha256": "fe9dc42ef45fbb183fefe504d57ab31cc0c96e1f5362c1d42cc3f48c559e5233",
+      "tail": "  plays placement, repair, miss, hit, sunk and win with coordinates only; both clients show private boards [✔]\nD-06 three production executables driven by output\n  repairs errors, changes turns and lets P2 win a new mixed fleet game without an input script [✔]\n  stops the server when the first real client closes while waiting for the second [✔]\n  P1 closes midgame; the other interactive process sees victory and exits [✔]\n  P2 closes midgame; the other interactive process sees victory and exits [✔]\n\nFinished in 111.2696 seconds\n908 examples, 0 failures\n\n\n\nbattleship-haskell> Test suite battleship-test passed\nCompleted 2 action(s)."
+    },
+    "node-tests-final.log": {
+      "sha256": "391c814ad824f8135913e34c6f0574390ceff67d2950e9d5dc35a13292aa9e36",
+      "tail": "✔ perf missing, denied, timeout, unsupported and uncounted are distinct failed evidence (6.1348ms)\n✔ mixed perf results cannot certify all the counters required for a benchmark (2.5682ms)\n✔ non-Linux returns a structured unsupported report without reading Linux files (0.3169ms)\n✔ CLI rejects bad arguments before inspecting or probing the machine (1.4161ms)\n✔ CLI emits valid JSON with exit codes for accepted, rejected and incomplete inspections (3.9997ms)\n✔ CLI handles unexpected IO failure and help without launching a game (0.431ms)\nℹ tests 54\nℹ suites 0\nℹ pass 54\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 270.6738"
+    },
+    "frontend-unit.log": {
+      "sha256": "d8520d50b4a604e749b4aa1c26b4a25722e48196e796fc3d06f5f476b04a8d47",
+      "tail": "✔ DK-01: the LAN JSON example is parseable and uses host origins at the public port (2.5206ms)\n✔ column letter + row number match Haskell coordinates, including J10 (6.4614ms)\n✔ placement rejects corners/overlap, allows touching and preserves input on errors (4.8324ms)\n✔ random and exhausted random placement always produce 17 distinct in-board cells (29.2125ms)\n✔ decode every actual server response in docs/protocol.md transcripts (5.8506ms)\n✔ server events alone drive turns, error preservation and private shot history (1.9355ms)\nℹ tests 36\nℹ suites 0\nℹ pass 36\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 2201.1348"
+    },
+    "smoke.log": {
+      "sha256": "0272bbb459f373423f419aa21adad8214418edc74a0144514d836aa33ba3ffa6",
+      "tail": "        \"median\": 0,\n        \"availableSamples\": 1\n      },\n      \"maxLiveBytesProcess\": {\n        \"median\": 167192,\n        \"availableSamples\": 1\n      },\n      \"maxMemoryBytesProcess\": {\n        \"median\": 65011712,\n        \"availableSamples\": 1\n      }\n    }\n  ]\n}"
+    }
+  }
+}

@@ -1,9 +1,10 @@
 -- | Pure board geometry and checked fleet construction (A-02/A-03).
-module Battleship.Board (inBounds, shipCells, placeFleet) where
+module Battleship.Board (inBounds, shipCells, placeFleet, fleetCells, shipAt) where
 
 import Battleship.Types
 import qualified Battleship.Internal.Fleet as Internal
 import Control.Monad (foldM)
+import Data.Array.Unboxed (accumArray, (!))
 import Data.List (find)
 import qualified Data.Map.Strict as Map
 import Data.Set (Set)
@@ -40,7 +41,13 @@ shipCells (ShipPlacement ship start@(Coord column row) orientation)
 placeFleet :: PlaceFleetFn
 placeFleet placements
   | count /= length ([minBound .. maxBound] :: [ShipId]) = Left (InvalidFleetSize count)
-  | otherwise = Internal.Fleet <$> foldM insertShip Map.empty placements
+  | otherwise = do
+      ships <- foldM insertShip Map.empty placements
+      let occupied = Set.unions (Map.elems ships)
+          index = accumArray (\_ code -> code) 0 (0, boardSize * boardSize - 1)
+            [(cellIndex coordinate, fromIntegral (fromEnum ship + 1))
+            | (ship, cells) <- Map.toList ships, coordinate <- Set.toList cells]
+      pure (Internal.Fleet ships occupied index)
   where
     count = length placements
     insertShip ships placement
@@ -52,3 +59,19 @@ placeFleet placements
             Just coordinate -> Left (ShipsOverlap coordinate)
             Nothing -> Right (Map.insert ship cells ships)
       where ship = placementShip placement
+
+-- | Immutable geometry computed only after the complete placement is valid.
+fleetCells :: Fleet -> Set Coord
+fleetCells = Internal.fleetOccupied
+
+-- | Validate before arithmetic/indexing, including extreme raw Int values.
+-- Codes 1..5 are private ShipId ordinals; zero means water, not a sixth ship.
+shipAt :: Coord -> Fleet -> Either GameError (Maybe ShipId)
+shipAt coordinate fleet
+  | not (inBounds coordinate) = Left (InvalidCoordinate coordinate)
+  | otherwise = Right $ case Internal.fleetIndex fleet ! cellIndex coordinate of
+      0 -> Nothing
+      code -> Just (toEnum (fromIntegral code - 1))
+
+cellIndex :: Coord -> Int
+cellIndex (Coord column row) = (row - 1) * boardSize + column - 1

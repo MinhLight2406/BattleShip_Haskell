@@ -1,0 +1,87 @@
+{
+  "seed": 20261011,
+  "draws": 2000,
+  "method": "resample 30 matched sampleIndex pairs; ratio of medians minus one, percent; Python random.Random",
+  "results": [
+    {
+      "mode": "core",
+      "profile": "N2",
+      "reference": "N1",
+      "medianChangePercent": 34.72215019578017,
+      "pairedBootstrap95CI": [
+        31.1826071464139,
+        36.284776856827804
+      ]
+    },
+    {
+      "mode": "core",
+      "profile": "default",
+      "reference": "N1",
+      "medianChangePercent": 205.19740627814778,
+      "pairedBootstrap95CI": [
+        197.12874033004883,
+        208.86539217723578
+      ]
+    },
+    {
+      "mode": "coordinator",
+      "profile": "N2",
+      "reference": "N1",
+      "medianChangePercent": 29.625231372827688,
+      "pairedBootstrap95CI": [
+        27.48817991154334,
+        32.166372365346184
+      ]
+    },
+    {
+      "mode": "coordinator",
+      "profile": "default",
+      "reference": "N1",
+      "medianChangePercent": 161.66991670922545,
+      "pairedBootstrap95CI": [
+        155.60752906771347,
+        164.31244152172187
+      ]
+    },
+    {
+      "mode": "tcp",
+      "profile": "N2",
+      "reference": "N1",
+      "medianChangePercent": 0.11559293930418768,
+      "pairedBootstrap95CI": [
+        -0.1180364232321357,
+        0.44499577702008897
+      ]
+    },
+    {
+      "mode": "tcp",
+      "profile": "default",
+      "reference": "N1",
+      "medianChangePercent": 0.13540395402507066,
+      "pairedBootstrap95CI": [
+        -0.19283664438786152,
+        0.3592993781894009
+      ]
+    },
+    {
+      "mode": "web",
+      "profile": "N2",
+      "reference": "N1",
+      "medianChangePercent": 0.2105047565426732,
+      "pairedBootstrap95CI": [
+        -0.12446797305836699,
+        0.38284949412281666
+      ]
+    },
+    {
+      "mode": "web",
+      "profile": "default",
+      "reference": "N1",
+      "medianChangePercent": 0.4162239525425271,
+      "pairedBootstrap95CI": [
+        0.05344967397257095,
+        0.6445245379518899
+      ]
+    }
+  ]
+}

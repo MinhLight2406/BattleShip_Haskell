@@ -1,0 +1,635 @@
+{
+  "schemaVersion": 1,
+  "branch": "Update_NUMA",
+  "head": "94a7aaaf68860a55cb7528c76f7c30f8fc1b6023",
+  "sourceDirty": true,
+  "status": "implementation and functional gates passed; paired benchmark completed; human A/B/R review pending",
+  "compiler": "GHC 9.10.3",
+  "snapshot": "lts-24.59",
+  "array": "0.5.8.0",
+  "tests": {
+    "fleetIndexExamples": 9,
+    "properties": 5,
+    "casesPerProperty": 1000,
+    "windowsFunctional": 943,
+    "linuxFunctional": 944,
+    "fixturesPerOS": 18,
+    "node": 82,
+    "compose": 3
+  },
+  "sourceHashes": {
+    "src/Battleship/Board.hs": "55dc5bb7b1136e2af42fa336c9ec4729f04e98221459e1e3a4d7f5390676a875",
+    "src/Battleship/Client.hs": "feac1380fc30e2f3762a29936a4c1fcf0c5d397679c334e0cbfeb7fe058e5686",
+    "src/Battleship/Coordinator.hs": "2e692c264f3873110ac1f1f383c58b4483a4c5164454aeef892b8e070645df07",
+    "src/Battleship/GameWorker.hs": "3cb10f857e4a138ef6505ceb363f583f49d0cf6f6492cace54ab47d2ce3a0085",
+    "src/Battleship/Protocol.hs": "95f01500656a7a0f1fca785bce0c4c1917384c9901e6cc0593dc81df660a93d7",
+    "src/Battleship/Rules.hs": "0bd64ef836aed1e1d58d5f311aaf9d38c1e19427333cc280f76f820b913743c3",
+    "src/Battleship/Server.hs": "69f94fa010a31405229be32f7b2ba18e0d5502ae063b74648dc098d6339f02b9",
+    "src/Battleship/Types.hs": "ca8776658b47f80648e25cd5487686e6fea9e718f8d013016e65269fac9fb310",
+    "src/Battleship/View.hs": "b2571b9eb9d89eebf928a62b19ac7044bfaaff41f9c9e7ad089a7ea8af1c5174",
+    "src/Battleship/Internal/Fleet.hs": "8eb9fb4b540681c21ea278c3e7fbb90512bc475cd10c441c68594b9664f17166",
+    "app/ClientMain.hs": "e52f450ec70b356a665a75883ab4707c5d08e07fe274c17d226686f56d092194",
+    "app/ServerMain.hs": "3a9a9b6bb73794092b221998b810a02a62ef4558a26b8a0db850b162b4e5fa6b",
+    "test/BoardSpec.hs": "f9d0746178c97b8fcdbd75ab4c5e1135d91ba61b4f0aeede749f1a2570fa0c27",
+    "test/ClientSpec.hs": "290af66627ee3b3e8fe87e4ff6cf775a616f5466bca82829d86606d238621346",
+    "test/CoordinatorSpec.hs": "2b6e45752855d1b3ee269e3f37244649b34d435bb335994c47fe0438c2eee2f6",
+    "test/FleetIndexSpec.hs": "c6135b2c055adcbe8196f6b1de46f1d097f0d1ef4125423007192cf94782b95d",
+    "test/GameWorkerSpec.hs": "6cb84fc6205c3ca78bc63c9aa90aba8ad44dc30b99bff7e58756154459e57fef",
+    "test/IntegrationSpec.hs": "f328d7e7643b4de8ff0fdcb07409216afec24e4bdc602f296f67873082c44b29",
+    "test/ProtocolSpec.hs": "db6b23ed15bd9ad48e1c127b0470a43e118807ce6281f310500bce6943b95c61",
+    "test/RulesSpec.hs": "f15fb8f5d1c67f733ed37ff28d1ee22947a67c9584f62b6cac37614389edede7",
+    "test/ServerSpec.hs": "a76eab700e133e62b9107b6a8b10f0d90a7c3fc9f5c689938e39fda4758fa90f",
+    "test/SharedContractSpec.hs": "8c03f8d3ac1881a117c0f2ebf8a116ca2b5859034b6f6f06160f5087eb21c744",
+    "test/Spec.hs": "bcc3b93a3d3aceacb906402ad91aca16600d82d3da8ca857eb8dd06651cd1b68",
+    "test/TypesSpec.hs": "ef47657b4440f6bcd1a6b1ae65df6ec9b6a4e57b6a2bf2b78966114821d6e270",
+    "test/ViewSpec.hs": "93264303479cc28038a1efc64d028b04128533a4121810c4e0b744c9cd34e52c",
+    "test/TestSupport/Generators.hs": "46a7e3d703fd010963f6e830f7d439c55247d0aecf15ff91a4710d18d2b1d836",
+    "bench/Fixtures.hs": "9d36b04d924f55c669f942c374e8dfb46c1ec27922d69ba4fefd7f3c84ad4dd6",
+    "bench/FixturesSpec.hs": "3705fc912db8514589691249cc04bca3e294d206cbb924294f8e90912dff7298",
+    "bench/FleetMain.hs": "e8d6089a5246e9842e232fb2e9d68097530ce42360d0f89c241c460f8537daa5",
+    "bench/Main.hs": "5da45df3a70b9b3a0b3c73418b84a878f8b212b295da2f838b2dbd64f9afa242",
+    "package.yaml": "0e32eb5788d47b90f28332dca87b76c4c96894cfbe1f46256448732afe26d897",
+    "stack.yaml": "047e3eb53a70d0e8f4c51a1fafab0bce36d0a509092ac512c7a9c58cebdcc7a7",
+    "stack.yaml.lock": "38439cf1bdc51eb9987eebb3de9bd3149d96b8233676bfb546ffa7e9242c9e23",
+    "docker/benchmark.Dockerfile": "66351c9ffee7a0284a1dc3f5c5b8aed0b1f10ce5929e49056b41f282b9398c98",
+    "scripts/benchmark-fleet.mjs": "fc2791febc7b1ae5f0d7211096ce57f748678aafaa454e89ad234925f636c754"
+  },
+  "gateLogs": {
+    "windows-build.log": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "summary": []
+    },
+    "windows-test.log": {
+      "sha256": "3002cd049688c58cd2c812f842ba10bb9f73573a072fdb015416ddd4003c0ea6",
+      "summary": [
+        "18 examples, 0 failures",
+        "943 examples, 0 failures"
+      ]
+    },
+    "index-test.log": {
+      "sha256": "c91963e3623c5b35563e18201efbc87a328ba4287447091292cc74e14fd11d0b",
+      "summary": [
+        "0 examples, 0 failures",
+        "9 examples, 0 failures"
+      ]
+    },
+    "linux-build-test.log": {
+      "sha256": "3143d74e74938a28dcce6d746052025e1f86963f8ba0efd65ffe0234a840d54d",
+      "summary": [
+        "#11 47.78 18 examples, 0 failures",
+        "#11 169.9 944 examples, 0 failures"
+      ]
+    },
+    "node-test.log": {
+      "sha256": "d800b89699194c3d907ed01fc998fab03340a2357e22f135481de304660faf21",
+      "summary": [
+        "ℹ tests 82",
+        "ℹ pass 82",
+        "ℹ fail 0"
+      ]
+    },
+    "compose-test.log": {
+      "sha256": "ac6c8e7cd53bed1f5515d1a72c18627527749805c3996bb1fb166d933a47ca7a",
+      "summary": [
+        "ℹ tests 3",
+        "ℹ pass 3",
+        "ℹ fail 0"
+      ]
+    },
+    "before-build.log": {
+      "sha256": "b1b39a55a600298814e0be2b486c1882f9238539ec67a631f203083ce21a7b19",
+      "summary": []
+    },
+    "after-build-verified.log": {
+      "sha256": "7d5ce73b0e13b0dc3211e9fb8981b39f2464b13e745ba24bd72a6aff230a0cf4",
+      "summary": []
+    },
+    "paired-build.log": {
+      "sha256": "cae67cb404c7494fc387710d357cc76b689ebe033d59af2e463e92733309fdbf",
+      "summary": []
+    }
+  },
+  "limitations": {
+    "hardwareCacheCounterMeasured": false,
+    "physicalNUMAPlacementVerified": false,
+    "physicalWiFiGameRun": false,
+    "freshNoCacheLinuxBuild": false
+  },
+  "sourceHashesVerifiedAt": "2026-10-11T20:14:28.995669+00:00",
+  "docker": {
+    "engine": "29.8.2",
+    "compose": "5.5.1",
+    "runningContainersAtFinalCheck": [],
+    "images": {
+      "before": "sha256:21c222a33a60a0b803e747eeee3ef33f7a385ca1d251f94352a608a4d21985a8",
+      "after": "sha256:08e0931422b51018784eb9d74695ba15751b9e9f6c87e75e555630fcab97a8a6",
+      "paired": "sha256:aa6b18446fc039635b32cc4f370c613e80069279fcc43158ee4c26fa4c34519d",
+      "haskellRuntime": "sha256:2eb5727273f765569a62e9a9b942d389a0e22a49111e21453c0889db4f6d65a7",
+      "webRuntime": "sha256:b01ac11fc67f9725546fe9969a9a070b532fe76f30501bab834a3e781bddf949"
+    }
+  },
+  "runs": {
+    "before": {
+      "measured": 120,
+      "warmups": 20,
+      "samplesPerGroup": 30,
+      "groups": [
+        {
+          "mode": "scan",
+          "profile": null,
+          "variant": null,
+          "stable": false,
+          "stabilitySpread": 0.3444165878260148
+        },
+        {
+          "mode": "union",
+          "profile": null,
+          "variant": null,
+          "stable": false,
+          "stabilitySpread": 0.3585038996467046
+        },
+        {
+          "mode": "construct",
+          "profile": null,
+          "variant": null,
+          "stable": false,
+          "stabilitySpread": 0.2492537433881784
+        },
+        {
+          "mode": "retain",
+          "profile": null,
+          "variant": null,
+          "stable": false,
+          "stabilitySpread": 0.2807107868575388
+        }
+      ],
+      "hashes": {
+        "manifest.json": "89353dad6822cdd6564657e11619388c5878f41427ff5a100b4a40200154db4a",
+        "samples.jsonl": "3ee20de7e2e3f2e99f6b0187abbd11f93ccb4548da0bc49fe46515d2ffefc1c5",
+        "summary.json": "5263987bee2816a707ea6f26cc0f873d5591e83569dac34ed41855242c770c09"
+      }
+    },
+    "before-repeat": {
+      "measured": 120,
+      "warmups": 20,
+      "samplesPerGroup": 30,
+      "groups": [
+        {
+          "mode": "scan",
+          "profile": null,
+          "variant": null,
+          "stable": true,
+          "stabilitySpread": 0.09123223378178456
+        },
+        {
+          "mode": "union",
+          "profile": null,
+          "variant": null,
+          "stable": true,
+          "stabilitySpread": 0.055260347081106505
+        },
+        {
+          "mode": "construct",
+          "profile": null,
+          "variant": null,
+          "stable": true,
+          "stabilitySpread": 0.03640471517764311
+        },
+        {
+          "mode": "retain",
+          "profile": null,
+          "variant": null,
+          "stable": true,
+          "stabilitySpread": 0.03529499272510274
+        }
+      ],
+      "hashes": {
+        "manifest.json": "1f23987ef461c1949b311726b827c8efcc164f3457998839e12e11864f3fc33e",
+        "samples.jsonl": "d5462d1c05a40190cd007dfb996a3df819b88484948cb85749fd9c60d537ca1c",
+        "summary.json": "39ddf1183119e0ee8df0192dbebe972ae4a632317d04514e9fc8611ab349f447"
+      }
+    },
+    "after": {
+      "measured": 180,
+      "warmups": 30,
+      "samplesPerGroup": 30,
+      "groups": [
+        {
+          "mode": "scan",
+          "profile": null,
+          "variant": null,
+          "stable": false,
+          "stabilitySpread": 0.2549680184272115
+        },
+        {
+          "mode": "indexed",
+          "profile": null,
+          "variant": null,
+          "stable": false,
+          "stabilitySpread": 0.3686843150245492
+        },
+        {
+          "mode": "union",
+          "profile": null,
+          "variant": null,
+          "stable": false,
+          "stabilitySpread": 0.41039629372912306
+        },
+        {
+          "mode": "cached",
+          "profile": null,
+          "variant": null,
+          "stable": false,
+          "stabilitySpread": 0.23348128268292279
+        },
+        {
+          "mode": "construct",
+          "profile": null,
+          "variant": null,
+          "stable": false,
+          "stabilitySpread": 0.23954455708066477
+        },
+        {
+          "mode": "retain",
+          "profile": null,
+          "variant": null,
+          "stable": false,
+          "stabilitySpread": 0.11436767971034262
+        }
+      ],
+      "hashes": {
+        "manifest.json": "7946baa7c5476ce19dd7140a1c1950dcae07a5ec69d5ee4d6e9dbf064b07f505",
+        "samples.jsonl": "926fa89de61416320fec72e4ed328d9b58581e8c578fdfbb5bb0c260d9f74e55",
+        "summary.json": "a2e04e0fba6fb56e17ca66a213bf38d9b895fd6eca6362bb096e454f93939118"
+      }
+    },
+    "after-repeat": {
+      "measured": 180,
+      "warmups": 30,
+      "samplesPerGroup": 30,
+      "groups": [
+        {
+          "mode": "scan",
+          "profile": null,
+          "variant": null,
+          "stable": true,
+          "stabilitySpread": 0.0852403727844826
+        },
+        {
+          "mode": "indexed",
+          "profile": null,
+          "variant": null,
+          "stable": false,
+          "stabilitySpread": 0.11400932893915543
+        },
+        {
+          "mode": "union",
+          "profile": null,
+          "variant": null,
+          "stable": true,
+          "stabilitySpread": 0.09827789001048082
+        },
+        {
+          "mode": "cached",
+          "profile": null,
+          "variant": null,
+          "stable": true,
+          "stabilitySpread": 0.02762051968745068
+        },
+        {
+          "mode": "construct",
+          "profile": null,
+          "variant": null,
+          "stable": true,
+          "stabilitySpread": 0.0447407616706493
+        },
+        {
+          "mode": "retain",
+          "profile": null,
+          "variant": null,
+          "stable": false,
+          "stabilitySpread": 0.15069574936312732
+        }
+      ],
+      "hashes": {
+        "manifest.json": "54ae5350390fb59059f06454a2463391404a5c3ebd461f2e6b59764205f8c42b",
+        "samples.jsonl": "2a450be528d45a40c3e2f98b711c86b03f17c5b2bff3cbabf995c394a9b24460",
+        "summary.json": "0271a3fb79d8bbd34526896e0dbdc79ace55f6733bd4e3c9d9526e1f8a2752a1"
+      }
+    },
+    "core-paired": {
+      "measured": 180,
+      "warmups": 30,
+      "samplesPerGroup": 30,
+      "groups": [
+        {
+          "mode": null,
+          "profile": "N1",
+          "variant": "before",
+          "stable": true,
+          "stabilitySpread": 0.05006127399566699
+        },
+        {
+          "mode": null,
+          "profile": "N1",
+          "variant": "after",
+          "stable": false,
+          "stabilitySpread": 0.12398382204945178
+        },
+        {
+          "mode": null,
+          "profile": "N2",
+          "variant": "before",
+          "stable": false,
+          "stabilitySpread": 0.3717170456200135
+        },
+        {
+          "mode": null,
+          "profile": "N2",
+          "variant": "after",
+          "stable": false,
+          "stabilitySpread": 0.23516602598724043
+        },
+        {
+          "mode": null,
+          "profile": "default",
+          "variant": "before",
+          "stable": false,
+          "stabilitySpread": 0.21577278886064108
+        },
+        {
+          "mode": null,
+          "profile": "default",
+          "variant": "after",
+          "stable": false,
+          "stabilitySpread": 0.23855107818071053
+        }
+      ],
+      "hashes": {
+        "manifest.json": "d37f61ea2d8aef3ce5cccae1424b3b5530dbf8b1584bb3a8b335f5348e7da0c7",
+        "samples.jsonl": "cb1a810383ab27651ef34fda13e4856cce9a3bad8eadbaaf8e62be572ff6536d",
+        "summary.json": "04fe4d9cfa7d966980447fb008ccb8b893558734102f1cbfb495d0ce1bb72560"
+      }
+    },
+    "core-paired-repeat": {
+      "measured": 180,
+      "warmups": 30,
+      "samplesPerGroup": 30,
+      "groups": [
+        {
+          "mode": null,
+          "profile": "N1",
+          "variant": "before",
+          "stable": true,
+          "stabilitySpread": 0.027120210880872922
+        },
+        {
+          "mode": null,
+          "profile": "N1",
+          "variant": "after",
+          "stable": true,
+          "stabilitySpread": 0.023317999943237296
+        },
+        {
+          "mode": null,
+          "profile": "N2",
+          "variant": "before",
+          "stable": true,
+          "stabilitySpread": 0.020035256254068247
+        },
+        {
+          "mode": null,
+          "profile": "N2",
+          "variant": "after",
+          "stable": true,
+          "stabilitySpread": 0.0019162522592588277
+        },
+        {
+          "mode": null,
+          "profile": "default",
+          "variant": "before",
+          "stable": true,
+          "stabilitySpread": 0.02313538783085554
+        },
+        {
+          "mode": null,
+          "profile": "default",
+          "variant": "after",
+          "stable": true,
+          "stabilitySpread": 0.04842643577018233
+        }
+      ],
+      "hashes": {
+        "manifest.json": "9a34cd66ecbf8a0ebc861087cfa7b7e2a55c534dbe6f868f17fda2a703297989",
+        "samples.jsonl": "395471748829afb6af60b4d2fe6cab1ec08cb2a27f1eea16f0575ef325cc033b",
+        "summary.json": "c402b48334e8c978c377bb502ae9e5581c5f3d23138660bb5277913d36494e45"
+      }
+    }
+  },
+  "totalSamples": {
+    "measured": 960,
+    "warmups": 160,
+    "rawRows": 1120
+  },
+  "comparisons": {
+    "schemaVersion": 1,
+    "lookup": {
+      "observedPercentChange": -82.96698780480524,
+      "paired95CI": [
+        -83.97410312110063,
+        -81.90128958918497
+      ],
+      "bootstrapDraws": 2000,
+      "seed": 20261011,
+      "timingEligible": false
+    },
+    "occupied": {
+      "observedPercentChange": -73.47492747163918,
+      "paired95CI": [
+        -75.11232601748831,
+        -72.43701722254984
+      ],
+      "bootstrapDraws": 2000,
+      "seed": 20261011,
+      "timingEligible": true
+    },
+    "game": [
+      {
+        "profile": "N1",
+        "observedPercentChange": -7.7367647949095675,
+        "paired95CI": [
+          -8.560279448483577,
+          -6.438762613032978
+        ],
+        "bootstrapDraws": 2000,
+        "seed": 20261011,
+        "timingEligible": true,
+        "allocationPercentChange": -3.3191667430942373
+      },
+      {
+        "profile": "N2",
+        "observedPercentChange": -7.377243633114028,
+        "paired95CI": [
+          -8.825672345384389,
+          -5.595520127583012
+        ],
+        "bootstrapDraws": 2000,
+        "seed": 20261011,
+        "timingEligible": true,
+        "allocationPercentChange": -3.3191667430942373
+      },
+      {
+        "profile": "default",
+        "observedPercentChange": -7.734822922463646,
+        "paired95CI": [
+          -9.652870483869426,
+          -4.588644985111042
+        ],
+        "bootstrapDraws": 2000,
+        "seed": 20261011,
+        "timingEligible": true,
+        "allocationPercentChange": -3.3191667430942373
+      }
+    ],
+    "note": "Timing requires BOTH complete groups to meet <=10% noise; CI alone cannot override failed stability. No causal CPU-cache claim."
+  },
+  "baselineCommonSourceVerified": true,
+  "googleDocs": {
+    "documentId": "1-T7iROKnpNmbHCWr-XmAnOSihwIi-Y5PacRBFk4Xyhw",
+    "documentUrl": "https://docs.google.com/document/d/1-T7iROKnpNmbHCWr-XmAnOSihwIi-Y5PacRBFk4Xyhw",
+    "revisionId": "AHj4eMTppWlRawsIgXsDR98mS4F_JvBLfdKug2bRB038wSeRD8DqRvMlrl9c0Io6q_i7w8quLtEbV8UmwvLRXG28W7W24qMvM5E-Mvq9K0JH",
+    "tabId": "t.hewrnqyatiai",
+    "title": "NM-06 — Fleet tính sẵn và thử bố trí cache",
+    "parentTabId": "t.bskjwjzb41bq",
+    "index": 5,
+    "exactTextMatches": true,
+    "textUtf16Length": 20685,
+    "nativeHeadingCounts": {
+      "TITLE": 1,
+      "NORMAL_TEXT": 98,
+      "HEADING_1": 9,
+      "HEADING_2": 5
+    },
+    "nativeListParagraphs": 36,
+    "codeParagraphs": 10,
+    "preservedTabs": [
+      {
+        "tabId": "t.0",
+        "title": "Plan Sprint",
+        "bodyUnchanged": true,
+        "propertiesUnchanged": true
+      },
+      {
+        "tabId": "t.3f8lnf480yal",
+        "title": "Plan Task",
+        "bodyUnchanged": true,
+        "propertiesUnchanged": true
+      },
+      {
+        "tabId": "t.tp47wqncwp94",
+        "title": "Thẻ 3",
+        "bodyUnchanged": true,
+        "propertiesUnchanged": true
+      },
+      {
+        "tabId": "t.z2vxki9p1hdu",
+        "title": "task LAN",
+        "bodyUnchanged": true,
+        "propertiesUnchanged": true
+      },
+      {
+        "tabId": "t.smgi9li6oqib",
+        "title": "Docker Compose plan",
+        "bodyUnchanged": true,
+        "propertiesUnchanged": true
+      },
+      {
+        "tabId": "t.bskjwjzb41bq",
+        "title": "Update NUMA",
+        "bodyUnchanged": true,
+        "propertiesUnchanged": true
+      },
+      {
+        "tabId": "t.m9mq874psso8",
+        "title": "NM-01 — Hợp đồng kiến trúc và tiêu chí đo",
+        "bodyUnchanged": true,
+        "propertiesUnchanged": true
+      },
+      {
+        "tabId": "t.pte5hi1m7lt0",
+        "title": "NM-02 — Phát hiện topology và kiểm tra tài nguyên",
+        "bodyUnchanged": true,
+        "propertiesUnchanged": true
+      },
+      {
+        "tabId": "t.boqulsoufewe",
+        "title": "NM-03 — Benchmark và baseline trước tối ưu",
+        "bodyUnchanged": true,
+        "propertiesUnchanged": true
+      },
+      {
+        "tabId": "t.h4ztyl55uk",
+        "title": "NM-04 — Affinity container và GHC runtime",
+        "bodyUnchanged": true,
+        "propertiesUnchanged": true
+      },
+      {
+        "tabId": "t.aexr75u196ee",
+        "title": "NM-05 — Worker sở hữu trận và locality",
+        "bodyUnchanged": true,
+        "propertiesUnchanged": true
+      }
+    ]
+  },
+  "review": {
+    "humanGroupSignoffRecorded": false,
+    "publicReadHelpersRequireReviewBeforeMerge": true
+  },
+  "artifactHashes": {
+    "after/manifest.json": "7946baa7c5476ce19dd7140a1c1950dcae07a5ec69d5ee4d6e9dbf064b07f505",
+    "after/samples.jsonl": "926fa89de61416320fec72e4ed328d9b58581e8c578fdfbb5bb0c260d9f74e55",
+    "after/summary.json": "a2e04e0fba6fb56e17ca66a213bf38d9b895fd6eca6362bb096e454f93939118",
+    "after-repeat/manifest.json": "54ae5350390fb59059f06454a2463391404a5c3ebd461f2e6b59764205f8c42b",
+    "after-repeat/samples.jsonl": "2a450be528d45a40c3e2f98b711c86b03f17c5b2bff3cbabf995c394a9b24460",
+    "after-repeat/summary.json": "0271a3fb79d8bbd34526896e0dbdc79ace55f6733bd4e3c9d9526e1f8a2752a1",
+    "before/manifest-original.json": "39e7abf7223861b223600ca0d705bd873824c7f76d8bf55d96134b1fee0d5fb8",
+    "before/manifest.json": "89353dad6822cdd6564657e11619388c5878f41427ff5a100b4a40200154db4a",
+    "before/samples.jsonl": "3ee20de7e2e3f2e99f6b0187abbd11f93ccb4548da0bc49fe46515d2ffefc1c5",
+    "before/summary.json": "5263987bee2816a707ea6f26cc0f873d5591e83569dac34ed41855242c770c09",
+    "before-image-source-sha256.txt": "2c7c7552c3152145eda632fb922794e3015213cd740eee9003bc140f411d52d5",
+    "before-repeat/manifest.json": "1f23987ef461c1949b311726b827c8efcc164f3457998839e12e11864f3fc33e",
+    "before-repeat/samples.jsonl": "d5462d1c05a40190cd007dfb996a3df819b88484948cb85749fd9c60d537ca1c",
+    "before-repeat/summary.json": "39ddf1183119e0ee8df0192dbebe972ae4a632317d04514e9fc8611ab349f447",
+    "before-source/bench/FleetMain.hs": "92029d98637c8d2383d04189b0aeecda9de45b53ecb8300f28126b2c8d6fabe6",
+    "before-source/docker/benchmark.Dockerfile": "31cb043c29d90852e4065b185788e53dcdf03e50623c7c33a33017802e5638e1",
+    "before-source/package.yaml": "9feb60493eb8672740df5e5fa8172075232c8abd59aefe0410ef65b1c124742c",
+    "before-source/src/Battleship/Board.hs": "8666066e5d0d4489361592bbfda1b84396c49ecee8a095328d7b2a30532889d7",
+    "before-source/src/Battleship/Internal/Fleet.hs": "42d41114839263aac4a8407e142543f30afdffd9c5795ca8e374342a5725804f",
+    "before-source/src/Battleship/Rules.hs": "0950d81b65ea0ccef49278afc79cb5313e2668f4dc6e513041fa789cf9805582",
+    "before-source/src/Battleship/Types.hs": "39ccf4de14a4ab0de98116a6f111dde0730f6f93babb0bc05d6c206b07d71ed8",
+    "compare.mjs": "23c6432ae3a065515638040499bbbc79fada4cec5124e9e131cbe5a84fcb7da6",
+    "comparisons.json": "5ea797436c4f7e4e60f29c64b44f7b9399d358fda13ce2efda023268a0d4996d",
+    "container.json": "899b2909d1d00f26214800b681418297b9b7e945b8631f49ad504808d55dad4e",
+    "core-paired/manifest.json": "d37f61ea2d8aef3ce5cccae1424b3b5530dbf8b1584bb3a8b335f5348e7da0c7",
+    "core-paired/samples.jsonl": "cb1a810383ab27651ef34fda13e4856cce9a3bad8eadbaaf8e62be572ff6536d",
+    "core-paired/summary.json": "04fe4d9cfa7d966980447fb008ccb8b893558734102f1cbfb495d0ce1bb72560",
+    "core-paired-repeat/manifest.json": "9a34cd66ecbf8a0ebc861087cfa7b7e2a55c534dbe6f868f17fda2a703297989",
+    "core-paired-repeat/samples.jsonl": "395471748829afb6af60b4d2fe6cab1ec08cb2a27f1eea16f0575ef325cc033b",
+    "core-paired-repeat/summary.json": "c402b48334e8c978c377bb502ae9e5581c5f3d23138660bb5277913d36494e45",
+    "google_docs_verification.json": "e8f91af35b17d7743db29c23728055a15eda6d23795850dbfc99e934ab706bd4",
+    "paired-core.mjs": "e0acc81bfc4891081dee4635eee2ced38af0a62712f040e1b7c001d8d3291cfb",
+    "paired.Dockerfile": "ebe9886bf87c514ed608c5ae128cb33764a4f6a2a33dfc274a51ec480f709129",
+    "prepare-before.py": "a788763a39634c6e7754d97804b7f518515fae43c52107d666501cec7faf8c63",
+    "README.md": "5e9995961d0909076cbbf4c6ab529209c785595ec48a1751906191f34ca0372e",
+    "rts.json": "99eb8d688b87e67c7318f715db2a6c854cfd0b6f16eeb9ffa4702b269fc233b0",
+    "shutdown-restart.json": "db427a8bd2f2335e47982eedf80f49c8537d1072adb5e3a872f303e5fc3bbe5e",
+    "verification.Dockerfile": "ecf55609752fc97158afab8b86f13960689008bcce6ded764f865b7d006812dd"
+  },
+  "reportHashes": {
+    "docs/fleet_index.md": "4ae964b27d8a628f360e92fe30eb184f138ee7f90c13500570973c1d0aa6414e",
+    "docs/shared_contract.md": "6cd7d5cca4aece8d3d17a5c92e0df6fcf0570b47c92ff9e1c5d90fa6da6268cf",
+    "docs/architecture.md": "9baac13fdf6456cce12fd447b66ddcded11effbbb535cae4849062308c2f7202",
+    "docs/README.md": "42b3ae0de589d9fe5136f8e09acb1eac822172f40d5c9face6b5078572a4d491",
+    "README.md": "c7f75048a9c0b0e540373972834015a4b768a8bf79016918dd9a60c0d4b482c1"
+  }
+}

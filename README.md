@@ -648,3 +648,46 @@ Luật đầy đủ ở [docs/game_spec.md](docs/game_spec.md). Sơ đồ hoạt
 | R | `docs/`, báo cáo, minh chứng kiểm thử và demo |
 
 Trước khi tích hợp nghiệp vụ tiếp theo, cả nhóm review và ghi xác nhận S-01 v2 tại [docs/shared_contract.md](docs/shared_contract.md), gồm các cập nhật đến B-03/C-04. Phân công chi tiết gồm cả Main, test và YAML nằm ở đó. Board/Types, Rules/View, Coordinator/server STM, codec và client đặt tàu/bắn/render diễn biến trận đã có cài đặt; đối chiếu hồ sơ S-03 và các task sửa Đợt 9 trước khi chốt nghiệm thu nhóm.
+
+## CPU affinity tùy chọn — NM-04
+
+Sau khi chuẩn bị `.env` và hai image Docker theo hướng dẫn trên:
+
+```powershell
+Copy-Item .env.performance.example .env.performance
+node scripts/start-affinity.mjs inspect
+node scripts/start-affinity.mjs start
+node scripts/start-affinity.mjs verify
+node scripts/start-affinity.mjs stop
+```
+
+Mẫu tự chọn một CPU logic được cấp cho Haskell (`-N1`) và ưu tiên core khác
+cho web. Mask thủ công, thử `-qa`, LAN `-WatchOnly`, các gate và cách chuyển
+về Compose mặc định ở [NM-04](docs/affinity_runtime.md). Start mặc định build
+source; `--no-build` dành cho image đã build đúng source. CPU affinity giới
+hạn nơi chạy, không dành độc quyền CPU. Đổi profile cần mở trận mới.
+
+## Worker xử lý trận — NM-05
+
+Server dùng một worker trên capability 0, mailbox 32 request và hai outbox
+128 frame. Reader framing/gửi request, writer gửi mạng; worker gọi coordinator
+và giữ state + toàn bộ batch nguyên tử. Chọn capability khác khi thử nghiệm:
+
+```powershell
+$env:BATTLESHIP_GAME_CAPABILITY = '1'
+stack exec battleship-server -- 4000 +RTS -N2 -RTS
+```
+
+Index phải nhỏ hơn N; capability khác CPU vật lý. Với Compose, thêm biến này
+vào env triển khai và chọn N phù hợp trong profile affinity. Trở về mặc định
+thì bỏ biến tùy chọn và mở trận mới. Cơ chế, lựa chọn, supervision, test và
+so sánh baseline xem [NM-05](docs/worker_locality.md).
+
+## Đội tàu tính sẵn — NM-06
+
+Fleet private giữ geometry cùng tập 17 ô và bảng lookup UArray Word8 100 ô.
+Board tạo metadata sau validation; Rules tra cứu qua `shipAt`/`fleetCells`.
+Lịch sử bắn, luật và dữ liệu riêng tư giữ hợp đồng hiện tại. Test QuickCheck
+đối chiếu đủ 100 ô với geometry độc lập; benchmark ghi cả chi phí tạo/heap.
+Phân tích và số liệu tại [NM-06](docs/fleet_index.md). Bảng này là dữ liệu
+chương trình, không phải cấu hình cache L1/L2/L3 của CPU.
