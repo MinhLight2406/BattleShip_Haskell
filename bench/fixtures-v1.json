@@ -1,0 +1,1019 @@
+[
+  {
+    "seed": 424242,
+    "commandCount": 25,
+    "checksum": "3724987551376790105",
+    "commands": [
+      {
+        "actor": "P1",
+        "command": "FIRE A1",
+        "responses": {
+          "P1": [
+            "ERROR FLEETS_NOT_READY"
+          ],
+          "P2": []
+        }
+      },
+      {
+        "actor": "P1",
+        "command": "PLACE CV=B4:V;BB=D3:H;CR=E9:H;SB=F10:H;DD=D8:H",
+        "responses": {
+          "P1": [
+            "OK PLACE",
+            "WAITING OPPONENT"
+          ],
+          "P2": []
+        }
+      },
+      {
+        "actor": "P1",
+        "command": "PLACE CV=B4:V;BB=D3:H;CR=E9:H;SB=F10:H;DD=D8:H",
+        "responses": {
+          "P1": [
+            "ERROR FLEET_ALREADY_PLACED"
+          ],
+          "P2": []
+        }
+      },
+      {
+        "actor": "P2",
+        "command": "PLACE CV=C5:H;BB=A5:V;CR=J3:V;SB=A3:H;DD=B1:V",
+        "responses": {
+          "P1": [
+            "START P1",
+            "TURN P1"
+          ],
+          "P2": [
+            "OK PLACE",
+            "START P1",
+            "TURN P1"
+          ]
+        }
+      },
+      {
+        "actor": "P2",
+        "command": "FIRE A1",
+        "responses": {
+          "P1": [],
+          "P2": [
+            "ERROR NOT_YOUR_TURN P1"
+          ]
+        }
+      },
+      {
+        "actor": "P1",
+        "command": "FIRE A1",
+        "responses": {
+          "P1": [
+            "SHOT A1 MISS",
+            "TURN P2"
+          ],
+          "P2": [
+            "INCOMING A1 MISS",
+            "TURN P2"
+          ]
+        }
+      },
+      {
+        "actor": "P2",
+        "command": "FIRE A1",
+        "responses": {
+          "P1": [
+            "INCOMING A1 MISS",
+            "TURN P1"
+          ],
+          "P2": [
+            "SHOT A1 MISS",
+            "TURN P1"
+          ]
+        }
+      },
+      {
+        "actor": "P1",
+        "command": "FIRE A1",
+        "responses": {
+          "P1": [
+            "ERROR ALREADY_FIRED A1"
+          ],
+          "P2": []
+        }
+      },
+      {
+        "actor": "P1",
+        "command": "FIRE A3",
+        "responses": {
+          "P1": [
+            "SHOT A3 HIT",
+            "TURN P1"
+          ],
+          "P2": [
+            "INCOMING A3 HIT",
+            "TURN P1"
+          ]
+        }
+      },
+      {
+        "actor": "P1",
+        "command": "FIRE C3",
+        "responses": {
+          "P1": [
+            "SHOT C3 HIT",
+            "TURN P1"
+          ],
+          "P2": [
+            "INCOMING C3 HIT",
+            "TURN P1"
+          ]
+        }
+      },
+      {
+        "actor": "P1",
+        "command": "FIRE B3",
+        "responses": {
+          "P1": [
+            "SHOT B3 SUNK SB",
+            "TURN P1"
+          ],
+          "P2": [
+            "INCOMING B3 SUNK SB",
+            "TURN P1"
+          ]
+        }
+      },
+      {
+        "actor": "P1",
+        "command": "FIRE J3",
+        "responses": {
+          "P1": [
+            "SHOT J3 HIT",
+            "TURN P1"
+          ],
+          "P2": [
+            "INCOMING J3 HIT",
+            "TURN P1"
+          ]
+        }
+      },
+      {
+        "actor": "P1",
+        "command": "FIRE J4",
+        "responses": {
+          "P1": [
+            "SHOT J4 HIT",
+            "TURN P1"
+          ],
+          "P2": [
+            "INCOMING J4 HIT",
+            "TURN P1"
+          ]
+        }
+      },
+      {
+        "actor": "P1",
+        "command": "FIRE J5",
+        "responses": {
+          "P1": [
+            "SHOT J5 SUNK CR",
+            "TURN P1"
+          ],
+          "P2": [
+            "INCOMING J5 SUNK CR",
+            "TURN P1"
+          ]
+        }
+      },
+      {
+        "actor": "P1",
+        "command": "FIRE B1",
+        "responses": {
+          "P1": [
+            "SHOT B1 HIT",
+            "TURN P1"
+          ],
+          "P2": [
+            "INCOMING B1 HIT",
+            "TURN P1"
+          ]
+        }
+      },
+      {
+        "actor": "P1",
+        "command": "FIRE B2",
+        "responses": {
+          "P1": [
+            "SHOT B2 SUNK DD",
+            "TURN P1"
+          ],
+          "P2": [
+            "INCOMING B2 SUNK DD",
+            "TURN P1"
+          ]
+        }
+      },
+      {
+        "actor": "P1",
+        "command": "FIRE C5",
+        "responses": {
+          "P1": [
+            "SHOT C5 HIT",
+            "TURN P1"
+          ],
+          "P2": [
+            "INCOMING C5 HIT",
+            "TURN P1"
+          ]
+        }
+      },
+      {
+        "actor": "P1",
+        "command": "FIRE E5",
+        "responses": {
+          "P1": [
+            "SHOT E5 HIT",
+            "TURN P1"
+          ],
+          "P2": [
+            "INCOMING E5 HIT",
+            "TURN P1"
+          ]
+        }
+      },
+      {
+        "actor": "P1",
+        "command": "FIRE D5",
+        "responses": {
+          "P1": [
+            "SHOT D5 HIT",
+            "TURN P1"
+          ],
+          "P2": [
+            "INCOMING D5 HIT",
+            "TURN P1"
+          ]
+        }
+      },
+      {
+        "actor": "P1",
+        "command": "FIRE G5",
+        "responses": {
+          "P1": [
+            "SHOT G5 HIT",
+            "TURN P1"
+          ],
+          "P2": [
+            "INCOMING G5 HIT",
+            "TURN P1"
+          ]
+        }
+      },
+      {
+        "actor": "P1",
+        "command": "FIRE F5",
+        "responses": {
+          "P1": [
+            "SHOT F5 SUNK CV",
+            "TURN P1"
+          ],
+          "P2": [
+            "INCOMING F5 SUNK CV",
+            "TURN P1"
+          ]
+        }
+      },
+      {
+        "actor": "P1",
+        "command": "FIRE A6",
+        "responses": {
+          "P1": [
+            "SHOT A6 HIT",
+            "TURN P1"
+          ],
+          "P2": [
+            "INCOMING A6 HIT",
+            "TURN P1"
+          ]
+        }
+      },
+      {
+        "actor": "P1",
+        "command": "FIRE A7",
+        "responses": {
+          "P1": [
+            "SHOT A7 HIT",
+            "TURN P1"
+          ],
+          "P2": [
+            "INCOMING A7 HIT",
+            "TURN P1"
+          ]
+        }
+      },
+      {
+        "actor": "P1",
+        "command": "FIRE A5",
+        "responses": {
+          "P1": [
+            "SHOT A5 HIT",
+            "TURN P1"
+          ],
+          "P2": [
+            "INCOMING A5 HIT",
+            "TURN P1"
+          ]
+        }
+      },
+      {
+        "actor": "P1",
+        "command": "FIRE A8",
+        "responses": {
+          "P1": [
+            "SHOT A8 WIN",
+            "GAME_OVER P1 ALL_SHIPS_SUNK"
+          ],
+          "P2": [
+            "INCOMING A8 WIN",
+            "GAME_OVER P1 ALL_SHIPS_SUNK"
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "seed": 8675309,
+    "commandCount": 25,
+    "checksum": "18305205042670867969",
+    "commands": [
+      {
+        "actor": "P1",
+        "command": "FIRE A1",
+        "responses": {
+          "P1": [
+            "ERROR FLEETS_NOT_READY"
+          ],
+          "P2": []
+        }
+      },
+      {
+        "actor": "P1",
+        "command": "PLACE CV=B3:H;BB=J4:V;CR=D4:H;SB=D8:H;DD=A2:V",
+        "responses": {
+          "P1": [
+            "OK PLACE",
+            "WAITING OPPONENT"
+          ],
+          "P2": []
+        }
+      },
+      {
+        "actor": "P1",
+        "command": "PLACE CV=B3:H;BB=J4:V;CR=D4:H;SB=D8:H;DD=A2:V",
+        "responses": {
+          "P1": [
+            "ERROR FLEET_ALREADY_PLACED"
+          ],
+          "P2": []
+        }
+      },
+      {
+        "actor": "P2",
+        "command": "PLACE CV=J4:V;BB=C6:V;CR=D7:V;SB=D1:V;DD=D10:H",
+        "responses": {
+          "P1": [
+            "START P1",
+            "TURN P1"
+          ],
+          "P2": [
+            "OK PLACE",
+            "START P1",
+            "TURN P1"
+          ]
+        }
+      },
+      {
+        "actor": "P2",
+        "command": "FIRE A1",
+        "responses": {
+          "P1": [],
+          "P2": [
+            "ERROR NOT_YOUR_TURN P1"
+          ]
+        }
+      },
+      {
+        "actor": "P1",
+        "command": "FIRE A1",
+        "responses": {
+          "P1": [
+            "SHOT A1 MISS",
+            "TURN P2"
+          ],
+          "P2": [
+            "INCOMING A1 MISS",
+            "TURN P2"
+          ]
+        }
+      },
+      {
+        "actor": "P2",
+        "command": "FIRE A1",
+        "responses": {
+          "P1": [
+            "INCOMING A1 MISS",
+            "TURN P1"
+          ],
+          "P2": [
+            "SHOT A1 MISS",
+            "TURN P1"
+          ]
+        }
+      },
+      {
+        "actor": "P1",
+        "command": "FIRE A1",
+        "responses": {
+          "P1": [
+            "ERROR ALREADY_FIRED A1"
+          ],
+          "P2": []
+        }
+      },
+      {
+        "actor": "P1",
+        "command": "FIRE D8",
+        "responses": {
+          "P1": [
+            "SHOT D8 HIT",
+            "TURN P1"
+          ],
+          "P2": [
+            "INCOMING D8 HIT",
+            "TURN P1"
+          ]
+        }
+      },
+      {
+        "actor": "P1",
+        "command": "FIRE D7",
+        "responses": {
+          "P1": [
+            "SHOT D7 HIT",
+            "TURN P1"
+          ],
+          "P2": [
+            "INCOMING D7 HIT",
+            "TURN P1"
+          ]
+        }
+      },
+      {
+        "actor": "P1",
+        "command": "FIRE D9",
+        "responses": {
+          "P1": [
+            "SHOT D9 SUNK CR",
+            "TURN P1"
+          ],
+          "P2": [
+            "INCOMING D9 SUNK CR",
+            "TURN P1"
+          ]
+        }
+      },
+      {
+        "actor": "P1",
+        "command": "FIRE D3",
+        "responses": {
+          "P1": [
+            "SHOT D3 HIT",
+            "TURN P1"
+          ],
+          "P2": [
+            "INCOMING D3 HIT",
+            "TURN P1"
+          ]
+        }
+      },
+      {
+        "actor": "P1",
+        "command": "FIRE D2",
+        "responses": {
+          "P1": [
+            "SHOT D2 HIT",
+            "TURN P1"
+          ],
+          "P2": [
+            "INCOMING D2 HIT",
+            "TURN P1"
+          ]
+        }
+      },
+      {
+        "actor": "P1",
+        "command": "FIRE D1",
+        "responses": {
+          "P1": [
+            "SHOT D1 SUNK SB",
+            "TURN P1"
+          ],
+          "P2": [
+            "INCOMING D1 SUNK SB",
+            "TURN P1"
+          ]
+        }
+      },
+      {
+        "actor": "P1",
+        "command": "FIRE J6",
+        "responses": {
+          "P1": [
+            "SHOT J6 HIT",
+            "TURN P1"
+          ],
+          "P2": [
+            "INCOMING J6 HIT",
+            "TURN P1"
+          ]
+        }
+      },
+      {
+        "actor": "P1",
+        "command": "FIRE J8",
+        "responses": {
+          "P1": [
+            "SHOT J8 HIT",
+            "TURN P1"
+          ],
+          "P2": [
+            "INCOMING J8 HIT",
+            "TURN P1"
+          ]
+        }
+      },
+      {
+        "actor": "P1",
+        "command": "FIRE J7",
+        "responses": {
+          "P1": [
+            "SHOT J7 HIT",
+            "TURN P1"
+          ],
+          "P2": [
+            "INCOMING J7 HIT",
+            "TURN P1"
+          ]
+        }
+      },
+      {
+        "actor": "P1",
+        "command": "FIRE J5",
+        "responses": {
+          "P1": [
+            "SHOT J5 HIT",
+            "TURN P1"
+          ],
+          "P2": [
+            "INCOMING J5 HIT",
+            "TURN P1"
+          ]
+        }
+      },
+      {
+        "actor": "P1",
+        "command": "FIRE J4",
+        "responses": {
+          "P1": [
+            "SHOT J4 SUNK CV",
+            "TURN P1"
+          ],
+          "P2": [
+            "INCOMING J4 SUNK CV",
+            "TURN P1"
+          ]
+        }
+      },
+      {
+        "actor": "P1",
+        "command": "FIRE D10",
+        "responses": {
+          "P1": [
+            "SHOT D10 HIT",
+            "TURN P1"
+          ],
+          "P2": [
+            "INCOMING D10 HIT",
+            "TURN P1"
+          ]
+        }
+      },
+      {
+        "actor": "P1",
+        "command": "FIRE E10",
+        "responses": {
+          "P1": [
+            "SHOT E10 SUNK DD",
+            "TURN P1"
+          ],
+          "P2": [
+            "INCOMING E10 SUNK DD",
+            "TURN P1"
+          ]
+        }
+      },
+      {
+        "actor": "P1",
+        "command": "FIRE C9",
+        "responses": {
+          "P1": [
+            "SHOT C9 HIT",
+            "TURN P1"
+          ],
+          "P2": [
+            "INCOMING C9 HIT",
+            "TURN P1"
+          ]
+        }
+      },
+      {
+        "actor": "P1",
+        "command": "FIRE C6",
+        "responses": {
+          "P1": [
+            "SHOT C6 HIT",
+            "TURN P1"
+          ],
+          "P2": [
+            "INCOMING C6 HIT",
+            "TURN P1"
+          ]
+        }
+      },
+      {
+        "actor": "P1",
+        "command": "FIRE C8",
+        "responses": {
+          "P1": [
+            "SHOT C8 HIT",
+            "TURN P1"
+          ],
+          "P2": [
+            "INCOMING C8 HIT",
+            "TURN P1"
+          ]
+        }
+      },
+      {
+        "actor": "P1",
+        "command": "FIRE C7",
+        "responses": {
+          "P1": [
+            "SHOT C7 WIN",
+            "GAME_OVER P1 ALL_SHIPS_SUNK"
+          ],
+          "P2": [
+            "INCOMING C7 WIN",
+            "GAME_OVER P1 ALL_SHIPS_SUNK"
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "seed": 20261011,
+    "commandCount": 25,
+    "checksum": "658854099022739308",
+    "commands": [
+      {
+        "actor": "P1",
+        "command": "FIRE A1",
+        "responses": {
+          "P1": [
+            "ERROR FLEETS_NOT_READY"
+          ],
+          "P2": []
+        }
+      },
+      {
+        "actor": "P1",
+        "command": "PLACE CV=C1:H;BB=C5:V;CR=H10:H;SB=A3:H;DD=B4:V",
+        "responses": {
+          "P1": [
+            "OK PLACE",
+            "WAITING OPPONENT"
+          ],
+          "P2": []
+        }
+      },
+      {
+        "actor": "P1",
+        "command": "PLACE CV=C1:H;BB=C5:V;CR=H10:H;SB=A3:H;DD=B4:V",
+        "responses": {
+          "P1": [
+            "ERROR FLEET_ALREADY_PLACED"
+          ],
+          "P2": []
+        }
+      },
+      {
+        "actor": "P2",
+        "command": "PLACE CV=E6:H;BB=E7:V;CR=J7:V;SB=C6:V;DD=I8:V",
+        "responses": {
+          "P1": [
+            "START P1",
+            "TURN P1"
+          ],
+          "P2": [
+            "OK PLACE",
+            "START P1",
+            "TURN P1"
+          ]
+        }
+      },
+      {
+        "actor": "P2",
+        "command": "FIRE A1",
+        "responses": {
+          "P1": [],
+          "P2": [
+            "ERROR NOT_YOUR_TURN P1"
+          ]
+        }
+      },
+      {
+        "actor": "P1",
+        "command": "FIRE A1",
+        "responses": {
+          "P1": [
+            "SHOT A1 MISS",
+            "TURN P2"
+          ],
+          "P2": [
+            "INCOMING A1 MISS",
+            "TURN P2"
+          ]
+        }
+      },
+      {
+        "actor": "P2",
+        "command": "FIRE A1",
+        "responses": {
+          "P1": [
+            "INCOMING A1 MISS",
+            "TURN P1"
+          ],
+          "P2": [
+            "SHOT A1 MISS",
+            "TURN P1"
+          ]
+        }
+      },
+      {
+        "actor": "P1",
+        "command": "FIRE A1",
+        "responses": {
+          "P1": [
+            "ERROR ALREADY_FIRED A1"
+          ],
+          "P2": []
+        }
+      },
+      {
+        "actor": "P1",
+        "command": "FIRE E7",
+        "responses": {
+          "P1": [
+            "SHOT E7 HIT",
+            "TURN P1"
+          ],
+          "P2": [
+            "INCOMING E7 HIT",
+            "TURN P1"
+          ]
+        }
+      },
+      {
+        "actor": "P1",
+        "command": "FIRE E9",
+        "responses": {
+          "P1": [
+            "SHOT E9 HIT",
+            "TURN P1"
+          ],
+          "P2": [
+            "INCOMING E9 HIT",
+            "TURN P1"
+          ]
+        }
+      },
+      {
+        "actor": "P1",
+        "command": "FIRE E8",
+        "responses": {
+          "P1": [
+            "SHOT E8 HIT",
+            "TURN P1"
+          ],
+          "P2": [
+            "INCOMING E8 HIT",
+            "TURN P1"
+          ]
+        }
+      },
+      {
+        "actor": "P1",
+        "command": "FIRE E10",
+        "responses": {
+          "P1": [
+            "SHOT E10 SUNK BB",
+            "TURN P1"
+          ],
+          "P2": [
+            "INCOMING E10 SUNK BB",
+            "TURN P1"
+          ]
+        }
+      },
+      {
+        "actor": "P1",
+        "command": "FIRE J9",
+        "responses": {
+          "P1": [
+            "SHOT J9 HIT",
+            "TURN P1"
+          ],
+          "P2": [
+            "INCOMING J9 HIT",
+            "TURN P1"
+          ]
+        }
+      },
+      {
+        "actor": "P1",
+        "command": "FIRE J7",
+        "responses": {
+          "P1": [
+            "SHOT J7 HIT",
+            "TURN P1"
+          ],
+          "P2": [
+            "INCOMING J7 HIT",
+            "TURN P1"
+          ]
+        }
+      },
+      {
+        "actor": "P1",
+        "command": "FIRE J8",
+        "responses": {
+          "P1": [
+            "SHOT J8 SUNK CR",
+            "TURN P1"
+          ],
+          "P2": [
+            "INCOMING J8 SUNK CR",
+            "TURN P1"
+          ]
+        }
+      },
+      {
+        "actor": "P1",
+        "command": "FIRE E6",
+        "responses": {
+          "P1": [
+            "SHOT E6 HIT",
+            "TURN P1"
+          ],
+          "P2": [
+            "INCOMING E6 HIT",
+            "TURN P1"
+          ]
+        }
+      },
+      {
+        "actor": "P1",
+        "command": "FIRE I6",
+        "responses": {
+          "P1": [
+            "SHOT I6 HIT",
+            "TURN P1"
+          ],
+          "P2": [
+            "INCOMING I6 HIT",
+            "TURN P1"
+          ]
+        }
+      },
+      {
+        "actor": "P1",
+        "command": "FIRE G6",
+        "responses": {
+          "P1": [
+            "SHOT G6 HIT",
+            "TURN P1"
+          ],
+          "P2": [
+            "INCOMING G6 HIT",
+            "TURN P1"
+          ]
+        }
+      },
+      {
+        "actor": "P1",
+        "command": "FIRE F6",
+        "responses": {
+          "P1": [
+            "SHOT F6 HIT",
+            "TURN P1"
+          ],
+          "P2": [
+            "INCOMING F6 HIT",
+            "TURN P1"
+          ]
+        }
+      },
+      {
+        "actor": "P1",
+        "command": "FIRE H6",
+        "responses": {
+          "P1": [
+            "SHOT H6 SUNK CV",
+            "TURN P1"
+          ],
+          "P2": [
+            "INCOMING H6 SUNK CV",
+            "TURN P1"
+          ]
+        }
+      },
+      {
+        "actor": "P1",
+        "command": "FIRE I9",
+        "responses": {
+          "P1": [
+            "SHOT I9 HIT",
+            "TURN P1"
+          ],
+          "P2": [
+            "INCOMING I9 HIT",
+            "TURN P1"
+          ]
+        }
+      },
+      {
+        "actor": "P1",
+        "command": "FIRE I8",
+        "responses": {
+          "P1": [
+            "SHOT I8 SUNK DD",
+            "TURN P1"
+          ],
+          "P2": [
+            "INCOMING I8 SUNK DD",
+            "TURN P1"
+          ]
+        }
+      },
+      {
+        "actor": "P1",
+        "command": "FIRE C6",
+        "responses": {
+          "P1": [
+            "SHOT C6 HIT",
+            "TURN P1"
+          ],
+          "P2": [
+            "INCOMING C6 HIT",
+            "TURN P1"
+          ]
+        }
+      },
+      {
+        "actor": "P1",
+        "command": "FIRE C8",
+        "responses": {
+          "P1": [
+            "SHOT C8 HIT",
+            "TURN P1"
+          ],
+          "P2": [
+            "INCOMING C8 HIT",
+            "TURN P1"
+          ]
+        }
+      },
+      {
+        "actor": "P1",
+        "command": "FIRE C7",
+        "responses": {
+          "P1": [
+            "SHOT C7 WIN",
+            "GAME_OVER P1 ALL_SHIPS_SUNK"
+          ],
+          "P2": [
+            "INCOMING C7 WIN",
+            "GAME_OVER P1 ALL_SHIPS_SUNK"
+          ]
+        }
+      }
+    ]
+  }
+]

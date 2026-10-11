@@ -5,7 +5,6 @@ import qualified Battleship.Board as Board
 import Battleship.Types
 import qualified Data.Map.Strict as Map
 import Data.Maybe (isJust)
-import Data.List (find)
 import qualified Data.Set as Set
 
 -- | No state or successful events are returned on Left. The coordinator must
@@ -36,7 +35,9 @@ step actor command state = case command of
       | Map.member coordinate (playerShots actorState) -> Left (AlreadyFired coordinate)
       | otherwise -> case playerFleet (playerStateFor (otherPlayer actor) state) of
           Nothing -> Left FleetsNotReady
-          Just fleet -> shoot coordinate fleet
+          Just fleet -> do
+            ship <- Board.shipAt coordinate fleet
+            shoot coordinate fleet ship
     Finished _ _ -> Left GameAlreadyFinished
 
   Quit -> case gamePhase state of
@@ -45,8 +46,8 @@ step actor command state = case command of
     Finished _ _ -> Left GameAlreadyFinished
   where
     actorState = playerStateFor actor state
-    shoot coordinate fleet =
-      let outcome = resolveShot coordinate fleet (playerShots actorState)
+    shoot coordinate fleet ship =
+      let outcome = resolveShot coordinate fleet ship (playerShots actorState)
           shooter = actorState { playerShots = Map.insert coordinate outcome (playerShots actorState) }
           recorded = setPlayerState actor shooter state
           (phase, nextEvent) = case outcome of
@@ -66,13 +67,13 @@ fleetsReady state = isJust (playerFleet (gamePlayer1 state))
 
 -- Geometry determines hits; history keys determine which cells have been shot.
 -- Win takes precedence over Sunk on the last cell of the last remaining ship.
-resolveShot :: Coord -> Fleet -> Map.Map Coord Outcome -> Outcome
-resolveShot coordinate fleet history =
-  case find (Set.member coordinate . snd) (Map.toList ships) of
+resolveShot :: Coord -> Fleet -> Maybe ShipId -> Map.Map Coord Outcome -> Outcome
+resolveShot coordinate fleet target history =
+  case target of
     Nothing -> Miss
-    Just (ship, cells)
-      | Set.unions (Map.elems ships) `Set.isSubsetOf` fired -> Win
-      | cells `Set.isSubsetOf` fired -> Sunk ship
+    Just ship
+      | Board.fleetCells fleet `Set.isSubsetOf` fired -> Win
+      | Map.findWithDefault Set.empty ship ships `Set.isSubsetOf` fired -> Sunk ship
       | otherwise -> Hit
   where
     ships = fleetShips fleet

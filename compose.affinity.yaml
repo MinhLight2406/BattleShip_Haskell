@@ -1,0 +1,9 @@
+# Use start-affinity.mjs to resolve auto masks and verify the actual processes.
+services:
+  haskell:
+    cpuset: "${HASKELL_CPUSET:?Set a verified Haskell CPU mask}"
+    environment:
+      GHCRTS: ""
+    command: ["${BATTLESHIP_TCP_PORT:?Set BATTLESHIP_TCP_PORT}", "+RTS", "-N${HASKELL_CAPABILITIES:?Set HASKELL_CAPABILITIES}", "-RTS"]
+  web:
+    cpuset: "${WEB_CPUSET:?Set a verified web CPU mask}"

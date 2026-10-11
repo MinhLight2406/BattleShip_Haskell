@@ -68,6 +68,7 @@ type FleetPlacement = [ShipPlacement]
 -- Invariant: exactly five IDs, lengths 5/4/3/3/2, straight contiguous cells,
 -- all in bounds and no overlap. Touching ships are permitted.
 -- The constructor and record update are private. Use Board.placeFleet.
+-- Board also creates immutable occupied cells and a private 100-cell index.
 type Fleet = Internal.Fleet ShipId Coord
 
 -- | The recorded outcome when a shot was made, not a mutable cell status.

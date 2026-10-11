@@ -2,13 +2,18 @@ module SharedContractSpec (spec) where
 
 import Control.Monad (forM, forM_)
 import Data.Char (isSpace)
-import Data.List (isInfixOf, isPrefixOf, nub, sort, tails)
+import Data.List (dropWhileEnd, isInfixOf, isPrefixOf, nub, sort, tails)
 import System.Directory (doesDirectoryExist, listDirectory)
 import System.FilePath ((</>), takeExtension)
 import Test.Hspec (Spec, beforeAll, describe, it, shouldBe, shouldSatisfy)
 
 spec :: Spec
 spec = describe "S-01 shared contract" $ do
+  it "reads the same contract fixture from LF and Windows CRLF documents" $ do
+    let lf = "<!-- contract:owners -->\n```text\napp/ServerMain.hs C\n```\n"
+        crlf = concatMap (\character -> if character == '\n' then "\r\n" else [character]) lf
+    fixture "contract:owners" "text" lf `shouldBe` "app/ServerMain.hs C\n"
+    fixture "contract:owners" "text" crlf `shouldBe` "app/ServerMain.hs C\n"
   describe "source declaration check" $ do
     it "finds data, newtype and aliases including multiline declarations" $
       declaredSharedTypes "data\n Coord = Coord Int Int\nnewtype Command = C Int\ntype Coord = Int"
@@ -114,7 +119,7 @@ takeUntil prefix (token : rest) = token : takeUntil prefix rest
 
 fixture :: String -> String -> String -> String
 fixture marker language document =
-  case dropWhile (/= "<!-- " ++ marker ++ " -->") (lines document) of
+  case dropWhile (/= "<!-- " ++ marker ++ " -->") (map (dropWhileEnd (== '\r')) (lines document)) of
     _ : fence : rest | fence == "```" ++ language -> case break (== "```") rest of
       (body, _ : _) -> unlines body
       _ -> error ("S-01: unclosed fixture " ++ marker)
@@ -126,7 +131,7 @@ sourceFor path = maybe (error ("S-01: missing source " ++ path)) id . lookup pat
 loadRepository :: IO (String, [(FilePath, String)])
 loadRepository = do
   document <- readFile "docs/shared_contract.md"
-  paths <- concat <$> mapM haskellFiles ["src", "app", "test"]
+  paths <- concat <$> mapM haskellFiles ["src", "app", "test", "bench"]
   sources <- forM (sort paths) $ \path -> do
     source <- readFile path
     pure (map (\character -> if character == '\\' then '/' else character) path, source)

@@ -1,10 +1,16 @@
-# Hợp đồng chung S-01 v2 — cập nhật đến Docker DK-09, chờ duyệt
+# Hợp đồng chung S-01 v2 — Docker DK-09 và phụ lục NM-01, chờ duyệt
 
-Ngày đối chiếu kỹ thuật: 2026-10-10. Chủ trì tài liệu: R.
+Ngày đối chiếu kỹ thuật: 2026-10-11. Chủ trì tài liệu: R.
 
 **Hướng dẫn đọc hiện hành:** [chỉ mục docs](README.md), [kiến trúc](architecture.md), [rationale/đánh đổi](design_decisions.md), [slide mapping](slide_mapping.md) và [test](testing.md). Nhánh `Update_docs_report` dựa trên `8bd7da9` chỉ bổ sung/đồng bộ mô tả; không đổi fixture API/ownership, luật/wire hoặc ghi xác nhận thay nhóm. Mốc lập S-01 bên dưới là lịch sử, phần Docker đến DK-09 là hợp đồng đã bổ sung để nhóm duyệt.
 
 **Trạng thái: đã lập bản hợp đồng để duyệt; CHƯA KHÓA vì chưa có xác nhận A/B/C/D.** Build/test xanh chỉ là bằng chứng kỹ thuật, không thay thế xác nhận của người phụ trách.
+
+**Bổ sung NM-01 v1:** nhánh `Update_NUMA` tách từ `Update_docs_report` tại
+`94a7aaaf68860a55cb7528c76f7c30f8fc1b6023`, lập [hợp đồng kiến trúc và phương
+pháp đo](numa_design.md). Phụ lục mục 8 ghi quyết định cho NM-02..09;
+source hiện tại vẫn theo các API/fixture bên dưới. Review nhóm của NM-01 được
+theo dõi riêng trong tài liệu đó; cơ chế tương lai chưa là hiện trạng runtime.
 
 Nhánh thực hiện: `Minh-Connect_Type_and_Main`, tách từ `Minh-Giao_thuc_lenh_va_event` tại `62ef6018a9d6167bda9909b04fce4a3c370ed936`. Bản nền này chứa C-01, A-01 và D-01; không đổi luật R-01.
 
@@ -117,7 +123,7 @@ type PlaceFleetFn = FleetPlacement -> Either GameError Fleet
 type ViewFor = PlayerId -> GameState -> PlayerView
 ```
 
-`Map` và `Set` ở đây là kiểu từ `containers`, lần lượt `Data.Map.Strict` và `Data.Set`. `Internal` là module private `Battleship.Internal.Fleet` trong `other-modules` của library, không được expose. Nó giữ newtype tổng quát `Fleet ship coord` có Eq/Show để tránh vòng import Types ↔ Board. Types chỉ xuất type Fleet và hàm đọc `fleetShips :: Fleet -> Map ShipId (Set Coord)`; không xuất constructor hoặc trường record có thể cập nhật. Board là module production duy nhất tạo Fleet qua constructor private, sau khi kiểm tra toàn bộ request. Code luật/client chỉ import API public; không import Internal. Fixture test cũng dùng placeFleet.
+`Map` và `Set` ở đây là kiểu từ `containers`, lần lượt `Data.Map.Strict` và `Data.Set`. `Internal` là module private `Battleship.Internal.Fleet` trong `other-modules` của library, không được expose. Từ NM-06, nó giữ data tổng quát `Fleet ship coord`: geometry Map, tập ô bất biến tính sẵn và UArray Int Word8 100 ô; Eq xét cả metadata, Show giữ dạng geometry cũ. Cách dùng tham số tránh vòng import Types ↔ Board. Types chỉ xuất type Fleet và hàm đọc `fleetShips :: Fleet -> Map ShipId (Set Coord)`; không xuất constructor hoặc trường record có thể cập nhật. Board là module production duy nhất tạo Fleet qua constructor private, sau khi kiểm tra toàn bộ request. Code luật/client chỉ import API public; không import Internal. Fixture test cũng dùng placeFleet. Hai helper đọc mới của Board được ghi ở phụ lục NM-06.
 
 Các hàm theo alias đã công bố (placeFleet đã cài đặt ở A-02):
 
@@ -136,6 +142,11 @@ Helper hiện có: `boardSize :: Int`, `shipLength :: ShipId -> Int`, `otherPlay
 `shotsReceived player state = playerShots (playerStateFor (otherPlayer player) state)` là hàm đọc thêm ở B-02, không phải field lưu thứ hai. Mỗi FIRE thành công chỉ thêm một entry vào playerShots của actor; cùng entry xuất hiện trong shotsReceived của đối thủ. Không sửa layout PlayerState/GameState hoặc các chữ ký Step/PlaceFleetFn/ViewFor. Helper này thuộc nội dung API để nhóm duyệt cùng S-01 còn chờ xác nhận.
 
 API Board A-02: `inBounds :: Coord -> Bool`, `shipCells :: ShipPlacement -> Either GameError (Set Coord)`, `placeFleet :: PlaceFleetFn`. Độ dài lấy từ ID tàu, không nhận độ dài tùy chọn. Đặt đúng năm ID duy nhất bảo đảm đủ cả năm loại: thiếu entry trả InvalidFleetSize, năm entry nhưng lặp ID trả DuplicateShip; không cần nhánh MissingShip riêng. Thứ tự lỗi: kiểm tra count trước, rồi từng placement trái sang phải: trùng ID → điểm đầu → vượt biên → chồng. Điểm đầu ngoài bàn trả InvalidCoordinate; phần thân vượt bàn trả ShipOutOfBounds kèm ô ngoài đầu tiên. Nếu nhiều ô chồng, trả ô nhỏ nhất theo Ord Coord. Tàu chạm cạnh/góc được phép; chỉ Right mới có Fleet, không trả fleet từng phần.
+
+API đọc thêm NM-06: `fleetCells :: Fleet -> Set Coord`,
+`shipAt :: Coord -> Fleet -> Either GameError (Maybe ShipId)` thuộc Board.
+Ngoài bàn trả InvalidCoordinate trước phép tính index, nước trả Right Nothing,
+ô tàu trả Right (Just ship). Không xuất array, mã số nội bộ hay hàm đổi metadata.
 
 A-03 trên nhánh `Minh-Dat_tau` giữ API và các guard đã có trong A-02/B-01, bổ sung nghiệm thu trong BoardSpec. Fleet phải có đúng Carrier/Battleship/Cruiser/Submarine/Destroyer, không chỉ đúng tổng chiều dài: lặp Cruiser thay Submarine vẫn đủ 17 ô nhưng bị từ chối. Board kiểm tra hình học độc lập với trạng thái; Rules.step kiểm tra FleetAlreadyPlaced trước Board và không cho thay fleet đã xác nhận khi chờ/đang chơi. Finished trả GameAlreadyFinished. Test kiểm tra cả P1/P2, request hợp lệ khác/sai, sửa request trước xác nhận và giữ đội tàu đầu tiên khi người thứ hai đặt. Năm probe GHC kiểm chứng public constructor/read access hợp lệ và chặn constructor thô, record update, coerce từ Map rỗng, import module private. Không thay khai báo kiểu, wire v1 hoặc quyền tạo Fleet.
 
@@ -253,6 +264,7 @@ src/Battleship/Board.hs A
 src/Battleship/Rules.hs B
 src/Battleship/View.hs B
 src/Battleship/Coordinator.hs C
+src/Battleship/GameWorker.hs C
 src/Battleship/Server.hs C
 src/Battleship/Protocol.hs D
 src/Battleship/Client.hs D
@@ -260,16 +272,22 @@ app/ServerMain.hs C
 app/ClientMain.hs D
 test/TypesSpec.hs A
 test/BoardSpec.hs A
+test/FleetIndexSpec.hs A
 test/TestSupport/Generators.hs A
 test/RulesSpec.hs B
 test/ViewSpec.hs B
 test/CoordinatorSpec.hs C
+test/GameWorkerSpec.hs C
 test/ServerSpec.hs C
 test/ClientSpec.hs D
 test/IntegrationSpec.hs C
 test/ProtocolSpec.hs D
 test/SharedContractSpec.hs R
 test/Spec.hs R
+bench/Main.hs B
+bench/Fixtures.hs B
+bench/FixturesSpec.hs B
+bench/FleetMain.hs A
 package.yaml C
 stack.yaml C
 ```
@@ -365,3 +383,152 @@ Linux amd64 build thật dùng lts-24.59/GHC 9.10.3: **908 ví dụ Haskell/0 l�
 | D | Bridge DNS/public port, Origin/Host/resume và thao tác UI | Chưa được cung cấp | CHỜ |
 
 Mỗi thành viên ghi tên/GitHub, SHA **cùng bản bàn giao**, ngày và link bằng chứng; dùng mẫu: `<vai trò> — <tên>: đã review Docker DK-09 tại <SHA>, đồng ý hợp đồng triển khai và phạm vi nghiệm thu <link>`. Tra SHA bằng `git log -1 --format=%H` trên nhánh bàn giao. R chỉ đánh dấu chốt khi có đủ xác nhận; test xanh hoặc commit/push không thay chữ ký.
+
+## 8. Phụ lục NM-01 v1 — worker/locality và cấu hình NUMA để review
+
+Nguồn quyết định chi tiết là [numa_design.md](numa_design.md): ma trận slide,
+quyền sở hữu, mọi đường lệnh/kết thúc, API dự kiến và tiêu chí đo trước kết quả.
+Phần này là hợp đồng triển khai tương lai; NM-01 chưa sửa runtime Haskell,
+bridge hoặc Compose. Block `contract:domain-api`/`contract:owners` tiếp tục
+đối chiếu file hiện có để SharedContractSpec kiểm tra đúng source.
+
+### Quyết định chung
+
+- NM-05 thêm worker trận trên capability chọn trước; reader framing và gửi
+  request, worker gọi Coordinator, writer gửi FIFO riêng ngoài STM. Một
+  GameState và nguyên tử state + toàn bộ batch tiếp tục có hiệu lực.
+- Mailbox thường **32 request chờ**, gồm admission, payload, dòng quá dài và
+  QUIT wire theo FIFO. Mỗi reader chờ ack xử lý trước request kế; queue đầy
+  backpressure có thể hủy, không tự tính thua hoặc bỏ lệnh.
+- Control riêng gồm cờ stop và tập tối đa P1/P2 mất TCP; không đợi slot của
+  queue 32. Worker chọn stop, disconnect, rồi FIFO; hai disconnect cùng chờ
+  chọn P1 trước. Quit qua core, không đổi winner sau Finished.
+- C-07 giữ outbox **128/126/2**, preflight cả batch, hủy shot khi thiếu chỗ,
+  Quit đúng recipient và marker cuối. Watchdog **2 s**, reader grace **200 ms**,
+  deadline test cleanup **10 s**; resume web vẫn **300.000 ms** ở bridge.
+- NM-05 dự kiến thêm `GameRuntimeConfig` abstract, parser từ count RTS và
+  chỉ số worker, runner `runServerWithRuntime`; chữ ký ở mục 7 numa_design.
+  Runner/config/API Coordinator cũ giữ tương thích. Env mới dự kiến
+  `BATTLESHIP_GAME_CAPABILITY` do Main đọc, mặc định 0; chưa có trong NM-01.
+- NM-06 có thể thêm fleet index private/dữ liệu tính sẵn; constructor Fleet,
+  geometry, lịch sử shot, API thuần và riêng tư tiếp tục qua gate hiện có.
+- Ba chế độ: mặc định, affinity theo CPU mask, NUMA theo CPU/RAM node được
+  kiểm chứng. Capability khác CPU/node ID; quota khác affinity. Local/remote
+  cần >= 2 node nhìn thấy; thiếu điều kiện ghi chưa nghiệm thu.
+
+### Đo lường và hiệu lực
+
+NM-03 lấy baseline trước thay đổi; fixture seed cố định/evaluation đầy đủ.
+Mỗi biến thể/workload **5 warm-up + 30 mẫu đo**, 3 block. Dao động median block
+baseline **<= 10%**; nhiễu hơn ghi chưa đủ kết luận. Báo median/p95, allocation,
+GC/RAM và counter phần cứng có tên/giới hạn khi hỗ trợ. Chỉ gọi cải thiện khi
+metric chính giảm **>= 5%** và khoảng tin cậy 95% không cắt 0; xấu đi ổn định
+**> 10%** cần điều tra/review trước chọn mặc định. Chi tiết ở mục 8 numa_design.
+
+Phụ trách: R tài liệu/gate; A Fleet/layout; B luật/view/benchmark; C worker,
+STM/topology/Docker; D framing/bridge/resume/UI. File Haskell mới chỉ thêm vào
+fixture ownership khi thực sự có source. Bảng review NM-01 ở mục 10 numa_design,
+**A/B/C/D còn chờ**; các phụ thuộc giữ bảng xác nhận lịch sử. Chưa đánh dấu
+hợp đồng đã khóa hoặc API dự kiến đã được triển khai.
+
+
+## 9. Phụ lục NM-03 — benchmark và baseline trước tối ưu
+
+Nguồn triển khai, lệnh tái hiện và kết quả đo là
+[performance_baseline.md](performance_baseline.md). Component benchmark và
+suite fixture riêng dùng cùng snapshot `lts-24.59`/GHC `9.10.3`, generator
+A-06 và lõi thật. Không thêm constructor domain, sửa luật hoặc dependency
+QuickCheck của production. `SharedContractSpec` quét thêm `bench` và bảng
+ownership ghi `Main.hs`, `Fixtures.hs`, `FixturesSpec.hs` thuộc B.
+
+Workload v1 gồm ba seed theo NM-01, mỗi trận 25 lệnh có lỗi, hai lượt trượt,
+17 phát trúng/chìm/thắng và view của P1/P2. Golden transcript và checksum
+được chốt trước thay đổi tối ưu. Bốn lớp core/STM/TCP/web có phạm vi đo
+riêng; structural digest ép đầy đủ dữ liệu thuần và là một phần workload.
+
+Baseline dùng cùng binary Linux `-O2` cho N1/N2/default; mỗi lớp/profile
+5 warm-up và 30 mẫu đo, ba block để kiểm tra nhiễu. Công cụ lưu source hash,
+binary hash, topology thực, số capability và metric có phạm vi rõ. Counter
+không đo được ghi N/A; một node Docker/WSL không chứng minh NUMA vật lý.
+Không dùng kết quả timing làm test chức năng hoặc tự thay mặc định RTS.
+
+Image `docker/benchmark.Dockerfile` phục vụ thí nghiệm, không thêm service
+Compose production. Một trận/một GameState, step thuần, batch STM nguyên tử,
+queue 128/126/2, framing, privacy và resume 5 phút tiếp tục là gate bắt buộc.
+Chờ B/A/C/R review component/fixture và cách dùng baseline trước hợp nhất;
+chưa có xác nhận con người để ghi thay nhóm.
+
+## 10. Phụ lục NM-04 — CPU affinity tùy chọn
+
+Nguồn cấu hình và bằng chứng là [affinity_runtime.md](affinity_runtime.md).
+Base Compose/default không có cpuset mới; affinity chạy bằng override và
+launcher riêng. `.env.performance.example` khai báo HASKELL_CPUSET,
+WEB_CPUSET, HASKELL_CAPABILITIES và HASKELL_AFFINITY (container/rts).
+Mask auto đọc topology Linux của Docker, không suy từ Node Windows.
+
+RTS command dùng argv list; N dương và <= số CPU mask Haskell. Mode rts dùng
+-qa khi mask 0..N-1, N=mask size, rồi kiểm chứng ghc_worker singleton và mọi
+task không vượt mask. Main thêm log `Battleship runtime capabilities: N`
+sau thông báo listen để đối chiếu N thực; framing TCP/luật/API miền giữ nguyên.
+
+Launcher kiểm tra created cpuset, khởi động Haskell và xác nhận process trước
+web. Sai cấu hình dừng/rollback project riêng; profile đổi phải stop và mở
+trận mới. Verify đọc process đang chạy, không tạo slot người chơi. CPU mask
+không dành độc quyền CPU, không cấu hình RAM NUMA và không tự chứng minh tăng
+tốc. Helper LAN `-WatchOnly` giữ cập nhật origin trong cấu hình affinity.
+
+S-01 có regression LF/CRLF: marker của cùng hợp đồng phải đọc được trên
+Linux và Windows. Đây là sửa portability của test, không nới kiểm tra API
+hoặc ownership. C/D cần review CLI/config/log và evidence trước hợp nhất;
+chưa ghi xác nhận thay thành viên.
+
+## 11. Phụ lục NM-05 — Worker và locality, chờ B/C/R review
+
+Hiện trạng ngày 2026-10-12 trên Update_NUMA; xem [hồ sơ NM-05](worker_locality.md).
+Luật, Types và TCP v1 giữ nguyên. Chỉ worker submit coordinator trong server;
+API STM coordinator cũ vẫn dùng trực tiếp cho test/benchmark. Một GameState,
+state + toàn batch sự kiện cùng commit, không IO/socket trong step hoặc STM.
+
+- Mailbox production TBQueue 32; từng reader chờ ack trước frame tiếp theo.
+- WELCOME, payload, parser error, oversized input và wire Quit đi FIFO.
+- EOF/send failure dùng control Set tối đa P1/P2, không đợi chỗ queue.
+- Stop ưu tiên trước disconnect và FIFO; khi cùng pending, P1 trước P2.
+- Kết thúc/flush/đánh thức producer cùng STM; worker lỗi dừng phiên, không
+  tự tạo kết quả thắng. Writers còn được drain batch cuối khi thắng bình thường.
+- Outbox C-07 giữ 128/126/2, rollback batch tràn và Quit đúng recipient.
+- Yêu cầu socket SO_SNDBUF 65536 byte, OS có thể điều chỉnh; send watchdog
+  2 giây và reader grace 200 ms giữ nguyên. Gate cleanup vẫn 10 giây.
+- BATTLESHIP_GAME_CAPABILITY mặc định 0; canonical integer và index < N,
+  kiểm tra trước listen. Không phải CPU ID/node ID, không đổi trong trận.
+- Runtime API mới: GameRuntimeConfig abstract, defaultGameRuntimeConfig,
+  parseGameRuntimeConfig, gameCapability và runServerWithRuntime theo NM-01.
+- GameWorker export request/ack, runner, control và diagnostic đọc cho test;
+  coordinator/queue constructors không public. Hpack expose module mới,
+  ownership của module/test là C. Không đổi Fleet để viết test.
+
+Main nhận cấu hình; worker withAsyncOn khởi tạo/ép state và chạy coordinator.
+Capability check cùng cpuset/RTS là bằng chứng execution, không chứng minh
+RAM physical locality; cần NM-07. Resume bridge vẫn 300000 ms, Origin/Host
+và port mapping không đổi. Số đo NM-03 được giữ nguyên; NM-05 có layer worker
+và ghi riêng chi phí strictness/SO_SNDBUF. Chưa ghi xác nhận review thay nhóm.
+
+## 12. Phụ lục NM-06 — Metadata Fleet, chờ A/B/R review
+
+Ngày 2026-10-12 trên Update_NUMA; xem [phân tích NM-06](fleet_index.md).
+Private Fleet có geometry Map, occupied Set và UArray Int Word8 100 ô,
+được tạo cùng nhau từ geometry đã kiểm tra ở Board.placeFleet. Các field
+strict; Eq gồm metadata, Show giữ diagnostic geometry cũ. Không expose
+constructor/array/setter, không đổi alias Fleet/Step/PlaceFleetFn/ViewFor.
+
+Board thêm fleetCells và shipAt như mục 3; shipAt kiểm tra ngoài bàn trước
+index arithmetic. Codes private 0 nước, 1..5 theo ShipId; không thuộc wire v1.
+Rules dùng lookup/occupied để tìm tàu/kiểm tra thắng và vẫn dùng geometry để
+kiểm tra chìm. Miss/Hit/Sunk/Win, thứ tự lỗi, lượt và private view giữ nguyên.
+Không thêm lịch sử bắn, hit-counter hoặc cache mutable phải đồng bộ.
+
+Library thêm array >=0.5.8 && <0.6, snapshot hiện tại chọn array 0.5.8.0.
+Benchmark riêng battleship-fleet-benchmark, 9 test FleetIndexSpec (5 property
+ít nhất 1.000 trường hợp/property), các suite luật/riêng tư/concurrency là
+gate. Occupied/index là dữ liệu chương trình; kết luận cache CPU/NUMA chỉ có
+thể đưa ra khi có counter/placement evidence. Số liệu và chi phí bộ nhớ nằm
+trong hồ sơ NM-06; test không thay xác nhận A/B/R trước hợp nhất.

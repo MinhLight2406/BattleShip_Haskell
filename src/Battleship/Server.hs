@@ -2,15 +2,14 @@
 module Battleship.Server
   ( ServerConfig, defaultServerConfig, parseServerConfig, serverBindHost, serverReadyFile
   , runServer, runServerWith, runServerConfigured
+  , GameRuntimeConfig, defaultGameRuntimeConfig, parseGameRuntimeConfig, gameCapability, runServerWithRuntime
   ) where
 
-import Battleship.Coordinator
-  ( Coordinator, newCoordinator, nextFrame, readGameState, isSlowClient, submitCommand,
-    submitPayload, submitTooLong, welcomePlayer )
+import Battleship.GameWorker
 import Battleship.Types
 import Battleship.Protocol
 import qualified Battleship.Rules as Rules
-import Control.Concurrent (threadDelay)
+import Control.Concurrent (getNumCapabilities, threadDelay)
 import Control.Concurrent.Async (link, race_, wait, withAsync)
 import Control.Concurrent.STM (atomically, check)
 import Control.Concurrent.MVar
@@ -23,7 +22,7 @@ import qualified Data.ByteString.Char8 as BSC
 import Data.Bits (complement)
 import Network.Socket
   ( Family (AF_INET), HostAddress, PortNumber, ShutdownCmd (ShutdownBoth, ShutdownSend), SockAddr (SockAddrInet), Socket,
-    SocketOption (SockOpt, ReuseAddr), SocketType (Stream), accept, bind, close,
+    SocketOption (SockOpt, ReuseAddr, SendBuffer), SocketType (Stream), accept, bind, close,
     defaultProtocol, listen, setSocketOption, shutdown, socket, socketPort,
     tupleToHostAddress, withSocketsDo )
 import Network.Socket.ByteString (recv, sendAll)
@@ -49,6 +48,21 @@ bindAddress (ServerConfig _ address _) = address
 
 defaultServerConfig :: ServerConfig
 defaultServerConfig = ServerConfig "127.0.0.1" (tupleToHostAddress (127, 0, 0, 1)) Nothing
+
+newtype GameRuntimeConfig = GameRuntimeConfig Int deriving (Eq, Show)
+
+defaultGameRuntimeConfig :: GameRuntimeConfig
+defaultGameRuntimeConfig = GameRuntimeConfig 0
+
+gameCapability :: GameRuntimeConfig -> Int
+gameCapability (GameRuntimeConfig capability) = capability
+
+parseGameRuntimeConfig :: Int -> Maybe String -> Either String GameRuntimeConfig
+parseGameRuntimeConfig count setting = case readMaybe value :: Maybe Integer of
+  Just capability | count > 0 && capability >= 0 && capability < toInteger count
+    && show capability == value -> Right (GameRuntimeConfig (fromInteger capability))
+  _ -> Left "BATTLESHIP_GAME_CAPABILITY must be a canonical integer in [0, runtime capabilities)"
+  where value = maybe "0" id setting
 
 -- | Missing env values keep native defaults; explicitly empty values are errors.
 -- Only canonical IPv4 and the localhost alias are accepted, without DNS lookup.
@@ -97,24 +111,30 @@ runServerWith :: Step -> GameState -> PortNumber -> (PortNumber -> IO ()) -> IO 
 runServerWith = runServerWithConfig defaultServerConfig
 
 runServerWithConfig :: ServerConfig -> Step -> GameState -> PortNumber -> (PortNumber -> IO ()) -> IO ()
-runServerWithConfig config core initial port onListening = withSocketsDo $
+runServerWithConfig = runServerWithRuntime defaultGameRuntimeConfig
+
+runServerWithRuntime :: GameRuntimeConfig -> ServerConfig -> Step -> GameState
+  -> PortNumber -> (PortNumber -> IO ()) -> IO ()
+runServerWithRuntime runtime config core initial port onListening = withSocketsDo $ do
+  count <- getNumCapabilities
+  _ <- either (ioError . userError) pure (parseGameRuntimeConfig count (Just (show (gameCapability runtime))))
   bracket_ clearMarker clearMarker $
-  bracket (openListener config port) close $ \listener -> do
-    coordinator <- atomically (newCoordinator initial)
-    lobby <- newMVar (Lobby [] False [])
-    finished <- newEmptyMVar
-    actual <- socketPort listener
-    forM_ (serverReadyFile config) writeReadyMarker
-    onListening actual
-    withAsync (acceptClients core coordinator listener lobby finished [P1, P2]) $ \acceptor ->
-      race_ (wait acceptor) (readMVar finished >>= either throwIO pure)
-        `finally` modifyMVar_ lobby (\state -> do
-          -- Windows blocking socket calls need shutdown/close before joining
-          -- their workers. Shutdown first preserves the final response/FIN;
-          -- closing first can reset the peer and lose GAME_OVER.
-          close listener
-          forM_ (clients state) (closeConnection . snd)
-          pure state { stopped = True })
+   withGameWorker (gameCapability runtime) core initial $ \worker ->
+    bracket (openListener config port) close $ \listener -> do
+      lobby <- newMVar (Lobby [] False [])
+      finished <- newEmptyMVar
+      actual <- socketPort listener
+      forM_ (serverReadyFile config) writeReadyMarker
+      onListening actual
+      withAsync (acceptClients worker listener lobby finished [P1, P2]) $ \acceptor ->
+        race_ (wait acceptor) (readMVar finished >>= either throwIO pure)
+          `finally` modifyMVar_ lobby (\state -> do
+            -- Windows blocking socket calls need shutdown/close before joining
+            -- their workers. Shutdown first preserves the final response/FIN;
+            -- closing first can reset the peer and lose GAME_OVER.
+            close listener
+            forM_ (clients state) (closeConnection . snd)
+            pure state { stopped = True })
   where
     clearMarker = forM_ (serverReadyFile config) removeIfPresent
 
@@ -149,15 +169,18 @@ removeIfPresent path = removeFile path `catch` \exception ->
 
 -- Nested brackets/withAsync own the two sockets/readers for the whole session.
 -- Rejected connections have a separate short bracket and never get a worker.
-acceptClients :: Step -> Coordinator -> Socket -> MVar Lobby -> MVar (Either SomeException ()) -> [PlayerId] -> IO ()
-acceptClients core coordinator listener lobby finished available = case available of
+acceptClients :: GameWorker -> Socket -> MVar Lobby -> MVar (Either SomeException ()) -> [PlayerId] -> IO ()
+acceptClients worker listener lobby finished available = case available of
   [] -> forever $ bracket (fst <$> accept listener) close $ \connection ->
     void (sendResponse connection (Rejected ServerFull))
   actor : remaining -> bracket (fst <$> accept listener) close $ \connection -> do
+    -- Bound kernel buffering too: a large auto-tuned buffer can hide a
+    -- nonreading peer long after the bounded application queue has drained.
+    setSocketOption connection SendBuffer 65536
     welcomed <- modifyMVar lobby $ \state ->
       if stopped state then pure (state, False)
       else do
-        admitted <- atomically (welcomePlayer coordinator actor) >>= requireEncoded
+        admitted <- submitRequest worker (Admit actor) >>= requireEncoded
         pure (if admitted then state { clients = clients state ++ [(actor, connection)] } else state, admitted)
     if not welcomed then do
       -- An admission can race a terminal transaction. Existing writers still
@@ -166,47 +189,47 @@ acceptClients core coordinator listener lobby finished available = case availabl
       when (not (null admitted)) (readMVar finished >>= either throwIO pure)
     else do
       readerDone <- newEmptyMVar
-      withAsync (closeSlowClient coordinator actor connection) $ \_ -> withAsync
-        (writeFrames core coordinator lobby finished actor connection readerDone
+      withAsync (closeSlowClient worker actor connection) $ \_ -> withAsync
+        (writeFrames worker lobby finished actor connection readerDone
           `catch` reportFailure lobby finished) $ \writer -> do
         link writer
         withAsync
-          ((readFrames connection BS.empty (handleFrame core coordinator actor)
+          ((readFrames connection BS.empty (handleFrame worker actor)
             `catch` ignoreIOException
             `catch` reportFailure lobby finished)
-            `finally` ((clientLeft core coordinator lobby actor >> discardInput connection)
+            `finally` ((clientLeft worker lobby actor >> discardInput connection)
               `finally` void (tryPutMVar readerDone ()))) $ \reader -> do
           link reader
-          acceptClients core coordinator listener lobby finished remaining
+          acceptClients worker listener lobby finished remaining
 
--- Readers do only framing and atomic submission. State and response batches
+-- Readers do only framing and mailbox submission. State and response batches
 -- commit together; no MVar serializes gameplay and no socket IO occurs in STM.
-handleFrame :: Step -> Coordinator -> PlayerId -> Maybe BS.ByteString -> IO Bool
-handleFrame core coordinator actor frame = case frame of
-  Nothing -> atomically (submitTooLong core coordinator actor) >>= requireEncoded >> pure False
-  Just payload -> atomically (submitPayload core coordinator actor payload) >>= requireEncoded
+handleFrame :: GameWorker -> PlayerId -> Maybe BS.ByteString -> IO Bool
+handleFrame worker actor frame = case frame of
+  Nothing -> submitRequest worker (OversizedInput actor) >>= requireEncoded >> pure False
+  Just payload -> submitRequest worker (Payload actor payload) >>= requireEncoded
 
-clientLeft :: Step -> Coordinator -> MVar Lobby -> PlayerId -> IO ()
-clientLeft core coordinator lobby actor = do
+clientLeft :: GameWorker -> MVar Lobby -> PlayerId -> IO ()
+clientLeft worker lobby actor = do
   running <- not . stopped <$> readMVar lobby
-  when running $ void (atomically (submitCommand core coordinator actor Quit) >>= requireEncoded)
+  when running $ atomically (disconnectPlayer worker actor)
 
 -- The STM signal is independent of the FIFO, so a full queue or blocked send
 -- cannot delay closure. Existing reader/writer finalizers drain the bounded
 -- queue and acknowledge cleanup; their later Quit cannot overwrite Finished.
-closeSlowClient :: Coordinator -> PlayerId -> Socket -> IO ()
-closeSlowClient coordinator actor connection = do
-  atomically (isSlowClient coordinator actor >>= check)
+closeSlowClient :: GameWorker -> PlayerId -> Socket -> IO ()
+closeSlowClient worker actor connection = do
+  atomically (isWorkerSlow worker actor >>= check)
   closeConnection connection `catch` ignoreIOException
 
 -- Exactly one writer consumes each player's FIFO. A failed send submits Quit
 -- for that socket's actor and drains/discards its queue until the end marker;
 -- it cannot resign on behalf of the other player or block their writer.
-writeFrames :: Step -> Coordinator -> MVar Lobby -> MVar (Either SomeException ()) -> PlayerId -> Socket -> MVar () -> IO ()
-writeFrames core coordinator lobby finished actor connection readerDone = loop True
+writeFrames :: GameWorker -> MVar Lobby -> MVar (Either SomeException ()) -> PlayerId -> Socket -> MVar () -> IO ()
+writeFrames worker lobby finished actor connection readerDone = loop True
   where
     loop usable = do
-      frame <- atomically (nextFrame coordinator actor)
+      frame <- atomically (nextWorkerFrame worker actor)
       case frame of
         Nothing -> do
           -- Deliver the final batch and FIN before closing the receive side.
@@ -217,19 +240,19 @@ writeFrames core coordinator lobby finished actor connection readerDone = loop T
           -- The bounded grace then forces their recv to unblock on Windows.
           void (timeout 200000 (readMVar readerDone))
           closeConnection connection
-          writerDrained coordinator lobby finished actor
+          writerDrained worker lobby finished actor
         Just bytes -> do
           sent <- if usable then sendFrame connection bytes else pure False
           when (usable && not sent) $ do
             closeConnection connection
-            clientLeft core coordinator lobby actor
+            clientLeft worker lobby actor
           loop sent
 
 -- Signal completion only after all admitted writers have drained their final
 -- batches. The MVar protects socket ownership/drain bookkeeping, not GameState.
-writerDrained :: Coordinator -> MVar Lobby -> MVar (Either SomeException ()) -> PlayerId -> IO ()
-writerDrained coordinator lobby finished actor = modifyMVar_ lobby $ \state -> do
-  current <- atomically (readGameState coordinator)
+writerDrained :: GameWorker -> MVar Lobby -> MVar (Either SomeException ()) -> PlayerId -> IO ()
+writerDrained worker lobby finished actor = modifyMVar_ lobby $ \state -> do
+  current <- atomically (readWorkerState worker)
   let next = state { drained = actor : drained state }
       terminal = case gamePhase current of Finished _ _ -> True; _ -> False
   when (not (stopped next) && terminal && all ((`elem` drained next) . fst) (clients next)) $

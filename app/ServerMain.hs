@@ -1,7 +1,10 @@
 {-# LANGUAGE CPP #-}
 module Main (main) where
 
-import Battleship.Server (parseServerConfig, runServerConfigured, serverBindHost)
+import Battleship.Server (gameCapability, parseGameRuntimeConfig, parseServerConfig, runServerWithRuntime, serverBindHost)
+import qualified Battleship.Rules as Rules
+import Battleship.Types (initialGameState)
+import Control.Concurrent (getNumCapabilities)
 import Control.Exception (IOException, catch)
 import Network.Socket (PortNumber)
 import System.Environment (getArgs, getEnvironment)
@@ -35,8 +38,13 @@ start port = do
   environment <- getEnvironment
   let setting name = lookup name [(map toUpper key, value) | (key, value) <- environment]
   config <- either failWith pure (parseServerConfig (setting "BATTLESHIP_BIND_HOST") (setting "BATTLESHIP_READY_FILE"))
-  withTermination $ runServerConfigured config port
-    (\actual -> putStrLn ("Battleship server listening on " ++ serverBindHost config ++ ":" ++ show actual))
+  capabilities <- getNumCapabilities
+  runtime <- either failWith pure (parseGameRuntimeConfig capabilities (setting "BATTLESHIP_GAME_CAPABILITY"))
+  withTermination $ runServerWithRuntime runtime config Rules.step initialGameState port
+    (\actual -> do
+      putStrLn ("Battleship server listening on " ++ serverBindHost config ++ ":" ++ show actual)
+      putStrLn ("Battleship runtime capabilities: " ++ show capabilities)
+      putStrLn ("Battleship game worker capability: " ++ show (gameCapability runtime)))
     `catch` reportIOException
   where
     reportIOException :: IOException -> IO ()

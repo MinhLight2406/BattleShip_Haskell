@@ -1,0 +1,77 @@
+{
+  "schemaVersion": 1,
+  "branch": "Update_NUMA",
+  "head": "94a7aaaf68860a55cb7528c76f7c30f8fc1b6023",
+  "dirtySource": true,
+  "build": "Cached Linux compiler/dependency DK-04; full current source build/test -Werror, runtime stage from production Dockerfile",
+  "compiler": "GHC 9.10.3",
+  "snapshot": "lts-24.59",
+  "dockerEngine": "29.8.2",
+  "nodeContainer": "24.21.0",
+  "host": "Windows 11 26200 / Docker Desktop WSL2",
+  "sourceHashes": {
+    "compose.affinity.yaml": "d888813c528b333a6e33be05cd8ec03a6232b6968b2a29c8cf1567f2c1de39d2",
+    ".env.performance.example": "fd3ba9bfbeacf93e56b0a7fb9e8099e880ae66d8873883db0144ab5286d8960d",
+    "scripts/start-affinity.mjs": "38ebb51b02a7693da19b619eb97693611f56691ddf9fbed2fc115294c6a97a80",
+    "scripts/test/affinity.test.mjs": "1446c59d6f594a606cfc1f018979c5fc03cbfce54440146ff9b2ae9fc684a379",
+    "scripts/test/affinity-compose.test.mjs": "df1876a5204ed7b9d44136a528326c6532d2ca0202f8641bf71cc7764fd6adbf",
+    "scripts/inspect-topology.mjs": "781fc38bf7a40e74dd25ccc6563151cc75c9a04a9930d2ec10009db624d6d2e0",
+    "app/ServerMain.hs": "1552c86fb568678d724866e4201e78064a9195d98c7ee4273fa485da67613838",
+    "test/SharedContractSpec.hs": "8c03f8d3ac1881a117c0f2ebf8a116ca2b5859034b6f6f06160f5087eb21c744",
+    "compose.yaml": "64eeb9f40965ca528c414fccb0fe8186df57e065e9a6d429aaca410364542091",
+    ".env.example": "a0e297b135a8a0c9a82db564733c3778ffd47e00f9ff19e8c9977157e6d769a5",
+    "frontend/bridge.mjs": "e9df2330051379ef34815781878e0312848cfc68e7dde280efe40e5964066efa",
+    "stack.yaml": "047e3eb53a70d0e8f4c51a1fafab0bce36d0a509092ac512c7a9c58cebdcc7a7",
+    "package.yaml": "8b14d378d3b76d11060a8a207b1e47cd16a9e99f07bb44a3b77a66241c3794bd"
+  },
+  "tests": {
+    "affinityUnit": 25,
+    "nodeTotal": 79,
+    "frontend": 36,
+    "linuxFunctional": 909,
+    "benchmarkFixture": 15,
+    "composeIntegration": 3,
+    "failures": 0
+  },
+  "limits": {
+    "physicalWindowsTopologyVerified": false,
+    "multiNodeNUMAMeasured": false,
+    "affinitySpeedupMeasured": false,
+    "physicalWiFiGameRun": false,
+    "nativeWindowsHaskellRerun": false
+  },
+  "artifactsSha256": {
+    "container.json": "bbef6e3ba3f9861f13b48fd34aa7299b017459cefea66dd3eb249ce360a38c85",
+    "rts.json": "23bef80ce986c5def20b346bba39ecb13f9e2a6889f8b3274010d902ebe896b1",
+    "shutdown-restart.json": "c52cc623bbdd59899fe34d91ad285ba1843f563b0ae25e67ced89c3e3a16207f"
+  },
+  "gateLogs": {
+    "linux-build-test-final.log": {
+      "sha256": "28a0f803d675abd034026389e8cfd79fa56e5c00927c0e6d721524af673ce1a9",
+      "tail": "\n#15 [runtime 5/5] WORKDIR /app\n#15 DONE 0.1s\n\n#16 exporting to image\n#16 exporting layers\n#16 exporting layers 0.4s done\n#16 exporting manifest sha256:11d7765e9eb0025bf17fb10806c75c4ce409f9087dc017862078c419b38649c3 0.0s done\n#16 exporting config sha256:4f686bcb24d184580236b99f46e9807b6f0d1668ceb95af7aff697903c7c5578 0.0s done\n#16 exporting attestation manifest sha256:5248551c038f4f53eb1da121f2f9a7756942c783b86ba27fa4c6e4c7b586a32f 0.0s done\n#16 exporting manifest list sha256:00c5918e05f2329a010698f1656a9de1939a2a737c57c2f27248dc659d1cc57a\n#16 exporting manifest list sha256:00c5918e05f2329a010698f1656a9de1939a2a737c57c2f27248dc659d1cc57a 0.0s done\n#16 naming to docker.io/library/battleship-haskell:local done\n#16 unpacking to docker.io/library/battleship-haskell:local\n#16 unpacking to docker.io/library/battleship-haskell:local 0.2s done\n#16 DONE 0.9s\n\nView build details: docker-desktop://dashboard/build/desktop-linux/desktop-linux/y6nt1dud9ml615ne6sgaj5m9o",
+      "testSummary": [
+        "#11 293.0 15 examples, 0 failures",
+        "#11 293.1 battleship-haskell> Test suite battleship-benchmark-test passed",
+        "#11 594.4 909 examples, 0 failures",
+        "#11 594.4 battleship-haskell> Test suite battleship-test passed"
+      ]
+    },
+    "node-unit-final.log": {
+      "sha256": "8190a26ed39b5ca61d34b9eb67dcc007adfb73d4d3a6f678c12c86415fbc8c21",
+      "tail": "✔ VM with hidden DMI and missing cache remains partial without a fabricated bare-metal claim (0.3409ms)\n✔ Docker cgroup evidence detects a container without a marker (0.274ms)\n✔ no perf probe is unknown even with PMU files and permissive paranoid policy (0.2172ms)\n✔ perf checks all required events with bounded subprocesses and no shell (0.9615ms)\n✔ perf missing, denied, timeout, unsupported and uncounted are distinct failed evidence (4.6676ms)\n✔ mixed perf results cannot certify all the counters required for a benchmark (0.6621ms)\n✔ non-Linux returns a structured unsupported report without reading Linux files (0.1035ms)\n✔ CLI rejects bad arguments before inspecting or probing the machine (0.4226ms)\n✔ CLI emits valid JSON with exit codes for accepted, rejected and incomplete inspections (1.1841ms)\n✔ CLI handles unexpected IO failure and help without launching a game (0.1795ms)\nℹ tests 79\nℹ suites 0\nℹ pass 79\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 150.1212"
+    },
+    "frontend-unit-final.log": {
+      "sha256": "0d4dad808c1c61fd3f31521d971f902319d0cf67020d30c73df94ea1f04b59cc",
+      "tail": "✔ DK-01: container listeners and backend DNS match the two-service contract (9.8633ms)\n✔ DK-01: the example exercises port mapping and advertises the host port (2.288ms)\n✔ DK-01: the shipped example selects one origin mode and keeps host-only values separate (5.7677ms)\n✔ DK-01: every active key and nonempty default agrees with the documented configuration table (3.146ms)\n✔ DK-01: the LAN JSON example is parseable and uses host origins at the public port (6.5287ms)\n✔ column letter + row number match Haskell coordinates, including J10 (5.9758ms)\n✔ placement rejects corners/overlap, allows touching and preserves input on errors (14.2737ms)\n✔ random and exhausted random placement always produce 17 distinct in-board cells (177.5482ms)\n✔ decode every actual server response in docs/protocol.md transcripts (50.7303ms)\n✔ server events alone drive turns, error preservation and private shot history (8.3927ms)\nℹ tests 36\nℹ suites 0\nℹ pass 36\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 11693.53"
+    },
+    "compose-test-final.log": {
+      "sha256": "7dcd874cb678d7b0ffe537991837b6cea37cb830868278412ddaf8a84fbcf6db",
+      "tail": "✔ NM-04: rts affinity, real port mapping and complete golden game (32886.5918ms)\nVerified battleship-affinity-7060ae40-0f1c-4556-b8d8-b7d53d4d7351: Haskell CPU 0 / N1 / container; web CPU 2.\nOpen http://127.0.0.1:49225; host port 49225 -> container 8080.\nCPU mask không dành độc quyền CPU; đổi profile cần stop và mở trận mới.\nStopped battleship-affinity-7060ae40-0f1c-4556-b8d8-b7d53d4d7351; trận/phiên cũ không được phục hồi.\nVerified battleship-affinity-7060ae40-0f1c-4556-b8d8-b7d53d4d7351: Haskell CPU 0 / N1 / container; web CPU 2.\nOpen http://127.0.0.1:49225; host port 49225 -> container 8080.\nCPU mask không dành độc quyền CPU; đổi profile cần stop và mở trận mới.\nStopped battleship-affinity-7060ae40-0f1c-4556-b8d8-b7d53d4d7351; trận/phiên cũ không được phục hồi.\n✔ NM-04: SIGTERM during an active two-player session closes peers and permits a new game (38013.6031ms)\nℹ tests 3\nℹ suites 0\nℹ pass 3\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 101835.6121"
+    }
+  },
+  "initialFailedRuns": {
+    "linux-build-test.log": "9167126c53f0c07e85831bd22b3b1d3a82af1812a5608a35aae35bdc0c7fcf1e",
+    "compose-test.log": "83f97e321cdbe51c52a3b7f7b419b5540789ffe8cfeb0e49ffabdf0a200a52c0"
+  },
+  "cleanupVerified": true
+}

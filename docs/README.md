@@ -8,15 +8,24 @@ Cập nhật **2026-10-10**, nhánh `Update_docs_report`, từ `Test_2_container
 |---|---|
 | Chạy và chơi | [README gốc](../README.md) → [kịch bản demo](demo_script.md) |
 | Viết báo cáo | [Báo cáo tổng thể](report_final.md) → [quyết định thiết kế](design_decisions.md) → [đối chiếu slide](slide_mapping.md) |
+| Mẫu theo đề tài tham khảo | [Bản Markdown năm mục](battleship_report_sample.md) |
+| Báo cáo đồ án và căn cứ thiết kế | [Báo cáo tổng thể](report_final.md) → [quyết định thiết kế](design_decisions.md) → [đối chiếu slide](slide_mapping.md) |
 | Hiểu xử lý | [Kiến trúc](architecture.md) → [luật](game_spec.md) → [giao thức](protocol.md) |
 | Phát triển module | [Hợp đồng chung](shared_contract.md) → source liên kết trong kiến trúc → test tương ứng |
 | Docker/LAN | [Hợp đồng triển khai](docker_deployment.md) → [Dockerfile và runtime test](../docker/README.md) → [DK-09](dk09_handover.md) |
+| NUMA/locality/affinity | [Hợp đồng NM-01](numa_design.md) → [Topology, preflight và bằng chứng NM-02](numa_environment.md) |
+| Baseline trước tối ưu | [Benchmark NM-03, số liệu và lệnh tái hiện](performance_baseline.md) |
+| Chạy CPU affinity | [NM-04: cpuset, RTS, kiểm chứng process và chuyển chế độ](affinity_runtime.md) |
+| Worker và locality hiện hành | [NM-05: mailbox, quyền sở hữu, strictness, supervision và số đo](worker_locality.md) |
+| Fleet tính sẵn và thử bố trí cache | [NM-06: metadata bất biến, bảng 100 ô, test độc lập và đánh đổi hiệu năng/bộ nhớ](fleet_index.md) |
 | Kiểm chứng kết quả | [Hướng dẫn test](testing.md) → [chỉ mục bằng chứng](test_evidence.md) → log/ảnh từng mốc |
 | Kiểm tra đợt sửa docs này | [Hồ sơ rà tài liệu](docs_review.md): thay đổi, gate mới chạy và giới hạn |
 | Chuẩn bị bảo vệ | [Dàn ý báo cáo](report_outline.md) → [dàn ý trình bày](slides_outline.md) → [phần nhóm cần chốt](report_draft.md) |
 | Quá trình thực hiện | [Lịch sử phát triển](development_history.md) → [hồ sơ tích hợp UI](frontend_integration.md) |
 
 ## Nguồn chuẩn và hồ sơ lịch sử
+
+Các file Word `.docx` và báo cáo có tên bắt đầu bằng `Bao_cao_`/`bao_cao_` được giữ cục bộ, không đưa vào Git. Bản chuyên sâu biên soạn ngày **2026-10-11** thuộc nhóm file cục bộ này. Các kết quả runtime trong báo cáo được dẫn từ hồ sơ nghiệm thu theo đúng ngày và revision; lần biên soạn này không chạy lại hoặc ghi thêm xác nhận nghiệm thu của nhóm.
 
 - **Luật:** `game_spec.md`. **Wire TCP v1:** `protocol.md`. **Kiểu/chữ ký/chủ sở hữu:** `shared_contract.md`. **Cấu hình Docker:** `docker_deployment.md`. Báo cáo giải thích, không định nghĩa một bộ luật khác.
 - **Báo cáo hiện hành:** `report_final.md`. Hồ sơ S-02 trước đây nằm trong file này được giữ nguyên tại [s02_acceptance.md](s02_acceptance.md).

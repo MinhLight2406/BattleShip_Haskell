@@ -29,6 +29,7 @@ library:
         - Win32
   dependencies:
     - containers
+    - array >= 0.5.8 && < 0.6
     - network
     - bytestring
     - async
@@ -39,6 +40,7 @@ library:
     - Battleship.Board
     - Battleship.Client
     - Battleship.Coordinator
+    - Battleship.GameWorker
     - Battleship.Protocol
     - Battleship.Rules
     - Battleship.Server
@@ -82,6 +84,27 @@ executables:
       - -with-rtsopts=-N
 
 tests:
+  battleship-benchmark-test:
+    main: FixturesSpec.hs
+    source-dirs:
+      - bench
+      - test
+    other-modules:
+      - Fixtures
+      - TestSupport.Generators
+    dependencies:
+      - battleship-haskell
+      - hspec
+      - QuickCheck >= 2.15 && < 2.16
+      - containers
+      - bytestring
+      - stm
+    ghc-options:
+      - -Wall
+      - -threaded
+      - -rtsopts
+      - -with-rtsopts=-N
+
   battleship-test:
     main: Spec.hs
     source-dirs: test
@@ -104,6 +127,49 @@ tests:
       - stm
     ghc-options:
       - -Wall
+      - -threaded
+      - -rtsopts
+      - -with-rtsopts=-N
+
+benchmarks:
+  battleship-fleet-benchmark:
+    main: FleetMain.hs
+    source-dirs:
+      - bench
+      - test
+    other-modules:
+      - Fixtures
+      - TestSupport.Generators
+    dependencies:
+      - battleship-haskell
+      - QuickCheck >= 2.15 && < 2.16
+      - containers
+      - bytestring
+      - stm
+    ghc-options:
+      - -Wall
+      - -O2
+      - -threaded
+      - -rtsopts
+      - -with-rtsopts=-N
+
+  battleship-benchmark:
+    main: Main.hs
+    source-dirs:
+      - bench
+      - test
+    other-modules:
+      - Fixtures
+      - TestSupport.Generators
+    dependencies:
+      - battleship-haskell
+      - QuickCheck >= 2.15 && < 2.16
+      - containers
+      - bytestring
+      - stm
+    ghc-options:
+      - -Wall
+      - -O2
       - -threaded
       - -rtsopts
       - -with-rtsopts=-N

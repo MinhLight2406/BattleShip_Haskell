@@ -27,6 +27,15 @@ import Text.Read (readMaybe)
 spec :: Spec
 spec = do
   dk02ExecutableSpec
+  describe "NM-05 executable capability configuration" $
+    it "rejects a capability outside -N before listening or touching readiness" $ withReadyFile $ \marker -> do
+      writeFile marker "untouched"
+      inherited <- serverEnvironment Nothing (Just marker)
+      let environment = ("BATTLESHIP_GAME_CAPABILITY", "1") : inherited
+      (code, output, errors) <- readServerProcess environment ["0", "+RTS", "-N1", "-RTS"]
+      (code, output) `shouldBe` (ExitFailure 1, "")
+      errors `shouldSatisfy` isPrefixOf "BATTLESHIP_GAME_CAPABILITY"
+      BSC.readFile marker >>= (`shouldBe` BSC.pack "untouched")
   describe "C-01 executable smoke tests" $ do
     it "server --help starts and exits successfully" $
       checkExecutable "battleship-server" ["--help"]
@@ -522,7 +531,7 @@ withServerExecutableConfig host marker action = withSocketsDo $ do
 serverEnvironment :: Maybe String -> Maybe FilePath -> IO [(String, String)]
 serverEnvironment host marker = do
   inherited <- getEnvironment
-  pure (filter (\(name, _) -> map toUpper name `notElem` ["BATTLESHIP_BIND_HOST", "BATTLESHIP_READY_FILE"]) inherited
+  pure (filter (\(name, _) -> map toUpper name `notElem` ["BATTLESHIP_BIND_HOST", "BATTLESHIP_READY_FILE", "BATTLESHIP_GAME_CAPABILITY"]) inherited
     ++ [("BATTLESHIP_BIND_HOST", value) | Just value <- [host]]
     ++ [("BATTLESHIP_READY_FILE", value) | Just value <- [marker]])
 
