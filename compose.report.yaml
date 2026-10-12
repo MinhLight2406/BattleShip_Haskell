@@ -1,0 +1,6 @@
+# NM-09 recommendation for one match; opt-in until the group approves the reporting revision.
+services:
+  haskell:
+    command: ["${BATTLESHIP_TCP_PORT:?Set BATTLESHIP_TCP_PORT in the env file}", "+RTS", "-N1", "-RTS"]
+    environment:
+      BATTLESHIP_GAME_CAPABILITY: "0"

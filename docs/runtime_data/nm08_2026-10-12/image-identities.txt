@@ -1,0 +1,238 @@
+[
+    {
+        "Id": "sha256:b78fff7bc1e3b9c79a8d09908e195757966180d8610b85b1e1b317bfebe98720",
+        "RepoTags": [
+            "battleship-haskell:local"
+        ],
+        "RepoDigests": [
+            "battleship-haskell@sha256:b78fff7bc1e3b9c79a8d09908e195757966180d8610b85b1e1b317bfebe98720"
+        ],
+        "Comment": "buildkit.dockerfile.v0",
+        "Created": "2026-10-12T01:24:56.090391186Z",
+        "Config": {
+            "User": "10001:10001",
+            "ExposedPorts": {
+                "4000/tcp": {}
+            },
+            "Env": [
+                "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+                "LANG=C.UTF-8",
+                "LC_ALL=C.UTF-8",
+                "BATTLESHIP_BIND_HOST=0.0.0.0",
+                "BATTLESHIP_READY_FILE=/tmp/battleship-ready"
+            ],
+            "Entrypoint": [
+                "/usr/local/bin/battleship-server"
+            ],
+            "Cmd": [
+                "4000"
+            ],
+            "WorkingDir": "/app",
+            "StopSignal": "SIGTERM",
+            "ArgsEscaped": true,
+            "Healthcheck": {
+                "Test": [
+                    "CMD",
+                    "sh",
+                    "-ec",
+                    "test \"$(cat \"$BATTLESHIP_READY_FILE\")\" = ready"
+                ],
+                "Interval": 2000000000,
+                "Timeout": 1000000000,
+                "StartPeriod": 10000000000,
+                "Retries": 5
+            }
+        },
+        "Architecture": "amd64",
+        "Os": "linux",
+        "Size": 123103424,
+        "RootFS": {
+            "Type": "layers",
+            "Layers": [
+                "sha256:e58989146fcec76699871403b9897b5c014af1ccd85f5a9300a215e7975525d7",
+                "sha256:7790460badf59cab35f18097925475c25567a92545111e93831e9bd217e48414",
+                "sha256:fe17d961ef332e094b5fe981307341bd58fef560510c9f77383a02a46e924742",
+                "sha256:5f70bf18a086007016e948b04aed3b82103a36bea41755b6cddfaf10ace3c6ef",
+                "sha256:c105a8608a356a13a790548b3016a0700f7762c9cf50799314a336f86c3628b5",
+                "sha256:5c80b7abe1040517c0bfad473fd8e6f6503c2ad205e2005138199a41b08f9e70",
+                "sha256:5ae52c0f6edcb41cb3de84ad689533f826446e5c08e5151635adb8ade9625f3e",
+                "sha256:a0c0a9bf437f97bf6fc77b6d08f483d64224e8433f140c7283cb02ca30873629",
+                "sha256:d51f097821abb96b5e07dac9f9b93368ee3398ec1c9e8492bedbca92e8ac598e"
+            ]
+        },
+        "Metadata": {
+            "LastTagTime": "2026-10-12T01:24:56.416622978Z"
+        },
+        "Descriptor": {
+            "mediaType": "application/vnd.oci.image.index.v1+json",
+            "digest": "sha256:b78fff7bc1e3b9c79a8d09908e195757966180d8610b85b1e1b317bfebe98720",
+            "size": 856
+        },
+        "Identity": {
+            "Build": [
+                {
+                    "Ref": "phkjy61l1c7qlenvjgw4ae836",
+                    "CreatedAt": "2026-10-12T01:24:56.498703515Z"
+                }
+            ]
+        }
+    },
+    {
+        "Id": "sha256:b01ac11fc67f9725546fe9969a9a070b532fe76f30501bab834a3e781bddf949",
+        "RepoTags": [
+            "battleship-web:local"
+        ],
+        "RepoDigests": [
+            "battleship-web@sha256:b01ac11fc67f9725546fe9969a9a070b532fe76f30501bab834a3e781bddf949"
+        ],
+        "Comment": "buildkit.dockerfile.v0",
+        "Created": "2026-10-10T11:42:45.433139285Z",
+        "Config": {
+            "User": "node",
+            "ExposedPorts": {
+                "8080/tcp": {}
+            },
+            "Env": [
+                "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+                "NODE_VERSION=24.21.0",
+                "YARN_VERSION=1.22.22",
+                "NODE_ENV=production",
+                "HOST=0.0.0.0",
+                "PORT=8080",
+                "WEB_PUBLIC_PORT=8081",
+                "PUBLIC_ORIGIN=http://localhost:8081",
+                "BATTLESHIP_TCP_HOST=haskell",
+                "BATTLESHIP_TCP_PORT=4000"
+            ],
+            "Entrypoint": [
+                "node",
+                "bridge.mjs"
+            ],
+            "WorkingDir": "/app",
+            "Labels": {
+                "com.docker.compose.project": "battleship-dk08-0cc9b5da-d816-49de-a10f-a60b3597c4c7",
+                "com.docker.compose.service": "web",
+                "com.docker.compose.version": "5.5.1"
+            },
+            "StopSignal": "SIGTERM",
+            "ArgsEscaped": true,
+            "Healthcheck": {
+                "Test": [
+                    "CMD",
+                    "node",
+                    "--input-type=module",
+                    "-e",
+                    "const r = await fetch('http://127.0.0.1:' + process.env.PORT + '/healthz', {signal: AbortSignal.timeout(800)}); if (!r.ok || (await r.json()).status !== 'ok') process.exit(1)"
+                ],
+                "Interval": 2000000000,
+                "Timeout": 1000000000,
+                "StartPeriod": 10000000000,
+                "Retries": 5
+            }
+        },
+        "Architecture": "amd64",
+        "Os": "linux",
+        "Size": 345022449,
+        "RootFS": {
+            "Type": "layers",
+            "Layers": [
+                "sha256:e58989146fcec76699871403b9897b5c014af1ccd85f5a9300a215e7975525d7",
+                "sha256:a52fce3e2e53c15bee62149c2a83480bfc3000e19b253dba304220e3d487582f",
+                "sha256:65d71716d250882cedd073ea8e6ab52eb8ce7372fb9eed886775d91dbf9b0f74",
+                "sha256:bdfbfbb03dafc1b269c0668c632ae06c04bff6bc9ae624c8a9cbb3ecb4ad1d3c",
+                "sha256:b6a146dc1aed9a3193cadd3aa94373029d72d93c212e59a42c5d0194b2157ab5",
+                "sha256:dfb21d3a73949f17f681a83a6a2db8a7794a83c8603141a40b951e50c9580630",
+                "sha256:62eaea39e1cea1932fa388081ec7c0fe39b000e22529bbc65159b87021cab4d7",
+                "sha256:cfa6850534d38aaa1f6e1a1cc1077b299ca0b98fd3b00d493d4c6efad8b637f1",
+                "sha256:d31c52822d30084f7b0370f1a5af243645f85962faa1728417116d2bbdf646cf"
+            ]
+        },
+        "Metadata": {
+            "LastTagTime": "2026-10-11T13:06:08.515134413Z"
+        },
+        "Descriptor": {
+            "mediaType": "application/vnd.oci.image.index.v1+json",
+            "digest": "sha256:b01ac11fc67f9725546fe9969a9a070b532fe76f30501bab834a3e781bddf949",
+            "size": 856
+        },
+        "Identity": {
+            "Pull": [
+                {
+                    "Repository": "docker.io/library/battleship-web"
+                }
+            ],
+            "Build": [
+                {
+                    "Ref": "m4j55s7vw0djf2mhc6b6x4uw5",
+                    "CreatedAt": "2026-10-11T13:06:08.535089706Z"
+                }
+            ]
+        }
+    },
+    {
+        "Id": "sha256:4c0740d21a0b8f2136bb75a73abd6e4166ab3ee531f5ad7985e3f9bb3ea30346",
+        "RepoTags": [
+            "battleship-regression:nm08"
+        ],
+        "RepoDigests": [
+            "battleship-regression@sha256:4c0740d21a0b8f2136bb75a73abd6e4166ab3ee531f5ad7985e3f9bb3ea30346"
+        ],
+        "Comment": "buildkit.dockerfile.v0",
+        "Created": "2026-10-12T01:22:24.617227736Z",
+        "Config": {
+            "Env": [
+                "PATH=/root/.cabal/bin:/root/.local/bin:/opt/ghc/9.10.3/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+                "LANG=C.UTF-8",
+                "LC_ALL=C.UTF-8"
+            ],
+            "Cmd": [
+                "stack",
+                "test",
+                "--ghc-options=-Werror"
+            ],
+            "WorkingDir": "/build",
+            "ArgsEscaped": true
+        },
+        "Architecture": "amd64",
+        "Os": "linux",
+        "Size": 4503143546,
+        "RootFS": {
+            "Type": "layers",
+            "Layers": [
+                "sha256:6439a9e3affca36e4cc323dd241724b62721af4a3f4aa590ced4ae11f8083a4b",
+                "sha256:01f077351a91648adbad58aa7f7c8cc09931dcd44719daa07dcbdfdd575c0bca",
+                "sha256:beab792a8ea6663264785dd39995d650db2621a0ff1ce3cd7f919e0bf346f841",
+                "sha256:a70900b86b2276609fb3076b280f2dcfb70f11fe569eddf3ad2c993ce2475657",
+                "sha256:da4414a3e7dffde737701e5fb9282f445d48171e7bc1a3ea7573e7dd159e1bad",
+                "sha256:282b61e4e448bc0f788c0d7ea5d7786ee1b446911ec8793dd27a931d92109590",
+                "sha256:e69d0a55c348f94e9e22c123f2944d1a341edecd6b78adf2dd6923534efe8604",
+                "sha256:e81665c3bc8b76f73f5acdbfdc907a8ca213e619339e54e0f3a506cb4e827f40",
+                "sha256:129776a19bc3f63c2293eceb28f9ed95c190b6cbf1a79e358c233ca5db1c6978",
+                "sha256:5f70bf18a086007016e948b04aed3b82103a36bea41755b6cddfaf10ace3c6ef",
+                "sha256:332fd32ea9b745737b240d6945a2daa158f46c2c5699cb992f9e3d50190c963c",
+                "sha256:374bf48f7119a01235d4d268c142db87dc8802c3ea0b07e78621f01bf6ef0dad"
+            ]
+        },
+        "Metadata": {
+            "LastTagTime": "2026-10-12T01:22:25.410376225Z"
+        },
+        "Descriptor": {
+            "mediaType": "application/vnd.oci.image.index.v1+json",
+            "digest": "sha256:4c0740d21a0b8f2136bb75a73abd6e4166ab3ee531f5ad7985e3f9bb3ea30346",
+            "size": 856
+        },
+        "Identity": {
+            "Pull": [
+                {
+                    "Repository": "docker.io/library/battleship-regression"
+                }
+            ],
+            "Build": [
+                {
+                    "Ref": "uov5xj8rpw4c0edwjx4wd2seq",
+                    "CreatedAt": "2026-10-12T01:22:25.631773589Z"
+                }
+            ]
+        }
+    }
+]

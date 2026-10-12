@@ -1,0 +1,157 @@
+{
+  "matchingFiles": 24,
+  "total": 25,
+  "exactHistoricalHarness": false,
+  "files": [
+    {
+      "file": "app/ClientMain.hs",
+      "expected": "e52f450ec70b356a665a75883ab4707c5d08e07fe274c17d226686f56d092194",
+      "actual": "e52f450ec70b356a665a75883ab4707c5d08e07fe274c17d226686f56d092194",
+      "matches": true
+    },
+    {
+      "file": "app/ServerMain.hs",
+      "expected": "f5edc171a04892cbf9e4453c74843bbd3460655c94b412863c9deb7ecc820c1a",
+      "actual": "f5edc171a04892cbf9e4453c74843bbd3460655c94b412863c9deb7ecc820c1a",
+      "matches": true
+    },
+    {
+      "file": "bench/Fixtures.hs",
+      "expected": "90fc4f46e3b155842ebf03e1a8d02b591916bbc00a33f245d34b1f2601f39805",
+      "actual": "90fc4f46e3b155842ebf03e1a8d02b591916bbc00a33f245d34b1f2601f39805",
+      "matches": true
+    },
+    {
+      "file": "bench/FixturesSpec.hs",
+      "expected": "bed4bc4f8fc075451b882998b47ee42d57a4acd9455553355b88ea5d1c117b5f",
+      "actual": "bed4bc4f8fc075451b882998b47ee42d57a4acd9455553355b88ea5d1c117b5f",
+      "matches": true
+    },
+    {
+      "file": "bench/Main.hs",
+      "expected": "d4b7956dff7f7684910356bcd2c106014040f112eec0462b54068f83d28a01be",
+      "actual": "d4b7956dff7f7684910356bcd2c106014040f112eec0462b54068f83d28a01be",
+      "matches": true
+    },
+    {
+      "file": "bench/fixtures-v1.json",
+      "expected": "1820e84d045124e7829ae4ff62b790929baf33b051bcbbcdb4a611a5a47ae8c5",
+      "actual": "1820e84d045124e7829ae4ff62b790929baf33b051bcbbcdb4a611a5a47ae8c5",
+      "matches": true
+    },
+    {
+      "file": "docker/benchmark.Dockerfile",
+      "expected": "54040d46fa49bc442648f1c50d6f6a0e3f6e2a7cc55671276179c2e38ea3c9ce",
+      "actual": "54040d46fa49bc442648f1c50d6f6a0e3f6e2a7cc55671276179c2e38ea3c9ce",
+      "matches": true
+    },
+    {
+      "file": "frontend/bridge.mjs",
+      "expected": "e9df2330051379ef34815781878e0312848cfc68e7dde280efe40e5964066efa",
+      "actual": "e9df2330051379ef34815781878e0312848cfc68e7dde280efe40e5964066efa",
+      "matches": true
+    },
+    {
+      "file": "frontend/package.json",
+      "expected": "20cc460614659973cc63e73fffa85c019d4be3affcccbf07437fe69e60bff9cf",
+      "actual": "20cc460614659973cc63e73fffa85c019d4be3affcccbf07437fe69e60bff9cf",
+      "matches": true
+    },
+    {
+      "file": "frontend/pnpm-lock.yaml",
+      "expected": "b9202d3615ec2d7ba38db1c25fbb1c71be773716409381f9739c387cdf3b966c",
+      "actual": "b9202d3615ec2d7ba38db1c25fbb1c71be773716409381f9739c387cdf3b966c",
+      "matches": true
+    },
+    {
+      "file": "package.yaml",
+      "expected": "8b14d378d3b76d11060a8a207b1e47cd16a9e99f07bb44a3b77a66241c3794bd",
+      "actual": "8b14d378d3b76d11060a8a207b1e47cd16a9e99f07bb44a3b77a66241c3794bd",
+      "matches": true
+    },
+    {
+      "file": "scripts/benchmark-runtime.mjs",
+      "expected": "5a06ebcefb868f70831268d4368ee83d3328da35b4ea42942cd22bdec4e3dabd",
+      "actual": "d9473b16ed3bd37badd1a085736cf46462d755cbdb49bc5ffeaba02d8e1162d4",
+      "matches": false
+    },
+    {
+      "file": "scripts/inspect-topology.mjs",
+      "expected": "781fc38bf7a40e74dd25ccc6563151cc75c9a04a9930d2ec10009db624d6d2e0",
+      "actual": "781fc38bf7a40e74dd25ccc6563151cc75c9a04a9930d2ec10009db624d6d2e0",
+      "matches": true
+    },
+    {
+      "file": "src/Battleship/Board.hs",
+      "expected": "8666066e5d0d4489361592bbfda1b84396c49ecee8a095328d7b2a30532889d7",
+      "actual": "8666066e5d0d4489361592bbfda1b84396c49ecee8a095328d7b2a30532889d7",
+      "matches": true
+    },
+    {
+      "file": "src/Battleship/Client.hs",
+      "expected": "feac1380fc30e2f3762a29936a4c1fcf0c5d397679c334e0cbfeb7fe058e5686",
+      "actual": "feac1380fc30e2f3762a29936a4c1fcf0c5d397679c334e0cbfeb7fe058e5686",
+      "matches": true
+    },
+    {
+      "file": "src/Battleship/Coordinator.hs",
+      "expected": "df547bf17b171f0d8e181708ee35ee4e60f05f8b86253d709855b6b5eaa24579",
+      "actual": "df547bf17b171f0d8e181708ee35ee4e60f05f8b86253d709855b6b5eaa24579",
+      "matches": true
+    },
+    {
+      "file": "src/Battleship/Internal/Fleet.hs",
+      "expected": "42d41114839263aac4a8407e142543f30afdffd9c5795ca8e374342a5725804f",
+      "actual": "42d41114839263aac4a8407e142543f30afdffd9c5795ca8e374342a5725804f",
+      "matches": true
+    },
+    {
+      "file": "src/Battleship/Protocol.hs",
+      "expected": "95f01500656a7a0f1fca785bce0c4c1917384c9901e6cc0593dc81df660a93d7",
+      "actual": "95f01500656a7a0f1fca785bce0c4c1917384c9901e6cc0593dc81df660a93d7",
+      "matches": true
+    },
+    {
+      "file": "src/Battleship/Rules.hs",
+      "expected": "0950d81b65ea0ccef49278afc79cb5313e2668f4dc6e513041fa789cf9805582",
+      "actual": "0950d81b65ea0ccef49278afc79cb5313e2668f4dc6e513041fa789cf9805582",
+      "matches": true
+    },
+    {
+      "file": "src/Battleship/Server.hs",
+      "expected": "fc813b221694cb09e220b9dbdc825f76055469b941ccd25564fd3fb2344efa1e",
+      "actual": "fc813b221694cb09e220b9dbdc825f76055469b941ccd25564fd3fb2344efa1e",
+      "matches": true
+    },
+    {
+      "file": "src/Battleship/Types.hs",
+      "expected": "39ccf4de14a4ab0de98116a6f111dde0730f6f93babb0bc05d6c206b07d71ed8",
+      "actual": "39ccf4de14a4ab0de98116a6f111dde0730f6f93babb0bc05d6c206b07d71ed8",
+      "matches": true
+    },
+    {
+      "file": "src/Battleship/View.hs",
+      "expected": "b2571b9eb9d89eebf928a62b19ac7044bfaaff41f9c9e7ad089a7ea8af1c5174",
+      "actual": "b2571b9eb9d89eebf928a62b19ac7044bfaaff41f9c9e7ad089a7ea8af1c5174",
+      "matches": true
+    },
+    {
+      "file": "stack.yaml",
+      "expected": "047e3eb53a70d0e8f4c51a1fafab0bce36d0a509092ac512c7a9c58cebdcc7a7",
+      "actual": "047e3eb53a70d0e8f4c51a1fafab0bce36d0a509092ac512c7a9c58cebdcc7a7",
+      "matches": true
+    },
+    {
+      "file": "stack.yaml.lock",
+      "expected": "38439cf1bdc51eb9987eebb3de9bd3149d96b8233676bfb546ffa7e9242c9e23",
+      "actual": "38439cf1bdc51eb9987eebb3de9bd3149d96b8233676bfb546ffa7e9242c9e23",
+      "matches": true
+    },
+    {
+      "file": "test/TestSupport/Generators.hs",
+      "expected": "46a7e3d703fd010963f6e830f7d439c55247d0aecf15ff91a4710d18d2b1d836",
+      "actual": "46a7e3d703fd010963f6e830f7d439c55247d0aecf15ff91a4710d18d2b1d836",
+      "matches": true
+    }
+  ]
+}

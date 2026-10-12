@@ -1,0 +1,114 @@
+{
+  "schemaVersion": 1,
+  "startedAt": "2026-10-12T01:24:09.295Z",
+  "hostPlatform": "win32",
+  "commands": [
+    {
+      "label": "commit",
+      "binary": "git",
+      "args": [
+        "rev-parse",
+        "HEAD"
+      ],
+      "exitCode": 0,
+      "log": "commit.log"
+    },
+    {
+      "label": "worktree",
+      "binary": "git",
+      "args": [
+        "status",
+        "--short"
+      ],
+      "exitCode": 0,
+      "log": "worktree.log"
+    },
+    {
+      "label": "windows-build",
+      "binary": "stack",
+      "args": [
+        "build"
+      ],
+      "exitCode": 0,
+      "log": "windows-build.log"
+    },
+    {
+      "label": "native-N1",
+      "binary": "stack",
+      "args": [
+        "test",
+        "--ghc-options=-Werror",
+        "--test-arguments=+RTS -N1 -RTS"
+      ],
+      "exitCode": 0,
+      "log": "native-N1.log"
+    },
+    {
+      "label": "native-N2",
+      "binary": "stack",
+      "args": [
+        "test",
+        "--ghc-options=-Werror",
+        "--test-arguments=+RTS -N2 -RTS"
+      ],
+      "exitCode": 0,
+      "log": "native-N2.log"
+    },
+    {
+      "label": "frontend-unit",
+      "binary": "C:\\Users\\nhatm\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\node\\bin\\node.exe",
+      "args": [
+        "--test",
+        "--test-reporter=tap",
+        "test/unit.test.ts",
+        "test/connection.test.ts",
+        "test/bridge.test.mjs",
+        "test/docker-contract.test.mjs",
+        "test/lan.test.mjs",
+        "test/lan-helper.test.mjs"
+      ],
+      "exitCode": 1,
+      "log": "frontend-unit.log"
+    }
+  ],
+  "profiles": [],
+  "commit": "788f8396638344e7a38fd2428d84feac2a9b5e38",
+  "dirty": "M .gitignore\n M README.md\n M docker/README.md\n M docker/benchmark.Dockerfile\n M docker/haskell.Dockerfile\n M docs/README.md\n M docs/shared_contract.md\n M scripts/test-compose.mjs\n M test/CoordinatorSpec.hs\n M test/GameWorkerSpec.hs\n?? .env.numa.example\n?? compose.numa.yaml\n?? docker/numa-entrypoint.sh\n?? docs/numa_data/\n?? docs/numa_experiments.md\n?? scripts/benchmark-numa.mjs\n?? scripts/start-numa.mjs\n?? scripts/test-runtime-profiles.mjs\n?? scripts/test/numa-compose.test.mjs\n?? scripts/test/numa-config.test.mjs\n?? scripts/test/runtime-profiles.test.mjs",
+  "sourceHashes": {
+    "app/ClientMain.hs": "e52f450ec70b356a665a75883ab4707c5d08e07fe274c17d226686f56d092194",
+    "app/ServerMain.hs": "3a9a9b6bb73794092b221998b810a02a62ef4558a26b8a0db850b162b4e5fa6b",
+    "bench/Fixtures.hs": "9d36b04d924f55c669f942c374e8dfb46c1ec27922d69ba4fefd7f3c84ad4dd6",
+    "bench/FixturesSpec.hs": "3705fc912db8514589691249cc04bca3e294d206cbb924294f8e90912dff7298",
+    "bench/FleetMain.hs": "e8d6089a5246e9842e232fb2e9d68097530ce42360d0f89c241c460f8537daa5",
+    "bench/Main.hs": "5da45df3a70b9b3a0b3c73418b84a878f8b212b295da2f838b2dbd64f9afa242",
+    "package.yaml": "0e32eb5788d47b90f28332dca87b76c4c96894cfbe1f46256448732afe26d897",
+    "src/Battleship/Board.hs": "55dc5bb7b1136e2af42fa336c9ec4729f04e98221459e1e3a4d7f5390676a875",
+    "src/Battleship/Client.hs": "feac1380fc30e2f3762a29936a4c1fcf0c5d397679c334e0cbfeb7fe058e5686",
+    "src/Battleship/Coordinator.hs": "2e692c264f3873110ac1f1f383c58b4483a4c5164454aeef892b8e070645df07",
+    "src/Battleship/GameWorker.hs": "3cb10f857e4a138ef6505ceb363f583f49d0cf6f6492cace54ab47d2ce3a0085",
+    "src/Battleship/Internal/Fleet.hs": "8eb9fb4b540681c21ea278c3e7fbb90512bc475cd10c441c68594b9664f17166",
+    "src/Battleship/Protocol.hs": "95f01500656a7a0f1fca785bce0c4c1917384c9901e6cc0593dc81df660a93d7",
+    "src/Battleship/Rules.hs": "0bd64ef836aed1e1d58d5f311aaf9d38c1e19427333cc280f76f820b913743c3",
+    "src/Battleship/Server.hs": "69f94fa010a31405229be32f7b2ba18e0d5502ae063b74648dc098d6339f02b9",
+    "src/Battleship/Types.hs": "ca8776658b47f80648e25cd5487686e6fea9e718f8d013016e65269fac9fb310",
+    "src/Battleship/View.hs": "b2571b9eb9d89eebf928a62b19ac7044bfaaff41f9c9e7ad089a7ea8af1c5174",
+    "stack.yaml": "047e3eb53a70d0e8f4c51a1fafab0bce36d0a509092ac512c7a9c58cebdcc7a7",
+    "test/BoardSpec.hs": "f9d0746178c97b8fcdbd75ab4c5e1135d91ba61b4f0aeede749f1a2570fa0c27",
+    "test/ClientSpec.hs": "290af66627ee3b3e8fe87e4ff6cf775a616f5466bca82829d86606d238621346",
+    "test/CoordinatorSpec.hs": "00bd39c7ca02ba2fd149769242629f386816da5982efb991427e7b1fad61b6b2",
+    "test/FleetIndexSpec.hs": "c6135b2c055adcbe8196f6b1de46f1d097f0d1ef4125423007192cf94782b95d",
+    "test/GameWorkerSpec.hs": "347069e50343ebc23e969c7df517fc5c11e05bde64ac0ed5684742619324fbe6",
+    "test/IntegrationSpec.hs": "f328d7e7643b4de8ff0fdcb07409216afec24e4bdc602f296f67873082c44b29",
+    "test/ProtocolSpec.hs": "db6b23ed15bd9ad48e1c127b0470a43e118807ce6281f310500bce6943b95c61",
+    "test/RulesSpec.hs": "f15fb8f5d1c67f733ed37ff28d1ee22947a67c9584f62b6cac37614389edede7",
+    "test/ServerSpec.hs": "a76eab700e133e62b9107b6a8b10f0d90a7c3fc9f5c689938e39fda4758fa90f",
+    "test/SharedContractSpec.hs": "8c03f8d3ac1881a117c0f2ebf8a116ca2b5859034b6f6f06160f5087eb21c744",
+    "test/Spec.hs": "bcc3b93a3d3aceacb906402ad91aca16600d82d3da8ca857eb8dd06651cd1b68",
+    "test/TestSupport/Generators.hs": "46a7e3d703fd010963f6e830f7d439c55247d0aecf15ff91a4710d18d2b1d836",
+    "test/TypesSpec.hs": "ef47657b4440f6bcd1a6b1ae65df6ec9b6a4e57b6a2bf2b78966114821d6e270",
+    "test/ViewSpec.hs": "93264303479cc28038a1efc64d028b04128533a4121810c4e0b744c9cd34e52c"
+  },
+  "status": "failed",
+  "error": "Command failed: C:\\Users\\nhatm\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\node\\bin\\node.exe --test --test-reporter=tap test/unit.test.ts test/connection.test.ts test/bridge.test.mjs test/docker-contract.test.mjs test/lan.test.mjs test/lan-helper.test.mjs\n",
+  "finishedAt": "2026-10-12T01:28:47.730Z"
+}

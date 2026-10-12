@@ -1,0 +1,30 @@
+{
+  "name": "numa-membind",
+  "config": {
+    "mode": "container",
+    "capabilities": 1,
+    "haskell": [
+      0
+    ],
+    "web": [
+      2
+    ],
+    "environment": {
+      "HASKELL_CPUSET": "0",
+      "WEB_CPUSET": "2",
+      "HASKELL_CAPABILITIES": "1",
+      "NUMA_MEMORY_POLICY": "membind",
+      "NUMA_SELECTED_MEMS": "0"
+    },
+    "profile": "local",
+    "cpuNode": 0,
+    "mems": [
+      0
+    ],
+    "policy": "membind",
+    "sysNice": true,
+    "minFreeBytes": 67108864,
+    "ghcNuma": null,
+    "gameCapability": 0
+  }
+}

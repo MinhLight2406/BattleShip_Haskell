@@ -1,0 +1,54 @@
+{
+  "schemaVersion": 1,
+  "observedAt": "2026-10-12T00:47:58.527Z",
+  "config": {
+    "mode": "container",
+    "capabilities": 1,
+    "haskell": [
+      0
+    ],
+    "web": [
+      2
+    ],
+    "environment": {
+      "HASKELL_CPUSET": "0",
+      "WEB_CPUSET": "2",
+      "HASKELL_CAPABILITIES": "1",
+      "NUMA_MEMORY_POLICY": "cpuset",
+      "NUMA_SELECTED_MEMS": "0"
+    },
+    "profile": "local",
+    "cpuNode": 0,
+    "mems": [
+      0
+    ],
+    "policy": "cpuset",
+    "sysNice": true,
+    "minFreeBytes": 67108864,
+    "ghcNuma": null
+  },
+  "repetitions": 1024,
+  "seeds": [
+    424242,
+    8675309,
+    20261011
+  ],
+  "samples": 30,
+  "warmups": 5,
+  "binarySha256": "6d1e7b2511ce96251637e17c502744b44b585fa3f911236685c0e559b8941c91",
+  "buildSourceHashes": "9d36b04d924f55c669f942c374e8dfb46c1ec27922d69ba4fefd7f3c84ad4dd6  bench/Fixtures.hs\n3705fc912db8514589691249cc04bca3e294d206cbb924294f8e90912dff7298  bench/FixturesSpec.hs\ne8d6089a5246e9842e232fb2e9d68097530ce42360d0f89c241c460f8537daa5  bench/FleetMain.hs\n5da45df3a70b9b3a0b3c73418b84a878f8b212b295da2f838b2dbd64f9afa242  bench/Main.hs\n55dc5bb7b1136e2af42fa336c9ec4729f04e98221459e1e3a4d7f5390676a875  src/Battleship/Board.hs\nfeac1380fc30e2f3762a29936a4c1fcf0c5d397679c334e0cbfeb7fe058e5686  src/Battleship/Client.hs\n2e692c264f3873110ac1f1f383c58b4483a4c5164454aeef892b8e070645df07  src/Battleship/Coordinator.hs\n3cb10f857e4a138ef6505ceb363f583f49d0cf6f6492cace54ab47d2ce3a0085  src/Battleship/GameWorker.hs\n95f01500656a7a0f1fca785bce0c4c1917384c9901e6cc0593dc81df660a93d7  src/Battleship/Protocol.hs\n0bd64ef836aed1e1d58d5f311aaf9d38c1e19427333cc280f76f820b913743c3  src/Battleship/Rules.hs\n69f94fa010a31405229be32f7b2ba18e0d5502ae063b74648dc098d6339f02b9  src/Battleship/Server.hs\nca8776658b47f80648e25cd5487686e6fea9e718f8d013016e65269fac9fb310  src/Battleship/Types.hs\nb2571b9eb9d89eebf928a62b19ac7044bfaaff41f9c9e7ad089a7ea8af1c5174  src/Battleship/View.hs\n8eb9fb4b540681c21ea278c3e7fbb90512bc475cd10c441c68594b9664f17166  src/Battleship/Internal/Fleet.hs\ne52f450ec70b356a665a75883ab4707c5d08e07fe274c17d226686f56d092194  app/ClientMain.hs\n3a9a9b6bb73794092b221998b810a02a62ef4558a26b8a0db850b162b4e5fa6b  app/ServerMain.hs\n46a7e3d703fd010963f6e830f7d439c55247d0aecf15ff91a4710d18d2b1d836  test/TestSupport/Generators.hs\n0e32eb5788d47b90f28332dca87b76c4c96894cfbe1f46256448732afe26d897  package.yaml\n047e3eb53a70d0e8f4c51a1fafab0bce36d0a509092ac512c7a9c58cebdcc7a7  stack.yaml\n",
+  "harnessHashes": {
+    "scripts/benchmark-numa.mjs": "ce3cc91fc1a6b8ded2c76968413c049353cebc64a2bbce9a3c769b02c6ba4dfb",
+    "scripts/start-numa.mjs": "fc15adc34e73f97c83dcdb92f4995dcf28d34ed8a03c07f906450f852eba5e45",
+    "scripts/start-affinity.mjs": "30649624c53f0da84811a1b8592330c66dcd4636da7942353139155111ac18f3",
+    "scripts/inspect-topology.mjs": "781fc38bf7a40e74dd25ccc6563151cc75c9a04a9930d2ec10009db624d6d2e0",
+    "scripts/benchmark-runtime.mjs": "6d8f97896530bcc39414af4855e0eb5ce15454b80039feb6d5ee36d886bb7aa3",
+    "docker/numa-entrypoint.sh": "3fab574d9cf065f9e307cc3326b1fd1eb59be6adb5ea2f51722c058ae65d90ca"
+  },
+  "measurementScope": "pure core replay + both views; in-flight proc verification; not network latency",
+  "unsupportedMetrics": [
+    "physical host topology outside VM",
+    "CPU cache misses without usable PMU",
+    "RAM residency of every future allocation"
+  ]
+}

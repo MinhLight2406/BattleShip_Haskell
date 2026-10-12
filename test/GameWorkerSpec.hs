@@ -5,7 +5,7 @@ import Battleship.Server
 import Battleship.Types
 import qualified Battleship.Rules as Rules
 import Control.Concurrent (getNumCapabilities, threadCapability, throwTo)
-import Control.Concurrent.Async (mapConcurrently, wait, withAsync)
+import Control.Concurrent.Async (wait, withAsync)
 import Control.Concurrent.STM
 import Control.Exception (AsyncException (ThreadKilled), SomeException, try)
 import Control.Monad (forM_, replicateM, void)
@@ -15,6 +15,7 @@ import Data.Either (isLeft)
 import Data.List (isInfixOf)
 import qualified Network.Socket.ByteString
 import ServerSpec (await, expectClosed, expectLine, withClient)
+import CoordinatorSpec (concurrentlyAtGate)
 import Test.Hspec
 
 spec :: Spec
@@ -56,7 +57,7 @@ spec = describe "NM-05 game worker locality and bounded mailbox" $ do
     forM_ [1 :: Int .. 100] $ \_ -> withGameWorker 0 counting initialGameState $ \worker -> do
       let send player = forM_ [1 .. 10] $ \row ->
             submitRequest worker (CommandRequest player (Fire (Coord 1 row))) `shouldReturn` Right True
-      void (mapConcurrently send [P1, P2])
+      void (concurrentlyAtGate [send P1, send P2])
       state <- atomically (readWorkerState worker)
       map (Map.size . playerShots . (`playerStateFor` state)) [P1, P2] `shouldBe` [10, 10]
       forM_ [P1, P2] $ \player -> do
@@ -67,8 +68,8 @@ spec = describe "NM-05 game worker locality and bounded mailbox" $ do
         own `shouldBe` [B.pack ("SHOT A" ++ show row ++ " MISS\n") | row <- [1 :: Int .. 10]]
         incoming `shouldBe` [B.pack ("INCOMING A" ++ show row ++ " MISS\n") | row <- [1 :: Int .. 10]]
 
-  it "gives disconnect priority over a full mailbox without invoking queued gameplay" $
-    withGameWorkerWithCapacity 0 2 128 Rules.step initialGameState $ \worker -> do
+  it "gives disconnect priority over a full mailbox without invoking queued gameplay (100 rounds)" $
+    forM_ [1 :: Int .. 100] $ \_ -> withGameWorkerWithCapacity 0 2 128 Rules.step initialGameState $ \worker -> do
       tickets <- atomically $ do
         queued <- replicateM 2 (enqueueRequest worker (Payload P1 (B.pack "UNKNOWN")))
         mailboxSize worker >>= (\size -> if size == 2 then pure () else error "mailbox not full")
@@ -84,8 +85,8 @@ spec = describe "NM-05 game worker locality and bounded mailbox" $ do
         state <- readWorkerState worker
         check (gamePhase state /= Placing)
         pure (gamePhase state)) `shouldReturn` Finished P2 OpponentLeft
-  it "stop proceeds at full capacity, releases tickets and backpressured producers" $
-    withGameWorkerWithCapacity 0 1 128 Rules.step initialGameState $ \worker -> do
+  it "stop proceeds at full capacity, releases tickets and backpressured producers (100 rounds)" $
+    forM_ [1 :: Int .. 100] $ \_ -> withGameWorkerWithCapacity 0 1 128 Rules.step initialGameState $ \worker -> do
       ticket <- atomically $ do
         first <- enqueueRequest worker (Payload P1 (B.pack "UNKNOWN"))
         -- Trying a second admission proves the queue would block before stop.
@@ -145,7 +146,7 @@ spec = describe "NM-05 game worker locality and bounded mailbox" $ do
     atomically (mailboxSize worker) `shouldReturn` 0
     atomically (readWorkerState worker) `shouldReturn` initialGameState
     drain worker P1 `shouldReturn` []
-  it "cancellation wakes producers and propagates failure without a late notification" $ do
+  it "cancellation wakes producers and propagates failure without a late notification (100 rounds)" $ forM_ [1 :: Int .. 100] $ \_ -> do
     saved <- newEmptyTMVarIO
     outcome <- try $ withGameWorker 0 Rules.step initialGameState $ \worker -> do
       atomically (putTMVar saved worker)

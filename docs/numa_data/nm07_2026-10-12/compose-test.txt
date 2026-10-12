@@ -1,0 +1,38 @@
+✔ NM-07 default: placement, readiness, privacy, complete game and cleanup (32289.0252ms)
+✔ NM-07 local: placement, readiness, privacy, complete game and cleanup (29432.3289ms)
+﹣ NM-07 remote: placement, readiness, privacy, complete game and cleanup (717.0367ms) # Chưa nghiệm thu remote: Linux chỉ cung cấp một node CPU/RAM được phép.
+✔ NM-07 wrapper is PID 1, SIGTERM closes active peers and restart creates fresh P1 (45285.4282ms)
+✔ NM-07 numactl failure never starts the requested program; no fallback (657.626ms)
+✖ NM-07 GHC NUMA is separately verified or explicitly unaccepted when permission/kernel is missing (10913.6761ms)
+ℹ tests 6
+ℹ suites 0
+ℹ pass 4
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 1
+ℹ todo 0
+ℹ duration_ms 120207.5659
+
+✖ failing tests:
+
+test at scripts\test\numa-compose.test.mjs:82:1
+✖ NM-07 GHC NUMA is separately verified or explicitly unaccepted when permission/kernel is missing (10913.6761ms)
+  Error: Command failed: C:/Users/nhatm/AppData/Local/Programs/DockerDesktop/resources/bin/docker.exe compose --project-directory C:\Users\nhatm\Downloads\Laa\Project\BattleShip_Haskell\ --env-file C:\Users\nhatm\Downloads\Laa\Project\BattleShip_Haskell\.stack-work\nm07\case-ghc-eda833ee-6097-4ced-b744-30cc488d87be\base.env -p battleship-numa-5b93e4ef-209b-4b49-89df-88d618e2f26f -f C:\Users\nhatm\Downloads\Laa\Project\BattleShip_Haskell\compose.yaml -f C:\Users\nhatm\Downloads\Laa\Project\BattleShip_Haskell\compose.affinity.yaml -f C:\Users\nhatm\Downloads\Laa\Project\BattleShip_Haskell\compose.numa.yaml -f C:\Users\nhatm\Downloads\Laa\Project\BattleShip_Haskell\.stack-work\nm07\battleship-numa-5b93e4ef-209b-4b49-89df-88d618e2f26f\runtime.json start --wait --wait-timeout 60 haskell
+   Container battleship-numa-5b93e4ef-209b-4b49-89df-88d618e2f26f-haskell-1 Starting 
+   Container battleship-numa-5b93e4ef-209b-4b49-89df-88d618e2f26f-haskell-1 Started 
+   Container battleship-numa-5b93e4ef-209b-4b49-89df-88d618e2f26f-haskell-1 Waiting 
+  container battleship-numa-5b93e4ef-209b-4b49-89df-88d618e2f26f-haskell-1 exited (1)
+  
+      at genericNodeError (node:internal/errors:985:15)
+      at wrappedFn (node:internal/errors:539:14)
+      at ChildProcess.exithandler (node:child_process:417:12)
+      at ChildProcess.emit (node:events:509:28)
+      at maybeClose (node:internal/child_process:1141:16)
+      at ChildProcess._handle.onexit (node:internal/child_process:306:5) {
+    code: 1,
+    killed: false,
+    signal: null,
+    cmd: 'C:/Users/nhatm/AppData/Local/Programs/DockerDesktop/resources/bin/docker.exe compose --project-directory C:\\Users\\nhatm\\Downloads\\Laa\\Project\\BattleShip_Haskell\\ --env-file C:\\Users\\nhatm\\Downloads\\Laa\\Project\\BattleShip_Haskell\\.stack-work\\nm07\\case-ghc-eda833ee-6097-4ced-b744-30cc488d87be\\base.env -p battleship-numa-5b93e4ef-209b-4b49-89df-88d618e2f26f -f C:\\Users\\nhatm\\Downloads\\Laa\\Project\\BattleShip_Haskell\\compose.yaml -f C:\\Users\\nhatm\\Downloads\\Laa\\Project\\BattleShip_Haskell\\compose.affinity.yaml -f C:\\Users\\nhatm\\Downloads\\Laa\\Project\\BattleShip_Haskell\\compose.numa.yaml -f C:\\Users\\nhatm\\Downloads\\Laa\\Project\\BattleShip_Haskell\\.stack-work\\nm07\\battleship-numa-5b93e4ef-209b-4b49-89df-88d618e2f26f\\runtime.json start --wait --wait-timeout 60 haskell',
+    stdout: '',
+    stderr: ' Container battleship-numa-5b93e4ef-209b-4b49-89df-88d618e2f26f-haskell-1 Starting \n Container battleship-numa-5b93e4ef-209b-4b49-89df-88d618e2f26f-haskell-1 Started \n Container battleship-numa-5b93e4ef-209b-4b49-89df-88d618e2f26f-haskell-1 Waiting \ncontainer battleship-numa-5b93e4ef-209b-4b49-89df-88d618e2f26f-haskell-1 exited (1)\n'
+  }

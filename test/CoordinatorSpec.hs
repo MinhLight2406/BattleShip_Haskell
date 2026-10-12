@@ -1,4 +1,4 @@
-module CoordinatorSpec (spec) where
+module CoordinatorSpec (spec, concurrentlyAtGate) where
 
 import Battleship.Coordinator
 import Battleship.Protocol

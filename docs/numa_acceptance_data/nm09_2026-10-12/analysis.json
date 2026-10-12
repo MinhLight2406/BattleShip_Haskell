@@ -1,0 +1,996 @@
+{
+  "schemaVersion": 1,
+  "analyzedAt": "2026-10-12T04:40:28.862Z",
+  "combined": {
+    "source": "docs/numa_acceptance_data/nm09_2026-10-12/combined",
+    "measured": 450,
+    "warmups": 75,
+    "groups": [
+      {
+        "mode": "core",
+        "profile": "N1",
+        "samples": 30,
+        "medianUsPerCommand": 5.976903384791309,
+        "median95CI": [
+          5.934888286639985,
+          6.065934053744997
+        ],
+        "p95SampleUsPerCommand": 7.026104131313131,
+        "p95ResponseUs": null,
+        "blockMedians": [
+          6.036518069372975,
+          6.019910503144654,
+          5.94572459500667
+        ],
+        "stabilitySpread": 0.015190721435674535,
+        "stable": true,
+        "allocatedBytesPerCommand": {
+          "median": 51082.031759100435,
+          "availableSamples": 30
+        },
+        "cpuSeconds": {
+          "median": 1.5739777744999999,
+          "availableSamples": 30
+        },
+        "gcCpuSecondsAccounting": {
+          "median": 0.033579664999999995,
+          "availableSamples": 30
+        },
+        "gcCpuSecondsProcess": {
+          "median": null,
+          "availableSamples": 0
+        },
+        "maxLiveBytesProcess": {
+          "median": 83368,
+          "availableSamples": 30
+        },
+        "maxMemoryBytesProcess": {
+          "median": 6291456,
+          "availableSamples": 30
+        }
+      },
+      {
+        "mode": "core",
+        "profile": "N2",
+        "samples": 30,
+        "medianUsPerCommand": 7.949936981132075,
+        "median95CI": [
+          7.902408057937869,
+          8.05312629693158
+        ],
+        "p95SampleUsPerCommand": 9.421150679054698,
+        "p95ResponseUs": null,
+        "blockMedians": [
+          7.931923720221079,
+          7.861788622069755,
+          8.075665227749191
+        ],
+        "stabilitySpread": 0.026902930952413688,
+        "stable": true,
+        "allocatedBytesPerCommand": {
+          "median": 51082.031759100435,
+          "availableSamples": 30
+        },
+        "cpuSeconds": {
+          "median": 1.9991368355,
+          "availableSamples": 30
+        },
+        "gcCpuSecondsAccounting": {
+          "median": 0.1589080155,
+          "availableSamples": 30
+        },
+        "gcCpuSecondsProcess": {
+          "median": null,
+          "availableSamples": 0
+        },
+        "maxLiveBytesProcess": {
+          "median": 92328,
+          "availableSamples": 30
+        },
+        "maxMemoryBytesProcess": {
+          "median": 11534336,
+          "availableSamples": 30
+        }
+      },
+      {
+        "mode": "core",
+        "profile": "default",
+        "samples": 30,
+        "medianUsPerCommand": 18.674549818944158,
+        "median95CI": [
+          18.46607697350867,
+          18.93697405565085
+        ],
+        "p95SampleUsPerCommand": 22.188923719077565,
+        "p95ResponseUs": null,
+        "blockMedians": [
+          18.779754326281683,
+          18.433369453020774,
+          18.901816529445398
+        ],
+        "stabilitySpread": 0.025084785495038498,
+        "stable": true,
+        "allocatedBytesPerCommand": {
+          "median": 51082.031759100435,
+          "availableSamples": 30
+        },
+        "cpuSeconds": {
+          "median": 7.730929991,
+          "availableSamples": 30
+        },
+        "gcCpuSecondsAccounting": {
+          "median": 2.6001478815,
+          "availableSamples": 30
+        },
+        "gcCpuSecondsProcess": {
+          "median": null,
+          "availableSamples": 0
+        },
+        "maxLiveBytesProcess": {
+          "median": 187688,
+          "availableSamples": 30
+        },
+        "maxMemoryBytesProcess": {
+          "median": 55574528,
+          "availableSamples": 30
+        }
+      },
+      {
+        "mode": "coordinator",
+        "profile": "N1",
+        "samples": 30,
+        "medianUsPerCommand": 9.067485692104395,
+        "median95CI": [
+          8.931662213412618,
+          9.1662285728444
+        ],
+        "p95SampleUsPerCommand": 9.515643956722828,
+        "p95ResponseUs": null,
+        "blockMedians": [
+          8.817681255368353,
+          9.08900367690783,
+          9.1662285728444
+        ],
+        "stabilitySpread": 0.03843924648037198,
+        "stable": true,
+        "allocatedBytesPerCommand": {
+          "median": 59362.02449950446,
+          "availableSamples": 30
+        },
+        "cpuSeconds": {
+          "median": 1.3772615255,
+          "availableSamples": 30
+        },
+        "gcCpuSecondsAccounting": {
+          "median": 0.038217217,
+          "availableSamples": 30
+        },
+        "gcCpuSecondsProcess": {
+          "median": null,
+          "availableSamples": 0
+        },
+        "maxLiveBytesProcess": {
+          "median": 83528,
+          "availableSamples": 30
+        },
+        "maxMemoryBytesProcess": {
+          "median": 6291456,
+          "availableSamples": 30
+        }
+      },
+      {
+        "mode": "coordinator",
+        "profile": "N2",
+        "samples": 30,
+        "medianUsPerCommand": 12.208119454905848,
+        "median95CI": [
+          12.115993029402048,
+          12.564988351503137
+        ],
+        "p95SampleUsPerCommand": 12.80651425338619,
+        "p95ResponseUs": null,
+        "blockMedians": [
+          12.275263970928311,
+          12.223513148331682,
+          12.17141739015527
+        ],
+        "stabilitySpread": 0.008506353591691817,
+        "stable": true,
+        "allocatedBytesPerCommand": {
+          "median": 59362.272560290716,
+          "availableSamples": 30
+        },
+        "cpuSeconds": {
+          "median": 1.795234714,
+          "availableSamples": 30
+        },
+        "gcCpuSecondsAccounting": {
+          "median": 0.140603898,
+          "availableSamples": 30
+        },
+        "gcCpuSecondsProcess": {
+          "median": null,
+          "availableSamples": 0
+        },
+        "maxLiveBytesProcess": {
+          "median": 92464,
+          "availableSamples": 30
+        },
+        "maxMemoryBytesProcess": {
+          "median": 11534336,
+          "availableSamples": 30
+        }
+      },
+      {
+        "mode": "coordinator",
+        "profile": "default",
+        "samples": 30,
+        "medianUsPerCommand": 25.629034473075652,
+        "median95CI": [
+          25.340838714899242,
+          25.84314352824579
+        ],
+        "p95SampleUsPerCommand": 26.827722853650478,
+        "p95ResponseUs": null,
+        "blockMedians": [
+          25.243516257020154,
+          25.670414839775354,
+          25.84314352824579
+        ],
+        "stabilitySpread": 0.0233964050364663,
+        "stable": true,
+        "allocatedBytesPerCommand": {
+          "median": 59362.11647175421,
+          "availableSamples": 30
+        },
+        "cpuSeconds": {
+          "median": 5.9930407725,
+          "availableSamples": 30
+        },
+        "gcCpuSecondsAccounting": {
+          "median": 1.9134036535,
+          "availableSamples": 30
+        },
+        "gcCpuSecondsProcess": {
+          "median": null,
+          "availableSamples": 0
+        },
+        "maxLiveBytesProcess": {
+          "median": 187904,
+          "availableSamples": 30
+        },
+        "maxMemoryBytesProcess": {
+          "median": 55574528,
+          "availableSamples": 30
+        }
+      },
+      {
+        "mode": "worker",
+        "profile": "N1",
+        "samples": 30,
+        "medianUsPerCommand": 21.127270333940498,
+        "median95CI": [
+          20.541030892531875,
+          21.81713565877353
+        ],
+        "p95SampleUsPerCommand": 24.58049363205829,
+        "p95ResponseUs": null,
+        "blockMedians": [
+          20.221429927140257,
+          21.039327583485125,
+          21.91298511839709
+        ],
+        "stabilitySpread": 0.08006501381957448,
+        "stable": true,
+        "allocatedBytesPerCommand": {
+          "median": 62795.491730418944,
+          "availableSamples": 30
+        },
+        "cpuSeconds": {
+          "median": 1.613526186,
+          "availableSamples": 30
+        },
+        "gcCpuSecondsAccounting": {
+          "median": 0.032910473999999995,
+          "availableSamples": 30
+        },
+        "gcCpuSecondsProcess": {
+          "median": null,
+          "availableSamples": 0
+        },
+        "maxLiveBytesProcess": {
+          "median": 83488,
+          "availableSamples": 30
+        },
+        "maxMemoryBytesProcess": {
+          "median": 6291456,
+          "availableSamples": 30
+        }
+      },
+      {
+        "mode": "worker",
+        "profile": "N2",
+        "samples": 30,
+        "medianUsPerCommand": 66.15473737097753,
+        "median95CI": [
+          64.48099064966607,
+          67.66823190148754
+        ],
+        "p95SampleUsPerCommand": 71.44672920643595,
+        "p95ResponseUs": null,
+        "blockMedians": [
+          63.52449823922283,
+          66.296899143898,
+          68.34685336369157
+        ],
+        "stabilitySpread": 0.0728950838006702,
+        "stable": true,
+        "allocatedBytesPerCommand": {
+          "median": 62843.14919247116,
+          "availableSamples": 30
+        },
+        "cpuSeconds": {
+          "median": 4.902626892000001,
+          "availableSamples": 30
+        },
+        "gcCpuSecondsAccounting": {
+          "median": 0.0728237705,
+          "availableSamples": 30
+        },
+        "gcCpuSecondsProcess": {
+          "median": null,
+          "availableSamples": 0
+        },
+        "maxLiveBytesProcess": {
+          "median": 104156,
+          "availableSamples": 30
+        },
+        "maxMemoryBytesProcess": {
+          "median": 12582912,
+          "availableSamples": 30
+        }
+      },
+      {
+        "mode": "worker",
+        "profile": "default",
+        "samples": 30,
+        "medianUsPerCommand": 72.68264235579842,
+        "median95CI": [
+          70.69628978142077,
+          74.42290503946569
+        ],
+        "p95SampleUsPerCommand": 86.36223343776562,
+        "p95ResponseUs": null,
+        "blockMedians": [
+          70.42335754705525,
+          72.4677377413479,
+          74.00127493017608
+        ],
+        "stabilitySpread": 0.04922657277106268,
+        "stable": true,
+        "allocatedBytesPerCommand": {
+          "median": 62855.72259866424,
+          "availableSamples": 30
+        },
+        "cpuSeconds": {
+          "median": 5.8965537175,
+          "availableSamples": 30
+        },
+        "gcCpuSecondsAccounting": {
+          "median": 0.3985725,
+          "availableSamples": 30
+        },
+        "gcCpuSecondsProcess": {
+          "median": null,
+          "availableSamples": 0
+        },
+        "maxLiveBytesProcess": {
+          "median": 197968,
+          "availableSamples": 30
+        },
+        "maxMemoryBytesProcess": {
+          "median": 65011712,
+          "availableSamples": 30
+        }
+      },
+      {
+        "mode": "tcp",
+        "profile": "N1",
+        "samples": 30,
+        "medianUsPerCommand": 33610.007580000005,
+        "median95CI": [
+          33514.8784,
+          33649.710999999996
+        ],
+        "p95SampleUsPerCommand": 33814.549798,
+        "p95ResponseUs": 44408.6468,
+        "blockMedians": [
+          33623.21586,
+          33507.15136,
+          33642.6584
+        ],
+        "stabilitySpread": 0.004031746784866294,
+        "stable": true,
+        "allocatedBytesPerCommand": {
+          "median": 40250.08,
+          "availableSamples": 30
+        },
+        "cpuSeconds": {
+          "median": 0.0245705,
+          "availableSamples": 30
+        },
+        "gcCpuSecondsAccounting": {
+          "median": null,
+          "availableSamples": 0
+        },
+        "gcCpuSecondsProcess": {
+          "median": 0.000234,
+          "availableSamples": 30
+        },
+        "maxLiveBytesProcess": {
+          "median": 60464,
+          "availableSamples": 30
+        },
+        "maxMemoryBytesProcess": {
+          "median": 6291456,
+          "availableSamples": 30
+        }
+      },
+      {
+        "mode": "tcp",
+        "profile": "N2",
+        "samples": 30,
+        "medianUsPerCommand": 33617.32506,
+        "median95CI": [
+          33527.413559500004,
+          33658.70918
+        ],
+        "p95SampleUsPerCommand": 33863.582852,
+        "p95ResponseUs": 44505.830649999996,
+        "blockMedians": [
+          33617.32506,
+          33626.87702,
+          33578.31480000001
+        ],
+        "stabilitySpread": 0.0014445593131910096,
+        "stable": true,
+        "allocatedBytesPerCommand": {
+          "median": 41016.479999999996,
+          "availableSamples": 30
+        },
+        "cpuSeconds": {
+          "median": 0.0300105,
+          "availableSamples": 30
+        },
+        "gcCpuSecondsAccounting": {
+          "median": null,
+          "availableSamples": 0
+        },
+        "gcCpuSecondsProcess": {
+          "median": 0,
+          "availableSamples": 30
+        },
+        "maxLiveBytesProcess": {
+          "median": 73420,
+          "availableSamples": 30
+        },
+        "maxMemoryBytesProcess": {
+          "median": 11534336,
+          "availableSamples": 30
+        }
+      },
+      {
+        "mode": "tcp",
+        "profile": "default",
+        "samples": 30,
+        "medianUsPerCommand": 33633.6931,
+        "median95CI": [
+          33537.169200000004,
+          33686.1703
+        ],
+        "p95SampleUsPerCommand": 33907.71146,
+        "p95ResponseUs": 44507.5976,
+        "blockMedians": [
+          33546.24622,
+          33568.46452,
+          33736.77054
+        ],
+        "stabilitySpread": 0.005664686284480512,
+        "stable": true,
+        "allocatedBytesPerCommand": {
+          "median": 47098.08,
+          "availableSamples": 30
+        },
+        "cpuSeconds": {
+          "median": 0.048156,
+          "availableSamples": 30
+        },
+        "gcCpuSecondsAccounting": {
+          "median": null,
+          "availableSamples": 0
+        },
+        "gcCpuSecondsProcess": {
+          "median": 0,
+          "availableSamples": 30
+        },
+        "maxLiveBytesProcess": {
+          "median": 171156,
+          "availableSamples": 30
+        },
+        "maxMemoryBytesProcess": {
+          "median": 65011712,
+          "availableSamples": 30
+        }
+      },
+      {
+        "mode": "web",
+        "profile": "N1",
+        "samples": 30,
+        "medianUsPerCommand": 33626.72358,
+        "median95CI": [
+          33542.80996,
+          33702.968559999994
+        ],
+        "p95SampleUsPerCommand": 34095.990428,
+        "p95ResponseUs": 44601.93145,
+        "blockMedians": [
+          33679.39194,
+          33545.61924,
+          33596.8781
+        ],
+        "stabilitySpread": 0.003978166343852919,
+        "stable": true,
+        "allocatedBytesPerCommand": {
+          "median": 40309.92,
+          "availableSamples": 30
+        },
+        "cpuSeconds": {
+          "median": 0.02382,
+          "availableSamples": 30
+        },
+        "gcCpuSecondsAccounting": {
+          "median": null,
+          "availableSamples": 0
+        },
+        "gcCpuSecondsProcess": {
+          "median": 0.000216,
+          "availableSamples": 30
+        },
+        "maxLiveBytesProcess": {
+          "median": 60472,
+          "availableSamples": 30
+        },
+        "maxMemoryBytesProcess": {
+          "median": 6291456,
+          "availableSamples": 30
+        }
+      },
+      {
+        "mode": "web",
+        "profile": "N2",
+        "samples": 30,
+        "medianUsPerCommand": 33595.63312,
+        "median95CI": [
+          33559.76358,
+          33652.52134000001
+        ],
+        "p95SampleUsPerCommand": 33805.647048,
+        "p95ResponseUs": 44546.487049999996,
+        "blockMedians": [
+          33582.46704,
+          33663.22768,
+          33591.47064
+        ],
+        "stabilitySpread": 0.002403902903437839,
+        "stable": true,
+        "allocatedBytesPerCommand": {
+          "median": 40975.36,
+          "availableSamples": 30
+        },
+        "cpuSeconds": {
+          "median": 0.0301785,
+          "availableSamples": 30
+        },
+        "gcCpuSecondsAccounting": {
+          "median": null,
+          "availableSamples": 0
+        },
+        "gcCpuSecondsProcess": {
+          "median": 0,
+          "availableSamples": 30
+        },
+        "maxLiveBytesProcess": {
+          "median": 73432,
+          "availableSamples": 30
+        },
+        "maxMemoryBytesProcess": {
+          "median": 11534336,
+          "availableSamples": 30
+        }
+      },
+      {
+        "mode": "web",
+        "profile": "default",
+        "samples": 30,
+        "medianUsPerCommand": 33612.750400000004,
+        "median95CI": [
+          33573.695779999995,
+          33681.81804
+        ],
+        "p95SampleUsPerCommand": 33893.56359799999,
+        "p95ResponseUs": 44495.451649999995,
+        "blockMedians": [
+          33672.67268,
+          33612.750400000004,
+          33628.31436
+        ],
+        "stabilitySpread": 0.0017827246889025438,
+        "stable": true,
+        "allocatedBytesPerCommand": {
+          "median": 47000.64,
+          "availableSamples": 30
+        },
+        "cpuSeconds": {
+          "median": 0.0493065,
+          "availableSamples": 30
+        },
+        "gcCpuSecondsAccounting": {
+          "median": null,
+          "availableSamples": 0
+        },
+        "gcCpuSecondsProcess": {
+          "median": 0,
+          "availableSamples": 30
+        },
+        "maxLiveBytesProcess": {
+          "median": 170904,
+          "availableSamples": 30
+        },
+        "maxMemoryBytesProcess": {
+          "median": 65011712,
+          "availableSamples": 30
+        }
+      }
+    ]
+  },
+  "comparisons": [
+    {
+      "mode": "core",
+      "profile": "N1",
+      "beforeUs": 8.200843756288428,
+      "afterUs": 5.976903384791309,
+      "observedPercentChange": -27.11843363424399,
+      "paired95CI": [
+        -28.496647737067313,
+        -25.843181492110503
+      ],
+      "timingEligible": true,
+      "causalAttribution": false,
+      "scope": "cross-batch versions; paired by index for bootstrap, not isolated intervention",
+      "allocationPercentChange": -3.3191760903278578
+    },
+    {
+      "mode": "core",
+      "profile": "N2",
+      "beforeUs": 11.048353042668158,
+      "afterUs": 7.949936981132075,
+      "observedPercentChange": -28.044144222855326,
+      "paired95CI": [
+        -28.932999417323636,
+        -26.562078317233695
+      ],
+      "timingEligible": true,
+      "causalAttribution": false,
+      "scope": "cross-batch versions; paired by index for bootstrap, not isolated intervention",
+      "allocationPercentChange": -3.3191760903278578
+    },
+    {
+      "mode": "core",
+      "profile": "default",
+      "beforeUs": 25.02876243711571,
+      "afterUs": 18.674549818944158,
+      "observedPercentChange": -25.387642054362015,
+      "paired95CI": [
+        -26.40169291985621,
+        -24.058325562188973
+      ],
+      "timingEligible": true,
+      "causalAttribution": false,
+      "scope": "cross-batch versions; paired by index for bootstrap, not isolated intervention",
+      "allocationPercentChange": -3.3191760903278578
+    },
+    {
+      "mode": "coordinator",
+      "profile": "N1",
+      "beforeUs": 12.166930566691413,
+      "afterUs": 9.067485692104395,
+      "observedPercentChange": -25.474336831280688,
+      "paired95CI": [
+        -27.121541105879775,
+        -24.319237227700167
+      ],
+      "timingEligible": true,
+      "causalAttribution": false,
+      "scope": "cross-batch versions; paired by index for bootstrap, not isolated intervention",
+      "allocationPercentChange": -2.8689680474505708
+    },
+    {
+      "mode": "coordinator",
+      "profile": "N2",
+      "beforeUs": 15.771411898045038,
+      "afterUs": 12.208119454905848,
+      "observedPercentChange": -22.59336365174054,
+      "paired95CI": [
+        -23.77403966688889,
+        -20.16052594277945
+      ],
+      "timingEligible": true,
+      "causalAttribution": false,
+      "scope": "cross-batch versions; paired by index for bootstrap, not isolated intervention",
+      "allocationPercentChange": -2.868834885201188
+    },
+    {
+      "mode": "coordinator",
+      "profile": "default",
+      "beforeUs": 31.83719707993071,
+      "afterUs": 25.629034473075652,
+      "observedPercentChange": -19.499714724474014,
+      "paired95CI": [
+        -20.406171504686466,
+        -17.87120953309935
+      ],
+      "timingEligible": true,
+      "causalAttribution": false,
+      "scope": "cross-batch versions; paired by index for bootstrap, not isolated intervention",
+      "allocationPercentChange": -2.868749596448894
+    },
+    {
+      "mode": "tcp",
+      "profile": "N1",
+      "beforeUs": 33592.72654,
+      "afterUs": 33610.007580000005,
+      "observedPercentChange": 0.05144280259425926,
+      "paired95CI": [
+        -0.34201396919342153,
+        0.22634405194483787
+      ],
+      "timingEligible": true,
+      "causalAttribution": false,
+      "scope": "cross-batch versions; paired by index for bootstrap, not isolated intervention",
+      "allocationPercentChange": -4.161364796598654
+    },
+    {
+      "mode": "tcp",
+      "profile": "N2",
+      "beforeUs": 33631.557360000006,
+      "afterUs": 33617.32506,
+      "observedPercentChange": -0.0423182900739838,
+      "paired95CI": [
+        -0.3667634618420981,
+        0.08351916203619414
+      ],
+      "timingEligible": true,
+      "causalAttribution": false,
+      "scope": "cross-batch versions; paired by index for bootstrap, not isolated intervention",
+      "allocationPercentChange": -3.6169084831919163
+    },
+    {
+      "mode": "tcp",
+      "profile": "default",
+      "beforeUs": 33638.212419999996,
+      "afterUs": 33633.6931,
+      "observedPercentChange": -0.013435077772783188,
+      "paired95CI": [
+        -0.332884090290686,
+        0.22944529895128074
+      ],
+      "timingEligible": true,
+      "causalAttribution": false,
+      "scope": "cross-batch versions; paired by index for bootstrap, not isolated intervention",
+      "allocationPercentChange": -1.9175790855596841
+    },
+    {
+      "mode": "web",
+      "profile": "N1",
+      "beforeUs": 33585.19834,
+      "afterUs": 33626.72358,
+      "observedPercentChange": 0.12364149105095201,
+      "paired95CI": [
+        -0.1844101253309538,
+        0.41493825063318873
+      ],
+      "timingEligible": true,
+      "causalAttribution": false,
+      "scope": "cross-batch versions; paired by index for bootstrap, not isolated intervention",
+      "allocationPercentChange": -3.743481001776605
+    },
+    {
+      "mode": "web",
+      "profile": "N2",
+      "beforeUs": 33655.896779999995,
+      "afterUs": 33595.63312,
+      "observedPercentChange": -0.1790582506059013,
+      "paired95CI": [
+        -0.33539690658607124,
+        0.086053128464429
+      ],
+      "timingEligible": true,
+      "causalAttribution": false,
+      "scope": "cross-batch versions; paired by index for bootstrap, not isolated intervention",
+      "allocationPercentChange": -3.381146767877219
+    },
+    {
+      "mode": "web",
+      "profile": "default",
+      "beforeUs": 33724.98798,
+      "afterUs": 33612.750400000004,
+      "observedPercentChange": -0.3328024314391276,
+      "paired95CI": [
+        -0.4812288002852233,
+        0.03395282540732403
+      ],
+      "timingEligible": true,
+      "causalAttribution": false,
+      "scope": "cross-batch versions; paired by index for bootstrap, not isolated intervention",
+      "allocationPercentChange": -2.07449237774896
+    }
+  ],
+  "baselineSnapshot": {
+    "matchingFiles": 24,
+    "total": 25,
+    "exactHistoricalHarness": false,
+    "files": [
+      {
+        "file": "app/ClientMain.hs",
+        "expected": "e52f450ec70b356a665a75883ab4707c5d08e07fe274c17d226686f56d092194",
+        "actual": "e52f450ec70b356a665a75883ab4707c5d08e07fe274c17d226686f56d092194",
+        "matches": true
+      },
+      {
+        "file": "app/ServerMain.hs",
+        "expected": "f5edc171a04892cbf9e4453c74843bbd3460655c94b412863c9deb7ecc820c1a",
+        "actual": "f5edc171a04892cbf9e4453c74843bbd3460655c94b412863c9deb7ecc820c1a",
+        "matches": true
+      },
+      {
+        "file": "bench/Fixtures.hs",
+        "expected": "90fc4f46e3b155842ebf03e1a8d02b591916bbc00a33f245d34b1f2601f39805",
+        "actual": "90fc4f46e3b155842ebf03e1a8d02b591916bbc00a33f245d34b1f2601f39805",
+        "matches": true
+      },
+      {
+        "file": "bench/FixturesSpec.hs",
+        "expected": "bed4bc4f8fc075451b882998b47ee42d57a4acd9455553355b88ea5d1c117b5f",
+        "actual": "bed4bc4f8fc075451b882998b47ee42d57a4acd9455553355b88ea5d1c117b5f",
+        "matches": true
+      },
+      {
+        "file": "bench/Main.hs",
+        "expected": "d4b7956dff7f7684910356bcd2c106014040f112eec0462b54068f83d28a01be",
+        "actual": "d4b7956dff7f7684910356bcd2c106014040f112eec0462b54068f83d28a01be",
+        "matches": true
+      },
+      {
+        "file": "bench/fixtures-v1.json",
+        "expected": "1820e84d045124e7829ae4ff62b790929baf33b051bcbbcdb4a611a5a47ae8c5",
+        "actual": "1820e84d045124e7829ae4ff62b790929baf33b051bcbbcdb4a611a5a47ae8c5",
+        "matches": true
+      },
+      {
+        "file": "docker/benchmark.Dockerfile",
+        "expected": "54040d46fa49bc442648f1c50d6f6a0e3f6e2a7cc55671276179c2e38ea3c9ce",
+        "actual": "54040d46fa49bc442648f1c50d6f6a0e3f6e2a7cc55671276179c2e38ea3c9ce",
+        "matches": true
+      },
+      {
+        "file": "frontend/bridge.mjs",
+        "expected": "e9df2330051379ef34815781878e0312848cfc68e7dde280efe40e5964066efa",
+        "actual": "e9df2330051379ef34815781878e0312848cfc68e7dde280efe40e5964066efa",
+        "matches": true
+      },
+      {
+        "file": "frontend/package.json",
+        "expected": "20cc460614659973cc63e73fffa85c019d4be3affcccbf07437fe69e60bff9cf",
+        "actual": "20cc460614659973cc63e73fffa85c019d4be3affcccbf07437fe69e60bff9cf",
+        "matches": true
+      },
+      {
+        "file": "frontend/pnpm-lock.yaml",
+        "expected": "b9202d3615ec2d7ba38db1c25fbb1c71be773716409381f9739c387cdf3b966c",
+        "actual": "b9202d3615ec2d7ba38db1c25fbb1c71be773716409381f9739c387cdf3b966c",
+        "matches": true
+      },
+      {
+        "file": "package.yaml",
+        "expected": "8b14d378d3b76d11060a8a207b1e47cd16a9e99f07bb44a3b77a66241c3794bd",
+        "actual": "8b14d378d3b76d11060a8a207b1e47cd16a9e99f07bb44a3b77a66241c3794bd",
+        "matches": true
+      },
+      {
+        "file": "scripts/benchmark-runtime.mjs",
+        "expected": "5a06ebcefb868f70831268d4368ee83d3328da35b4ea42942cd22bdec4e3dabd",
+        "actual": "d9473b16ed3bd37badd1a085736cf46462d755cbdb49bc5ffeaba02d8e1162d4",
+        "matches": false
+      },
+      {
+        "file": "scripts/inspect-topology.mjs",
+        "expected": "781fc38bf7a40e74dd25ccc6563151cc75c9a04a9930d2ec10009db624d6d2e0",
+        "actual": "781fc38bf7a40e74dd25ccc6563151cc75c9a04a9930d2ec10009db624d6d2e0",
+        "matches": true
+      },
+      {
+        "file": "src/Battleship/Board.hs",
+        "expected": "8666066e5d0d4489361592bbfda1b84396c49ecee8a095328d7b2a30532889d7",
+        "actual": "8666066e5d0d4489361592bbfda1b84396c49ecee8a095328d7b2a30532889d7",
+        "matches": true
+      },
+      {
+        "file": "src/Battleship/Client.hs",
+        "expected": "feac1380fc30e2f3762a29936a4c1fcf0c5d397679c334e0cbfeb7fe058e5686",
+        "actual": "feac1380fc30e2f3762a29936a4c1fcf0c5d397679c334e0cbfeb7fe058e5686",
+        "matches": true
+      },
+      {
+        "file": "src/Battleship/Coordinator.hs",
+        "expected": "df547bf17b171f0d8e181708ee35ee4e60f05f8b86253d709855b6b5eaa24579",
+        "actual": "df547bf17b171f0d8e181708ee35ee4e60f05f8b86253d709855b6b5eaa24579",
+        "matches": true
+      },
+      {
+        "file": "src/Battleship/Internal/Fleet.hs",
+        "expected": "42d41114839263aac4a8407e142543f30afdffd9c5795ca8e374342a5725804f",
+        "actual": "42d41114839263aac4a8407e142543f30afdffd9c5795ca8e374342a5725804f",
+        "matches": true
+      },
+      {
+        "file": "src/Battleship/Protocol.hs",
+        "expected": "95f01500656a7a0f1fca785bce0c4c1917384c9901e6cc0593dc81df660a93d7",
+        "actual": "95f01500656a7a0f1fca785bce0c4c1917384c9901e6cc0593dc81df660a93d7",
+        "matches": true
+      },
+      {
+        "file": "src/Battleship/Rules.hs",
+        "expected": "0950d81b65ea0ccef49278afc79cb5313e2668f4dc6e513041fa789cf9805582",
+        "actual": "0950d81b65ea0ccef49278afc79cb5313e2668f4dc6e513041fa789cf9805582",
+        "matches": true
+      },
+      {
+        "file": "src/Battleship/Server.hs",
+        "expected": "fc813b221694cb09e220b9dbdc825f76055469b941ccd25564fd3fb2344efa1e",
+        "actual": "fc813b221694cb09e220b9dbdc825f76055469b941ccd25564fd3fb2344efa1e",
+        "matches": true
+      },
+      {
+        "file": "src/Battleship/Types.hs",
+        "expected": "39ccf4de14a4ab0de98116a6f111dde0730f6f93babb0bc05d6c206b07d71ed8",
+        "actual": "39ccf4de14a4ab0de98116a6f111dde0730f6f93babb0bc05d6c206b07d71ed8",
+        "matches": true
+      },
+      {
+        "file": "src/Battleship/View.hs",
+        "expected": "b2571b9eb9d89eebf928a62b19ac7044bfaaff41f9c9e7ad089a7ea8af1c5174",
+        "actual": "b2571b9eb9d89eebf928a62b19ac7044bfaaff41f9c9e7ad089a7ea8af1c5174",
+        "matches": true
+      },
+      {
+        "file": "stack.yaml",
+        "expected": "047e3eb53a70d0e8f4c51a1fafab0bce36d0a509092ac512c7a9c58cebdcc7a7",
+        "actual": "047e3eb53a70d0e8f4c51a1fafab0bce36d0a509092ac512c7a9c58cebdcc7a7",
+        "matches": true
+      },
+      {
+        "file": "stack.yaml.lock",
+        "expected": "38439cf1bdc51eb9987eebb3de9bd3149d96b8233676bfb546ffa7e9242c9e23",
+        "actual": "38439cf1bdc51eb9987eebb3de9bd3149d96b8233676bfb546ffa7e9242c9e23",
+        "matches": true
+      },
+      {
+        "file": "test/TestSupport/Generators.hs",
+        "expected": "46a7e3d703fd010963f6e830f7d439c55247d0aecf15ff91a4710d18d2b1d836",
+        "actual": "46a7e3d703fd010963f6e830f7d439c55247d0aecf15ff91a4710d18d2b1d836",
+        "matches": true
+      }
+    ]
+  },
+  "note": "Timing eligibility alone does not establish cause across separate batches. Null means unavailable, never zero."
+}

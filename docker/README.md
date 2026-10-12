@@ -27,7 +27,7 @@ Runtime mặc định bind `0.0.0.0:4000`, marker `/tmp/battleship-ready`; chạ
 
 Đã xác nhận tag/digest và manifest Linux amd64/arm64 trực tiếp qua Docker Hub Registry ngày **2026-10-10**. Nguồn [official Haskell image](https://hub.docker.com/_/haskell) và [Dockerfile upstream](https://github.com/haskell/docker-haskell/blob/master/9.10/bookworm/Dockerfile) xác định GHC 9.10.3 trên Debian 12; runtime dùng cùng Bookworm để tránh đổi glibc giữa build và chạy. Digest cố định nội dung image nền; muốn cập nhật image phải đổi digest và chạy lại cả gate. Các package apt vẫn lấy từ repository Bookworm tại lúc build, không cam kết image tái tạo giống nhau từng byte.
 
-Runtime cài `libgmp10`, `libnuma1`, `libffi8`, `libtinfo6`, `zlib1g`; `libc6`/loader thuộc Debian base. Trên image amd64 đã build, `ldd` liệt kê `libm.so.6`, `libgmp.so.10`, `libc.so.6` và loader, không có `not found`; runtime test cũng khởi chạy binary thật. Kết quả này áp dụng cho image nghiệm thu dưới đây.
+Runtime cài `libgmp10`, `libnuma1`, `libffi8`, `libtinfo6`, `zlib1g`; từ NM-07 thêm công cụ `numactl` và wrapper thí nghiệm, xem [bố trí CPU–RAM](../docs/numa_experiments.md). ENTRYPOINT mặc định vẫn gọi server trực tiếp. `libc6`/loader thuộc Debian base. Trên image amd64 đã build, `ldd` liệt kê `libm.so.6`, `libgmp.so.10`, `libc.so.6` và loader, không có `not found`; runtime test cũng khởi chạy binary thật. Kết quả này áp dụng cho image nghiệm thu dưới đây.
 
 ## Lệnh nghiệm thu
 

@@ -1,0 +1,89 @@
+#0 building with "desktop-linux" instance using docker driver
+
+#1 [internal] load build definition from runtime.Dockerfile
+#1 transferring dockerfile: 399B 0.0s done
+#1 DONE 0.0s
+
+#2 [internal] load metadata for docker.io/library/battleship-haskell:local
+#2 DONE 0.1s
+
+#3 [internal] load .dockerignore
+#3 transferring context: 588B 0.0s done
+#3 DONE 0.1s
+
+#4 [1/4] FROM docker.io/library/battleship-haskell:local@sha256:2eb5727273f765569a62e9a9b942d389a0e22a49111e21453c0889db4f6d65a7
+#4 resolve docker.io/library/battleship-haskell:local@sha256:2eb5727273f765569a62e9a9b942d389a0e22a49111e21453c0889db4f6d65a7 0.1s done
+#4 DONE 0.2s
+
+#5 [internal] load build context
+#5 transferring context: 648B 0.1s done
+#5 DONE 0.1s
+
+#6 [2/4] RUN apt-get update && apt-get install -y --no-install-recommends numactl && rm -rf /var/lib/apt/lists/*
+#6 0.689 Get:1 http://deb.debian.org/debian bookworm InRelease [151 kB]
+#6 0.864 Get:2 http://deb.debian.org/debian bookworm-updates InRelease [55.4 kB]
+#6 0.933 Get:3 http://deb.debian.org/debian-security bookworm-security InRelease [34.8 kB]
+#6 1.003 Get:4 http://deb.debian.org/debian bookworm/main amd64 Packages [8790 kB]
+#6 2.215 Get:5 http://deb.debian.org/debian bookworm-updates/main amd64 Packages [6924 B]
+#6 2.215 Get:6 http://deb.debian.org/debian-security bookworm-security/main amd64 Packages [349 kB]
+#6 3.537 Fetched 9388 kB in 3s (3069 kB/s)
+#6 3.537 Reading package lists...
+#6 4.240 Reading package lists...
+#6 4.929 Building dependency tree...
+#6 5.080 Reading state information...
+#6 5.304 The following NEW packages will be installed:
+#6 5.304   numactl
+#6 5.518 0 upgraded, 1 newly installed, 0 to remove and 1 not upgraded.
+#6 5.518 Need to get 36.9 kB of archives.
+#6 5.518 After this operation, 140 kB of additional disk space will be used.
+#6 5.518 Get:1 http://deb.debian.org/debian bookworm/main amd64 numactl amd64 2.0.16-1 [36.9 kB]
+#6 5.765 debconf: delaying package configuration, since apt-utils is not installed
+#6 5.801 Fetched 36.9 kB in 0s (175 kB/s)
+#6 5.845 Selecting previously unselected package numactl.
+#6 5.845 (Reading database ... 
+(Reading database ... 5%
+(Reading database ... 10%
+(Reading database ... 15%
+(Reading database ... 20%
+(Reading database ... 25%
+(Reading database ... 30%
+(Reading database ... 35%
+(Reading database ... 40%
+(Reading database ... 45%
+(Reading database ... 50%
+(Reading database ... 55%
+(Reading database ... 60%
+(Reading database ... 65%
+(Reading database ... 70%
+(Reading database ... 75%
+(Reading database ... 80%
+(Reading database ... 85%
+(Reading database ... 90%
+(Reading database ... 95%
+(Reading database ... 100%
+(Reading database ... 6101 files and directories currently installed.)
+#6 5.898 Preparing to unpack .../numactl_2.0.16-1_amd64.deb ...
+#6 5.906 Unpacking numactl (2.0.16-1) ...
+#6 5.997 Setting up numactl (2.0.16-1) ...
+#6 DONE 6.1s
+
+#7 [3/4] COPY docker/numa-entrypoint.sh /usr/local/bin/battleship-numa-entrypoint
+#7 DONE 0.1s
+
+#8 [4/4] RUN sed -i 's/\r$//' /usr/local/bin/battleship-numa-entrypoint && chmod 0555 /usr/local/bin/battleship-numa-entrypoint
+#8 DONE 0.4s
+
+#9 exporting to image
+#9 exporting layers
+#9 exporting layers 0.4s done
+#9 exporting manifest sha256:4d711e69b54f2ccd14f685c29bf64ba6fa481c5045990bdbb82178cfea941a2e 0.1s done
+#9 exporting config sha256:9b21f3cb7f648e56728c2586ebe75300be02ef3840d9ef58c1ad43e67208663f 0.1s done
+#9 exporting attestation manifest sha256:6b9c3843e5bc7d6eb645692aecd6668b2a39777a38ee507daaf43739905121dc 0.1s done
+#9 exporting manifest list sha256:281c29a57fae615c085a3f7bcd8f49943e388aac49c003af5add6f76f526bc96
+#9 exporting manifest list sha256:281c29a57fae615c085a3f7bcd8f49943e388aac49c003af5add6f76f526bc96 0.1s done
+#9 naming to docker.io/library/battleship-haskell:local 0.0s done
+#9 unpacking to docker.io/library/battleship-haskell:local
+#9 unpacking to docker.io/library/battleship-haskell:local 0.2s done
+#9 DONE 1.0s
+
+View build details: docker-desktop://dashboard/build/desktop-linux/desktop-linux/p2udat57ys8sp68zvxjfl01ns

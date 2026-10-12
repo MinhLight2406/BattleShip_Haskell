@@ -1,0 +1,320 @@
+TAP version 13
+# Subtest: bridge reassembles fragmented TCP/CRLF frames and adds one LF to commands
+ok 1 - bridge reassembles fragmented TCP/CRLF frames and adds one LF to commands
+  ---
+  duration_ms: 56.8696
+  type: 'test'
+  ...
+# Subtest: bridge rejects newline injection without reaching TCP; closes binary/oversize commands
+ok 2 - bridge rejects newline injection without reaching TCP; closes binary/oversize commands
+  ---
+  duration_ms: 14.1916
+  type: 'test'
+  ...
+# Subtest: maxPayload rejects more than 256 bytes
+ok 3 - maxPayload rejects more than 256 bytes
+  ---
+  duration_ms: 12.3868
+  type: 'test'
+  ...
+# Subtest: browser departure closes its TCP socket instead of leaving a ghost player
+ok 4 - browser departure closes its TCP socket instead of leaving a ghost player
+  ---
+  duration_ms: 9.0328
+  type: 'test'
+  ...
+# Subtest: cross-origin browser cannot acquire a player slot
+ok 5 - cross-origin browser cannot acquire a player slot
+  ---
+  duration_ms: 7.3156
+  type: 'test'
+  ...
+# Subtest: HTTP serves built UI/hero and reports nonexistent assets clearly
+ok 6 - HTTP serves built UI/hero and reports nonexistent assets clearly
+  ---
+  duration_ms: 39.298
+  type: 'test'
+  ...
+# Subtest: automatic LAN is the CLI default; explicit localhost and LAN binding still work
+ok 7 - automatic LAN is the CLI default; explicit localhost and LAN binding still work
+  ---
+  duration_ms: 1.1429
+  type: 'test'
+  ...
+# Subtest: LAN discovery ignores loopback/link-local/IPv6, deduplicates and supports interface selection
+ok 8 - LAN discovery ignores loopback/link-local/IPv6, deduplicates and supports interface selection
+  ---
+  duration_ms: 0.3517
+  type: 'test'
+  ...
+# Subtest: automatic origins follow the current interface IP, rejecting stale IP and mismatched Host
+ok 9 - automatic origins follow the current interface IP, rejecting stale IP and mismatched Host
+  ---
+  duration_ms: 25.2119
+  type: 'test'
+  ...
+# Subtest: LAN-01: invalid configuration is rejected before any listener is opened
+ok 10 - LAN-01: invalid configuration is rejected before any listener is opened
+  ---
+  duration_ms: 1.2877
+  type: 'test'
+  ...
+# Subtest: LAN-01: an allowed Origin with a different Host is rejected
+ok 11 - LAN-01: an allowed Origin with a different Host is rejected
+  ---
+  duration_ms: 7.4885
+  type: 'test'
+  ...
+# Subtest: DK-03: TCP host accepts native IPv4/DNS and rejects URL, port and malformed names
+ok 12 - DK-03: TCP host accepts native IPv4/DNS and rejects URL, port and malformed names
+  ---
+  duration_ms: 1.3209
+  type: 'test'
+  ...
+# Subtest: DK-03: separates PORT 8080/public 8081 and permits wildcard bind with localhost
+ok 13 - DK-03: separates PORT 8080/public 8081 and permits wildcard bind with localhost
+  ---
+  duration_ms: 1.3753
+  type: 'test'
+  ...
+# Subtest: DK-03: connects to service haskell using its DNS name and preserves framing
+ok 14 - DK-03: connects to service haskell using its DNS name and preserves framing
+  ---
+  duration_ms: 13.0628
+  type: 'test'
+  ...
+# Subtest: DK-03: published authority is exact, internal/Vite/unconfigured origins cannot open TCP
+ok 15 - DK-03: published authority is exact, internal/Vite/unconfigured origins cannot open TCP
+  ---
+  duration_ms: 26.2919
+  type: 'test'
+  ...
+# Subtest: DK-03: HTTP port 80 normalizes Host authority without weakening Origin checks
+ok 16 - DK-03: HTTP port 80 normalizes Host authority without weakening Origin checks
+  ---
+  duration_ms: 11.1748
+  type: 'test'
+  ...
+# Subtest: DK-03: health probes never allocate TCP/session/player slots
+ok 17 - DK-03: health probes never allocate TCP/session/player slots
+  ---
+  duration_ms: 1038.6212
+  type: 'test'
+  ...
+# Subtest: DK-03: connection refused closes WS cleanly and leaves bridge usable
+ok 18 - DK-03: connection refused closes WS cleanly and leaves bridge usable
+  ---
+  duration_ms: 23.5729
+  type: 'test'
+  ...
+# Subtest: DK-03: DNS failure closes WS cleanly and leaves bridge usable
+ok 19 - DK-03: DNS failure closes WS cleanly and leaves bridge usable
+  ---
+  duration_ms: 12.5942
+  type: 'test'
+  ...
+# Subtest: DK-03: LAN file schema, canonical origins, byte limit and freshness boundaries are strict
+ok 20 - DK-03: LAN file schema, canonical origins, byte limit and freshness boundaries are strict
+  ---
+  duration_ms: 5.0862
+  type: 'test'
+  ...
+# Subtest: DK-03: invalid LAN file fails before bridge creation; a fresh empty file permits localhost
+ok 21 - DK-03: invalid LAN file fails before bridge creation; a fresh empty file permits localhost
+  ---
+  duration_ms: 25.9723
+  type: 'test'
+  ...
+# Subtest: DK-03: hot LAN replacements, errors, expiration and recovery update the exact allowlist without restart
+ok 22 - DK-03: hot LAN replacements, errors, expiration and recovery update the exact allowlist without restart
+  ---
+  duration_ms: 137.2905
+  type: 'test'
+  ...
+# Subtest: own fleet and filtered frames reconstruct exactly the same turn and boards
+ok 23 - own fleet and filtered frames reconstruct exactly the same turn and boards
+  ---
+  duration_ms: 4.6041
+  type: 'test'
+  ...
+# Subtest: transport metadata validates tokens, players and frames independently from protocol v1
+ok 24 - transport metadata validates tokens, players and frames independently from protocol v1
+  ---
+  duration_ms: 1.0807
+  type: 'test'
+  ...
+# Subtest: recovery across IPs puts the secret in a fragment; rejects unrelated URLs
+ok 25 - recovery across IPs puts the secret in a fragment; rejects unrelated URLs
+  ---
+  duration_ms: 1.6615
+  type: 'test'
+  ...
+# Subtest: DK-01: the env example has no malformed lines or duplicate active declarations
+ok 26 - DK-01: the env example has no malformed lines or duplicate active declarations
+  ---
+  duration_ms: 0.861
+  type: 'test'
+  ...
+# Subtest: DK-01: container listeners and backend DNS match the two-service contract
+ok 27 - DK-01: container listeners and backend DNS match the two-service contract
+  ---
+  duration_ms: 0.4388
+  type: 'test'
+  ...
+# Subtest: DK-01: the example exercises port mapping and advertises the host port
+ok 28 - DK-01: the example exercises port mapping and advertises the host port
+  ---
+  duration_ms: 0.1855
+  type: 'test'
+  ...
+# Subtest: DK-01: the shipped example selects one origin mode and keeps host-only values separate
+ok 29 - DK-01: the shipped example selects one origin mode and keeps host-only values separate
+  ---
+  duration_ms: 0.1513
+  type: 'test'
+  ...
+# Subtest: DK-01: every active key and nonempty default agrees with the documented configuration table
+ok 30 - DK-01: every active key and nonempty default agrees with the documented configuration table
+  ---
+  duration_ms: 0.6018
+  type: 'test'
+  ...
+# Subtest: DK-01: the LAN JSON example is parseable and uses host origins at the public port
+ok 31 - DK-01: the LAN JSON example is parseable and uses host origins at the public port
+  ---
+  duration_ms: 1.8428
+  type: 'test'
+  ...
+# Subtest: DK-06: PowerShell 5.1 unit suite validates producer/filter/configuration/locking
+ok 32 - DK-06: PowerShell 5.1 unit suite validates producer/filter/configuration/locking
+  ---
+  duration_ms: 1839.9599
+  type: 'test'
+  ...
+# Subtest: DK-06: actual adapter discovery matches Windows host IPv4, not a container interface
+ok 33 - DK-06: actual adapter discovery matches Windows host IPv4, not a container interface
+  ---
+  duration_ms: 429.9045
+  type: 'test'
+  ...
+# Subtest: DK-06: watcher refreshes timestamp, changes IP, handles offline and rejects duplicate writer
+ok 34 - DK-06: watcher refreshes timestamp, changes IP, handles offline and rejects duplicate writer
+  ---
+  duration_ms: 8859.44
+  type: 'test'
+  ...
+# Subtest: DK-06: 200 PowerShell renames expose complete JSON and recover from transient Windows open errors
+ok 35 - DK-06: 200 PowerShell renames expose complete JSON and recover from transient Windows open errors
+  ---
+  duration_ms: 3813.6314
+  type: 'test'
+  ...
+# Subtest: DK-06: producer and reader hot update retain two TCP sessions, deadline and identity on resume
+ok 36 - DK-06: producer and reader hot update retain two TCP sessions, deadline and identity on resume
+  ---
+  duration_ms: 3265.7224
+  type: 'test'
+  ...
+# Subtest: DK-06: Compose starts once while the host heartbeat remains fresh during a long startup
+ok 37 - DK-06: Compose starts once while the host heartbeat remains fresh during a long startup
+  ---
+  duration_ms: 13226.3108
+  type: 'test'
+  ...
+# Subtest: DK-06: missing Compose and failed Compose report errors without silently continuing
+ok 38 - DK-06: missing Compose and failed Compose report errors without silently continuing
+  ---
+  duration_ms: 3277.7982
+  type: 'test'
+  ...
+# Subtest: LAN-01: CLI exits with a clear configuration error before starting a server
+ok 39 - LAN-01: CLI exits with a clear configuration error before starting a server
+  ---
+  duration_ms: 172.5542
+  type: 'test'
+  ...
+# Subtest: automatic CLI reports an unknown interface clearly before opening a listener
+ok 40 - automatic CLI reports an unknown interface clearly before opening a listener
+  ---
+  duration_ms: 136.0088
+  type: 'test'
+  ...
+# Subtest: LAN-01: an occupied HTTP port reports the listen address and exits cleanly
+ok 41 - LAN-01: an occupied HTTP port reports the listen address and exits cleanly
+  ---
+  duration_ms: 142.1109
+  type: 'test'
+  ...
+# Subtest: LAN-01: production CLI serves HTTP on the LAN IP and forwards real Haskell WELCOME for two players
+ok 42 - LAN-01: production CLI serves HTTP on the LAN IP and forwards real Haskell WELCOME for two players
+  ---
+  duration_ms: 237.2997
+  type: 'test'
+  ...
+# HTTP http://192.168.1.126:59639: 200; WebSocket WELCOME 1 P1/P2; invalid Origin/Host: 401; Haskell exit: 0
+# Both connections were made from the server machine via its LAN IP; this is not a two-device hardware acceptance test.
+# Subtest: automatic CLI discovers LAN without HOST/PUBLIC_ORIGIN; a player resumes from loopback at the real LAN origin
+ok 43 - automatic CLI discovers LAN without HOST/PUBLIC_ORIGIN; a player resumes from loopback at the real LAN origin
+  ---
+  duration_ms: 244.9515
+  type: 'test'
+  ...
+# Auto-detected 192.168.1.126; restored P1 at the LAN origin without creating a new TCP slot.
+# Subtest: DK-03: CLI rejects invalid backend/public-port/origin-file configuration before listen
+ok 44 - DK-03: CLI rejects invalid backend/public-port/origin-file configuration before listen
+  ---
+  duration_ms: 862.713
+  type: 'test'
+  ...
+# Subtest: DK-03: production CLI plays a full Haskell game through a different published port
+ok 45 - DK-03: production CLI plays a full Haskell game through a different published port
+  ---
+  duration_ms: 1215.9622
+  type: 'test'
+  ...
+# Internal 59689, public 59690; real HTTP/WS forwarded unchanged; Haskell P1/P2, victory and exit 0.
+# Subtest: DK-03: LAN file changes preserve active TCP, pause deadline and private resume history
+ok 46 - DK-03: LAN file changes preserve active TCP, pause deadline and private resume history
+  ---
+  duration_ms: 86.3852
+  type: 'test'
+  ...
+# Subtest: column letter + row number match Haskell coordinates, including J10
+ok 47 - column letter + row number match Haskell coordinates, including J10
+  ---
+  duration_ms: 1.4923
+  type: 'test'
+  ...
+# Subtest: placement rejects corners/overlap, allows touching and preserves input on errors
+ok 48 - placement rejects corners/overlap, allows touching and preserves input on errors
+  ---
+  duration_ms: 4.0357
+  type: 'test'
+  ...
+# Subtest: random and exhausted random placement always produce 17 distinct in-board cells
+ok 49 - random and exhausted random placement always produce 17 distinct in-board cells
+  ---
+  duration_ms: 16.8062
+  type: 'test'
+  ...
+# Subtest: decode every actual server response in docs/protocol.md transcripts
+ok 50 - decode every actual server response in docs/protocol.md transcripts
+  ---
+  duration_ms: 2.6756
+  type: 'test'
+  ...
+# Subtest: server events alone drive turns, error preservation and private shot history
+ok 51 - server events alone drive turns, error preservation and private shot history
+  ---
+  duration_ms: 1.7778
+  type: 'test'
+  ...
+1..51
+# tests 51
+# suites 0
+# pass 51
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 34893.5287

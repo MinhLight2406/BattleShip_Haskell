@@ -1,0 +1,76 @@
+TAP version 13
+# Subtest: two browsers over bridge play real Haskell game; errors, private events, sinking and victory
+ok 1 - two browsers over bridge play real Haskell game; errors, private events, sinking and victory
+  ---
+  duration_ms: 87.6572
+  type: 'test'
+  ...
+# Subtest: WebSocket disconnect while waiting gives opponent win after grace and clean exit
+ok 2 - WebSocket disconnect while waiting gives opponent win after grace and clean exit
+  ---
+  duration_ms: 198.6267
+  type: 'test'
+  ...
+# Subtest: WebSocket disconnect mid-game gives opponent win after grace and clean exit
+ok 3 - WebSocket disconnect mid-game gives opponent win after grace and clean exit
+  ---
+  duration_ms: 211.0435
+  type: 'test'
+  ...
+# Subtest: default disconnect reserves P1 for exactly five minutes; wrong token cannot consume or replace it
+ok 4 - default disconnect reserves P1 for exactly five minutes; wrong token cannot consume or replace it
+  ---
+  duration_ms: 87.4837
+  type: 'test'
+  ...
+# Subtest: resume replays private history without resubmitting a shot; peer cannot fire during pause
+ok 5 - resume replays private history without resubmitting a shot; peer cannot fire during pause
+  ---
+  duration_ms: 56.454
+  type: 'test'
+  ...
+# Subtest: expiry while placing forfeits and late resume gets final Haskell result
+ok 6 - expiry while placing forfeits and late resume gets final Haskell result
+  ---
+  duration_ms: 152.1439
+  type: 'test'
+  ...
+# Subtest: expiry mid-game forfeits and late resume gets final Haskell result
+ok 7 - expiry mid-game forfeits and late resume gets final Haskell result
+  ---
+  duration_ms: 160.9314
+  type: 'test'
+  ...
+# Subtest: a successful resume cancels its old expiry; a later disconnect starts a new deadline
+ok 8 - a successful resume cancels its old expiry; a later disconnect starts a new deadline
+  ---
+  duration_ms: 1200.2741
+  type: 'test'
+  ...
+# Subtest: the production five-minute timer forfeits at 300000 ms, never at 299999 ms
+ok 9 - the production five-minute timer forfeits at 300000 ms, never at 299999 ms
+  ---
+  duration_ms: 46.8002
+  type: 'test'
+  ...
+# Subtest: a rejected replacement fleet cannot corrupt the own fleet saved for resume
+ok 10 - a rejected replacement fleet cannot corrupt the own fleet saved for resume
+  ---
+  duration_ms: 43.3022
+  type: 'test'
+  ...
+# Subtest: heartbeat detects a silent network loss, pauses the peer and starts the grace timer
+ok 11 - heartbeat detects a silent network loss, pauses the peer and starts the grace timer
+  ---
+  duration_ms: 455.2528
+  type: 'test'
+  ...
+1..11
+# tests 11
+# suites 0
+# pass 11
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 2318.2342

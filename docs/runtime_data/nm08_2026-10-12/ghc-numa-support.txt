@@ -1,0 +1,6 @@
+battleship-server: --numa=1: This GHC build was compiled without NUMA support.
+battleship-server: Internal error in the RTS options parser
+
+Command failed: docker run --rm --network none --entrypoint /usr/local/bin/battleship-server battleship-haskell:local +RTS -N1 --numa=1 --info -RTS
+battleship-server: --numa=1: This GHC build was compiled without NUMA support.
+battleship-server: Internal error in the RTS options parser

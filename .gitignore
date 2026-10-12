@@ -15,6 +15,7 @@ frontend/test-results/
 /.env.*
 !/.env.example
 !/.env.performance.example
+!/.env.numa.example
 /.docker-runtime/
 # Local reports: keep the files on this machine, outside Git.
 /docs/**/*.[dD][oO][cC][xX]

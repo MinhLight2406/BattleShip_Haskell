@@ -1,0 +1,116 @@
+#0 building with "desktop-linux" instance using docker driver
+
+#1 [internal] load build definition from baseline.Dockerfile
+#1 transferring dockerfile: 1.25kB 0.0s done
+#1 DONE 0.1s
+
+#2 [internal] load metadata for docker.io/library/battleship-regression:nm08
+#2 DONE 0.1s
+
+#3 [internal] load metadata for docker.io/library/battleship-web:local
+#3 DONE 0.1s
+
+#4 [internal] load .dockerignore
+#4 transferring context: 588B 0.0s done
+#4 DONE 0.1s
+
+#5 [internal] load build context
+#5 DONE 0.0s
+
+#6 [stage-1 1/6] FROM docker.io/library/battleship-web:local@sha256:b01ac11fc67f9725546fe9969a9a070b532fe76f30501bab834a3e781bddf949
+#6 resolve docker.io/library/battleship-web:local@sha256:b01ac11fc67f9725546fe9969a9a070b532fe76f30501bab834a3e781bddf949
+#6 resolve docker.io/library/battleship-web:local@sha256:b01ac11fc67f9725546fe9969a9a070b532fe76f30501bab834a3e781bddf949 0.0s done
+#6 DONE 0.1s
+
+#7 [build 1/4] FROM docker.io/library/battleship-regression:nm08@sha256:4c0740d21a0b8f2136bb75a73abd6e4166ab3ee531f5ad7985e3f9bb3ea30346
+#7 resolve docker.io/library/battleship-regression:nm08@sha256:4c0740d21a0b8f2136bb75a73abd6e4166ab3ee531f5ad7985e3f9bb3ea30346 0.1s done
+#7 CACHED
+
+#8 [build 2/4] WORKDIR /reproduce
+#8 DONE 0.1s
+
+#5 [internal] load build context
+#5 transferring context: 958.21kB 0.4s done
+#5 DONE 0.4s
+
+#9 [build 3/4] COPY . .
+#9 DONE 0.1s
+
+#10 [build 4/4] RUN test "$(ghc --numeric-version)" = 9.10.3     && stack build --bench --no-run-benchmarks --system-ghc --no-install-ghc --ghc-options="-O2 -Werror"     && install -D "$(stack path --dist-dir)/build/battleship-benchmark/battleship-benchmark" /out/battleship-benchmark     && install -D "$(stack path --local-install-root)/bin/battleship-server" /out/battleship-server     && sha256sum bench/*.hs src/Battleship/*.hs src/Battleship/Internal/*.hs app/*.hs test/TestSupport/Generators.hs package.yaml stack.yaml > /out/build-source-sha256.txt
+#10 1.164 Cabal file warning in /reproduce/battleship-haskell.cabal@148:3: The field "build-tools" is deprecated in the Cabal specification version 2.0. Please use 'build-tool-depends' field
+#10 1.282 All benchmark running disabled by --no-run-benchmarks flag. To mute this message in future, set
+#10 1.282 notify-if-no-run-benchmarks: false in Stack's configuration.
+#10 1.285 battleship-haskell> configure (lib + exe + bench)
+#10 1.320 Warning: battleship-haskell.cabal:148:3: The field "build-tools" is deprecated
+#10 1.320 Configuring battleship-haskell-0.1.0.0...
+#10 1.320 in the Cabal specification version 2.0. Please use 'build-tool-depends' field
+#10 1.890 battleship-haskell> build (lib + exe + bench) with ghc-9.10.3
+#10 1.928 Preprocessing library for battleship-haskell-0.1.0.0...
+#10 1.928 Building library for battleship-haskell-0.1.0.0...
+#10 2.054 [1 of 9] Compiling Battleship.Internal.Fleet
+#10 2.179 [2 of 9] Compiling Battleship.Types
+#10 3.164 [3 of 9] Compiling Battleship.Protocol
+#10 4.342 [4 of 9] Compiling Battleship.Coordinator
+#10 4.679 [5 of 9] Compiling Battleship.Board
+#10 4.959 [6 of 9] Compiling Battleship.Rules
+#10 5.208 [7 of 9] Compiling Battleship.Server
+#10 6.248 [8 of 9] Compiling Battleship.Client
+#10 8.153 [9 of 9] Compiling Battleship.View
+#10 8.632 Preprocessing benchmark 'battleship-benchmark' for battleship-haskell-0.1.0.0...
+#10 8.632 Building benchmark 'battleship-benchmark' for battleship-haskell-0.1.0.0...
+#10 8.717 [1 of 3] Compiling TestSupport.Generators
+#10 9.165 [2 of 3] Compiling Fixtures
+#10 10.00 [3 of 3] Compiling Main
+#10 10.61 [4 of 4] Linking .stack-work/dist/x86_64-linux/ghc-9.10.3/build/battleship-benchmark/battleship-benchmark
+#10 11.32 Preprocessing executable 'battleship-client' for battleship-haskell-0.1.0.0...
+#10 11.32 Building executable 'battleship-client' for battleship-haskell-0.1.0.0...
+#10 11.37 [1 of 1] Compiling Main
+#10 11.68 [2 of 2] Linking .stack-work/dist/x86_64-linux/ghc-9.10.3/build/battleship-client/battleship-client
+#10 12.12 Preprocessing executable 'battleship-server' for battleship-haskell-0.1.0.0...
+#10 12.12 Building executable 'battleship-server' for battleship-haskell-0.1.0.0...
+#10 12.20 [1 of 1] Compiling Main
+#10 12.49 [2 of 2] Linking .stack-work/dist/x86_64-linux/ghc-9.10.3/build/battleship-server/battleship-server
+#10 13.13 battleship-haskell> copy/register
+#10 13.17 Installing library in /reproduce/.stack-work/install/x86_64-linux/ed938fc88c5f087bb8ea66228bf4e406563fb82aa31f254709b3c1a40f59f388/9.10.3/lib/x86_64-linux-ghc-9.10.3-1be3/battleship-haskell-0.1.0.0-KOcg3Rz7niN7hGFpfNFn9c
+#10 13.20 Installing executable battleship-client in /reproduce/.stack-work/install/x86_64-linux/ed938fc88c5f087bb8ea66228bf4e406563fb82aa31f254709b3c1a40f59f388/9.10.3/bin
+#10 13.21 Installing executable battleship-server in /reproduce/.stack-work/install/x86_64-linux/ed938fc88c5f087bb8ea66228bf4e406563fb82aa31f254709b3c1a40f59f388/9.10.3/bin
+#10 13.31 Registering library for battleship-haskell-0.1.0.0...
+#10 DONE 13.9s
+
+#6 [stage-1 1/6] FROM docker.io/library/battleship-web:local@sha256:b01ac11fc67f9725546fe9969a9a070b532fe76f30501bab834a3e781bddf949
+#6 CACHED
+
+#11 [stage-1 2/6] COPY --from=build /out/ /usr/local/bin/
+#11 DONE 0.1s
+
+#12 [stage-1 3/6] COPY --from=build /usr/lib/x86_64-linux-gnu/libgmp.so.10 /usr/lib/x86_64-linux-gnu/libgmp.so.10
+#12 DONE 0.1s
+
+#13 [stage-1 4/6] COPY frontend/bridge.mjs /app/bridge.mjs
+#13 DONE 0.1s
+
+#14 [stage-1 5/6] RUN ldd /usr/local/bin/battleship-benchmark | tee /tmp/baseline-ldd     && ! grep -q 'not found' /tmp/baseline-ldd
+#14 0.249 	linux-vdso.so.1 (0x00007f99e601d000)
+#14 0.249 	libm.so.6 => /lib/x86_64-linux-gnu/libm.so.6 (0x00007f99e5f33000)
+#14 0.249 	libgmp.so.10 => /lib/x86_64-linux-gnu/libgmp.so.10 (0x00007f99e5eb2000)
+#14 0.249 	libc.so.6 => /lib/x86_64-linux-gnu/libc.so.6 (0x00007f99e5cd0000)
+#14 0.249 	/lib64/ld-linux-x86-64.so.2 (0x00007f99e601f000)
+#14 DONE 0.3s
+
+#15 [stage-1 6/6] WORKDIR /probe
+#15 DONE 0.1s
+
+#16 exporting to image
+#16 exporting layers
+#16 exporting layers 0.5s done
+#16 exporting manifest sha256:ab338de5f6c9b6b3c7205ab609b3b882bbbf2ed366e408eb91aef9bc4a3720dc 0.0s done
+#16 exporting config sha256:60f77dbb0d7a998ef496bcee7950ff79990f31977a3ee58e812b2f4422619fd7 0.0s done
+#16 exporting attestation manifest sha256:16d67fbe258290d5dca386c5c26373a1b11a447fa4d794363da3949083e0595f
+#16 exporting attestation manifest sha256:16d67fbe258290d5dca386c5c26373a1b11a447fa4d794363da3949083e0595f 0.0s done
+#16 exporting manifest list sha256:381ae4f4b84fbfceca41426e2852e6be51b7870903e8f03efd34d980097c8fc0 0.0s done
+#16 naming to docker.io/library/battleship-benchmark:baseline-reproduce-nm09 done
+#16 unpacking to docker.io/library/battleship-benchmark:baseline-reproduce-nm09
+#16 unpacking to docker.io/library/battleship-benchmark:baseline-reproduce-nm09 0.3s done
+#16 DONE 1.0s
+
+View build details: docker-desktop://dashboard/build/desktop-linux/desktop-linux/shxl8y1esds0vuocsw9b0p7ln

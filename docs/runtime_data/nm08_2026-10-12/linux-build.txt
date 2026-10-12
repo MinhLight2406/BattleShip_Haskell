@@ -1,0 +1,76 @@
+#0 building with "desktop-linux" instance using docker driver
+
+#1 [internal] load build definition from cached-test.Dockerfile
+#1 transferring dockerfile: 154B 0.0s done
+#1 DONE 0.0s
+
+#2 [internal] load metadata for docker.io/library/battleship-haskell-test:dk04
+#2 DONE 0.1s
+
+#3 [internal] load .dockerignore
+#3 transferring context: 588B done
+#3 DONE 0.0s
+
+#4 [1/4] FROM docker.io/library/battleship-haskell-test:dk04@sha256:11c0b31fa0888f820f6f285f46bd3365b13f37ae4d2f9e7d213f7fb881a8008e
+#4 resolve docker.io/library/battleship-haskell-test:dk04@sha256:11c0b31fa0888f820f6f285f46bd3365b13f37ae4d2f9e7d213f7fb881a8008e 0.0s done
+#4 DONE 0.0s
+
+#5 [internal] load build context
+#5 transferring context: 12.44MB 1.0s done
+#5 DONE 1.0s
+
+#6 [2/4] WORKDIR /build
+#6 CACHED
+
+#7 [3/4] COPY . .
+#7 DONE 0.2s
+
+#8 [4/4] RUN stack build --system-ghc --no-install-ghc
+#8 0.717 Cabal file warning in /build/battleship-haskell.cabal@162:3: The field "build-tools" is deprecated in the Cabal specification version 2.0. Please use 'build-tool-depends' field
+#8 0.978 battleship-haskell-0.1.0.0: unregistering (dependencies changed)
+#8 1.095 battleship-haskell> configure (lib + exe)
+#8 1.127 Warning: battleship-haskell.cabal:162:3: The field "build-tools" is deprecated
+#8 1.127 in the Cabal specification version 2.0. Please use 'build-tool-depends' field
+#8 1.127 Configuring battleship-haskell-0.1.0.0...
+#8 1.859 battleship-haskell> build (lib + exe) with ghc-9.10.3
+#8 1.900 Preprocessing library for battleship-haskell-0.1.0.0...
+#8 1.900 Building library for battleship-haskell-0.1.0.0...
+#8 2.034 [ 1 of 10] Compiling Battleship.Internal.Fleet
+#8 2.175 [ 2 of 10] Compiling Battleship.Types
+#8 2.977 [ 3 of 10] Compiling Battleship.Protocol
+#8 3.819 [ 4 of 10] Compiling Battleship.Coordinator
+#8 4.099 [ 5 of 10] Compiling Battleship.GameWorker
+#8 4.355 [ 6 of 10] Compiling Battleship.Board
+#8 4.566 [ 7 of 10] Compiling Battleship.Rules
+#8 4.686 [ 8 of 10] Compiling Battleship.Server
+#8 5.487 [ 9 of 10] Compiling Battleship.Client
+#8 6.410 [10 of 10] Compiling Battleship.View
+#8 6.653 Preprocessing executable 'battleship-server' for battleship-haskell-0.1.0.0...
+#8 6.653 Building executable 'battleship-server' for battleship-haskell-0.1.0.0...
+#8 6.712 [1 of 1] Compiling Main
+#8 7.006 [2 of 2] Linking .stack-work/dist/x86_64-linux/ghc-9.10.3/build/battleship-server/battleship-server [Objects changed]
+#8 7.671 Preprocessing executable 'battleship-client' for battleship-haskell-0.1.0.0...
+#8 7.671 Building executable 'battleship-client' for battleship-haskell-0.1.0.0...
+#8 7.715 [1 of 1] Compiling Main
+#8 8.007 [2 of 2] Linking .stack-work/dist/x86_64-linux/ghc-9.10.3/build/battleship-client/battleship-client [Objects changed]
+#8 8.469 battleship-haskell> copy/register
+#8 8.501 Installing library in /build/.stack-work/install/x86_64-linux/ed938fc88c5f087bb8ea66228bf4e406563fb82aa31f254709b3c1a40f59f388/9.10.3/lib/x86_64-linux-ghc-9.10.3-1be3/battleship-haskell-0.1.0.0-E9X2h601c9gIlJCcxfFzJF
+#8 8.516 Installing executable battleship-server in /build/.stack-work/install/x86_64-linux/ed938fc88c5f087bb8ea66228bf4e406563fb82aa31f254709b3c1a40f59f388/9.10.3/bin
+#8 8.528 Installing executable battleship-client in /build/.stack-work/install/x86_64-linux/ed938fc88c5f087bb8ea66228bf4e406563fb82aa31f254709b3c1a40f59f388/9.10.3/bin
+#8 8.598 Registering library for battleship-haskell-0.1.0.0...
+#8 DONE 8.7s
+
+#9 exporting to image
+#9 exporting layers
+#9 exporting layers 0.7s done
+#9 exporting manifest sha256:9ff7d9d5250518b824fd6526a64b1811cc402b7e21fc07a7e8d88933417318c0 0.0s done
+#9 exporting config sha256:89d4d0857bd1390f9841a373ca0de0a1bdcd6ea5495c6dca1b81819324165da7 0.0s done
+#9 exporting attestation manifest sha256:d47ceb3c80de2ec6d236d54cac89d4f577c385266e3e3d54bb9120fa4f0e74a0 0.0s done
+#9 exporting manifest list sha256:4c0740d21a0b8f2136bb75a73abd6e4166ab3ee531f5ad7985e3f9bb3ea30346 0.0s done
+#9 naming to docker.io/library/battleship-regression:nm08
+#9 naming to docker.io/library/battleship-regression:nm08 done
+#9 unpacking to docker.io/library/battleship-regression:nm08
+#9 unpacking to docker.io/library/battleship-regression:nm08 0.2s done
+#9 DONE 1.0s
+
+View build details: docker-desktop://dashboard/build/desktop-linux/desktop-linux/uov5xj8rpw4c0edwjx4wd2seq

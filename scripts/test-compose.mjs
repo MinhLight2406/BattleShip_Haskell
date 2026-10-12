@@ -13,6 +13,9 @@ import { parseEnv, promisify } from 'node:util'
 import { peer, within, fleet1, fleet2, winningShots } from '../frontend/test/helpers.mjs'
 import { helperEnv, shell, script, until } from '../frontend/test/lan-helper-support.mjs'
 import { lanAddresses } from '../frontend/bridge.mjs'
+import { validateProfile } from './test-runtime-profiles.mjs'
+import { rtsCommand, parseTasks, verifyContainer, verifyRuntime } from './start-affinity.mjs'
+import { verifyPlacement } from './start-numa.mjs'
 
 const root = fileURLToPath(new URL('../', import.meta.url))
 const composeFile = path.join(root, 'compose.yaml')
@@ -23,6 +26,9 @@ const docker = (...args) => execute(cli, args, { env: helperEnv(), windowsHide: 
 const get = url => fetch(url, { signal: AbortSignal.timeout(3000) })
 const require = createRequire(new URL('../frontend/package.json', import.meta.url))
 const { WebSocket } = require('ws')
+const runtimeProfile = process.env.BATTLESHIP_RUNTIME_PROFILE_FILE
+  ? validateProfile(JSON.parse(readFileSync(process.env.BATTLESHIP_RUNTIME_PROFILE_FILE, 'utf8'))) : null
+const evidenceDir = process.env.BATTLESHIP_RUNTIME_EVIDENCE_DIR
 
 async function freePort() {
   const socket = net.createServer()
@@ -45,6 +51,22 @@ function fixture(t, overrides = {}) {
   const save = () => writeFileSync(envFile, Object.entries(values).map(([key, value]) => `${key}='${value.replaceAll("'", "\\'")}'`).join('\n') + '\n')
   save()
   const files = [composeFile]
+  const overlay = data => {
+    const filename = path.join(directory, `override-${files.length}.json`)
+    writeFileSync(filename, JSON.stringify(data)); files.push(filename)
+  }
+  if (runtimeProfile) {
+    const c = runtimeProfile.config, command = rtsCommand(values.BATTLESHIP_TCP_PORT, c)
+    if (c.ghcNuma) command.splice(command.length - 1, 0, c.ghcNuma)
+    overlay({ services: {
+      haskell: { command, environment: { BATTLESHIP_GAME_CAPABILITY: String(c.gameCapability) },
+        ...(c.haskell ? { cpuset: c.haskell.join(',') } : {}),
+        ...(c.sysNice ? { cap_add: ['SYS_NICE'] } : {}),
+        ...(c.mems ? { entrypoint: ['/usr/local/bin/battleship-numa-entrypoint', '/usr/local/bin/battleship-server'],
+          environment: { BATTLESHIP_GAME_CAPABILITY: String(c.gameCapability), BATTLESHIP_NUMA_POLICY: c.policy, BATTLESHIP_NUMA_MEMS: c.mems.join(',') } } : {}) },
+      web: c.web ? { cpuset: c.web.join(',') } : {},
+    } })
+  }
   let started = false
   let child
   let sourceRoot = root
@@ -84,11 +106,43 @@ function fixture(t, overrides = {}) {
       const built = await command('build')
       writeFileSync(path.join(root, '.stack-work/dk08/clean-build.log'), built.stdout + built.stderr)
     },
-    override(data) {
-      const filename = path.join(directory, 'override.json')
-      writeFileSync(filename, JSON.stringify(data)); files.push(filename)
+    override: overlay,
+    async up() {
+      started = true
+      if (runtimeProfile?.config.mems) {
+        await command('create', '--no-build')
+        const core = await inspect('haskell')
+        assert.equal(core.State.Running, false, 'Memory mask phải có trước khi process chạy.')
+        await docker('update', '--cpuset-mems', runtimeProfile.config.mems.join(','), core.Id)
+        assert.equal((await inspect('haskell')).HostConfig.CpusetMems, runtimeProfile.config.mems.join(','))
+      }
+      return command('up', '-d', '--no-build', '--no-recreate', '--wait', '--wait-timeout', '60')
     },
-    up() { started = true; return command('up', '-d', '--no-build', '--wait', '--wait-timeout', '60') },
+    async verifyProfile() {
+      assert.ok(runtimeProfile)
+      const c = runtimeProfile.config, core = await inspect('haskell'), web = await inspect('web')
+      const command = rtsCommand(values.BATTLESHIP_TCP_PORT, c)
+      if (c.ghcNuma) command.splice(command.length - 1, 0, c.ghcNuma)
+      assert.deepEqual(core.Config.Cmd, command)
+      assert.equal(core.State.Health.Status, 'healthy'); assert.equal(web.State.Health.Status, 'healthy')
+      const statuses = (await docker('exec', core.Id, 'sh', '-ec', 'for f in /proc/1/task/*/status; do cat "$f"; done')).stdout
+      const tasks = parseTasks(statuses)
+      if (c.haskell) verifyContainer(core, tasks, c.haskell, command)
+      if (c.web) {
+        const status = (await docker('exec', web.Id, 'sh', '-ec', 'for f in /proc/1/task/*/status; do cat "$f"; done')).stdout
+        verifyContainer(web, parseTasks(status), c.web)
+      }
+      const logs = await docker('logs', '--since', core.State.StartedAt, core.Id)
+      verifyRuntime(logs.stdout + logs.stderr, tasks, c)
+      let placement = null
+      if (c.mems) {
+        assert.equal(core.HostConfig.CpusetMems, c.mems.join(','))
+        const stat = (await docker('exec', core.Id, 'sh', '-ec', 'for f in /proc/1/task/*/stat; do cat "$f"; done')).stdout
+        const maps = (await docker('exec', core.Id, 'cat', '/proc/1/numa_maps')).stdout
+        placement = verifyPlacement(c, statuses, stat, maps)
+      }
+      return { profile: runtimeProfile.name, command, tasks, placement, haskellImage: core.Image, webImage: web.Image }
+    },
     clockFixture() {
       copyFileSync(path.join(root, 'docker/test/controlled-clock.mjs'), path.join(lan, 'controlled-clock.mjs'))
       writeFileSync(path.join(lan, 'clock.json'), '{"elapsed":0}')
@@ -132,7 +186,8 @@ test('DK-07: rendered Compose has exactly two services, explicit env, private TC
   const { haskell, web } = model.services
   assert.equal(haskell.ports, undefined, 'the Haskell game port must never be published')
   assert.deepEqual(haskell.command, ['4000'])
-  assert.deepEqual(Object.keys(haskell.environment).sort(), ['BATTLESHIP_BIND_HOST', 'BATTLESHIP_READY_FILE'])
+  assert.deepEqual(Object.keys(haskell.environment).sort(), ['BATTLESHIP_BIND_HOST', 'BATTLESHIP_GAME_CAPABILITY', 'BATTLESHIP_READY_FILE'])
+  assert.equal(haskell.environment.BATTLESHIP_GAME_CAPABILITY, '0')
   assert.deepEqual(Object.keys(web.environment).sort(), ['BATTLESHIP_TCP_HOST', 'BATTLESHIP_TCP_PORT', 'HOST', 'LAN_ORIGINS_FILE', 'PORT', 'PUBLIC_ORIGIN', 'WEB_PUBLIC_PORT'])
   assert.equal(web.environment.BATTLESHIP_TCP_HOST, 'haskell')
   assert.equal(web.environment.BATTLESHIP_TCP_PORT, '4000')
@@ -317,6 +372,32 @@ test('DK-07: actual Windows Auto helper starts production Compose and keeps the 
   for (const client of pair) { await client.wait('GAME_OVER P2 OPPONENT_LEFT'); await within(client.closed) }
 })
 
+test('NM-08: three locked seeds have complete, identical private transcripts under the selected runtime', async t => {
+  const f = fixture(t, { WEB_PUBLIC_PORT: String(await freePort()) })
+  f.values.PUBLIC_ORIGIN = f.origin(); f.save(); await f.up()
+  const workloads = JSON.parse(readFileSync(path.join(root, 'bench/fixtures-v1.json'), 'utf8'))
+  const games = [], placements = []
+  for (const [index, workload] of workloads.entries()) {
+    if (index) { await f.command('start', 'haskell'); await f.healthy() }
+    if (runtimeProfile) placements.push(await f.verifyProfile())
+    const pair = await f.pair()
+    for (const entry of workload.commands) {
+      pair[entry.actor === 'P1' ? 0 : 1].send(entry.command)
+      await Promise.all(pair.map(async (p, actor) => {
+        for (const frame of entry.responses[actor ? 'P2' : 'P1']) await p.wait(frame)
+      }))
+    }
+    for (const p of pair) await within(p.closed, 'locked game finished')
+    const frames = pair.map(p => p.frames.filter(frame => !frame.startsWith('{')))
+    for (const [actor, actual] of frames.entries()) assert.deepEqual(actual,
+      [`WELCOME 1 P${actor + 1}`, ...workload.commands.flatMap(e => e.responses[actor ? 'P2' : 'P1'])])
+    games.push({ seed: workload.seed, checksum: workload.checksum, commandCount: workload.commandCount, frames })
+    assert.equal((await docker('wait', (await f.inspect('haskell')).Id)).stdout.trim(), '0')
+  }
+  if (evidenceDir) writeFileSync(path.join(evidenceDir, `${runtimeProfile.name}-transcript.json`),
+    JSON.stringify({ schemaVersion: 1, games, placements }, null, 2))
+})
+
 test('DK-08: build from a clean source snapshot, then complete a private game over mapped HTTP/WebSocket ports', async t => {
   const f = fixture(t, { WEB_PUBLIC_PORT: String(await freePort()) })
   f.values.PUBLIC_ORIGIN = f.origin(); f.save()
@@ -384,7 +465,8 @@ test('DK-08: strict Origin/Host rejection cannot allocate a slot; both players r
     let pause
     do { pause = await waiting.meta('CONNECTION') } while (!pause.missing.length)
     assert.equal(pause.missing[0].player, `P${actor + 1}`)
-    assert.ok(Math.abs(pause.missing[0].deadline - Date.now() - 300000) < 1000)
+    assert.ok(pause.missing[0].deadline > Date.now() && pause.missing[0].deadline <= Date.now() + 300000,
+      'Phiên đang chờ trong thời hạn; ranh giới 5 phút được kiểm tra bằng clock fixture.')
     waiting.send('FIRE B6'); assert.deepEqual(await waiting.meta('CONNECTION'), pause)
     const stranger = await peer(Number(f.values.WEB_PUBLIC_PORT), '127.0.0.1', 'a'.repeat(64))
     assert.equal((await stranger.meta('RESUME_ERROR')).code, 'INVALID_SESSION'); await within(stranger.closed)
@@ -557,8 +639,9 @@ test('DK-08: two separate browser processes play the production React UI to vict
     if (actor === 0) await status(page, 'Chờ đối thủ')
   }
   const [first, second] = pages
-  for (const [actor, frames] of received.entries()) assert.ok(frames.includes(`WELCOME 1 P${actor + 1}`), 'two distinct player slots')
   await status(first, 'Đến lượt bạn'); await status(second, 'Lượt đối thủ')
+  await until(() => received.every((frames, actor) => frames.includes(`WELCOME 1 P${actor + 1}`)), 'both browser identities received')
+  for (const [actor, frames] of received.entries()) assert.ok(frames.includes(`WELCOME 1 P${actor + 1}`), 'two distinct player slots')
   assert.equal(await target(second, 'A1').isDisabled(), true)
   await target(first, 'J10').click(); await status(second, 'Đến lượt bạn')
   assert.equal(await own(second, 'J10').getAttribute('data-outcome'), 'MISS')
@@ -587,7 +670,8 @@ test('DK-08: two separate browser processes play the production React UI to vict
   // Redact recovery tokens in shareable screenshots.
   for (const [index, page] of pages.entries()) {
     await page.evaluate(() => { document.activeElement?.blur(); window.scrollTo(0, 0) })
-    await page.screenshot({ path: path.join(root, `.stack-work/dk08/ui-${index === 0 ? 'victory-desktop' : 'defeat-mobile'}.png`),
+    await page.screenshot({ path: evidenceDir ? path.join(evidenceDir, `${runtimeProfile.name}-ui-${index}.png`)
+      : path.join(root, `.stack-work/dk08/ui-${index === 0 ? 'victory-desktop' : 'defeat-mobile'}.png`),
       fullPage: true, mask: [page.getByRole('textbox', { name: 'Mã phiên của bạn' })] })
   }
   const core = await f.inspect('haskell')

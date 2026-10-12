@@ -1,0 +1,12 @@
+✔ same samples give zero change and reproducible CI (21.7618ms)
+✔ faster median retains sign but drift disqualifies timing (5.2227ms)
+✔ zero and missing/short groups cannot become formal measurements (6.4561ms)
+✔ N1 reporting profile preserves services, ports, health, security and LAN config (1105.6648ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1199.7669

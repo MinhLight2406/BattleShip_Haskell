@@ -1,0 +1,91 @@
+TAP version 13
+# Subtest: DK-07: 100 health probes preserve P1/P2; stop cleans real sockets and restart reuses the port
+ok 1 - DK-07: 100 health probes preserve P1/P2; stop cleans real sockets and restart reuses the port
+  ---
+  duration_ms: 29481.6714
+  type: 'test'
+  ...
+# Subtest: DK-07: one match exits without restart; start haskell opens a new match; down releases containers/network
+ok 2 - DK-07: one match exits without restart; start haskell opens a new match; down releases containers/network
+  ---
+  duration_ms: 36083.0369
+  type: 'test'
+  ...
+# Subtest: NM-08: three locked seeds have complete, identical private transcripts under the selected runtime
+ok 3 - NM-08: three locked seeds have complete, identical private transcripts under the selected runtime
+  ---
+  duration_ms: 35426.4496
+  type: 'test'
+  ...
+# Subtest: DK-08: strict Origin/Host rejection cannot allocate a slot; both players resume their own private history
+ok 4 - DK-08: strict Origin/Host rejection cannot allocate a slot; both players resume their own private history
+  ---
+  duration_ms: 13262.9622
+  type: 'test'
+  ...
+# Subtest: DK-08: exact five-minute clock boundary while placing forfeits the correct player
+ok 5 - DK-08: exact five-minute clock boundary while placing forfeits the correct player
+  ---
+  duration_ms: 15871.2611
+  type: 'test'
+  ...
+# Clock fixture imports unmodified /app/bridge.mjs; default RECONNECT_GRACE_MS remains 300000, winner comes from real Haskell Quit.
+# Subtest: DK-08: exact five-minute clock boundary during battle after a successful resume forfeits the correct player
+ok 6 - DK-08: exact five-minute clock boundary during battle after a successful resume forfeits the correct player
+  ---
+  duration_ms: 17968.7401
+  type: 'test'
+  ...
+# Clock fixture imports unmodified /app/bridge.mjs; default RECONNECT_GRACE_MS remains 300000, winner comes from real Haskell Quit.
+# Subtest: DK-08: restarting haskell mid-game closes old sessions and never restores old state
+ok 7 - DK-08: restarting haskell mid-game closes old sessions and never restores old state
+  ---
+  duration_ms: 19615.0486
+  type: 'test'
+  ...
+# Subtest: DK-08: restarting web mid-game closes old sessions and never restores old state
+ok 8 - DK-08: restarting web mid-game closes old sessions and never restores old state
+  ---
+  duration_ms: 20762.8493
+  type: 'test'
+  ...
+# Subtest: DK-08: concurrent WebSocket shots have one valid actor and exactly one update per target
+ok 9 - DK-08: concurrent WebSocket shots have one valid actor and exactly one update per target
+  ---
+  duration_ms: 13783.9318
+  type: 'test'
+  ...
+# Subtest: DK-08: C-07 P1 stops reading TCP; server and sockets exit within deadline
+ok 10 - DK-08: C-07 P1 stops reading TCP; server and sockets exit within deadline
+  ---
+  duration_ms: 15547.1808
+  type: 'test'
+  ...
+# Subtest: DK-08: C-07 P2 stops reading TCP; server and sockets exit within deadline
+ok 11 - DK-08: C-07 P2 stops reading TCP; server and sockets exit within deadline
+  ---
+  duration_ms: 15512.564
+  type: 'test'
+  ...
+# Subtest: DK-08: C-07 both clients stops reading TCP; server and sockets exit within deadline
+ok 12 - DK-08: C-07 both clients stops reading TCP; server and sockets exit within deadline
+  ---
+  duration_ms: 15537.9307
+  type: 'test'
+  ...
+# Subtest: DK-08: two separate browser processes play the production React UI to victory without secret reveal
+ok 13 - DK-08: two separate browser processes play the production React UI to victory without secret reveal
+  ---
+  duration_ms: 24906.8132
+  type: 'test'
+  ...
+# ONE Windows/Linux host; TWO separate browser processes: chrome 155.0.8059.39 / msedge 155.0.4283.45; origin http://127.0.0.1:58001. P1/P2, invalid placement, MISS/HIT/SUNK/WIN, reload after A6, privacy and exit 0 passed.
+1..13
+# tests 13
+# suites 0
+# pass 13
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 273898.0264

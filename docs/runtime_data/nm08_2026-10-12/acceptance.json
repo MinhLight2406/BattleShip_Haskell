@@ -1,0 +1,200 @@
+{
+  "observedOn": "2026-10-12",
+  "counts": {
+    "affinity-qa-linux.log": [
+      {
+        "examples": 18,
+        "failures": 0
+      },
+      {
+        "examples": 944,
+        "failures": 0
+      }
+    ],
+    "affinity-single-linux.log": [
+      {
+        "examples": 18,
+        "failures": 0
+      },
+      {
+        "examples": 944,
+        "failures": 0
+      }
+    ],
+    "N1-linux.log": [
+      {
+        "examples": 18,
+        "failures": 0
+      },
+      {
+        "examples": 944,
+        "failures": 0
+      }
+    ],
+    "N2-linux.log": [
+      {
+        "examples": 18,
+        "failures": 0
+      },
+      {
+        "examples": 944,
+        "failures": 0
+      }
+    ],
+    "native-N1.log": [
+      {
+        "examples": 18,
+        "failures": 0
+      },
+      {
+        "examples": 943,
+        "failures": 0
+      }
+    ],
+    "native-N2.log": [
+      {
+        "examples": 18,
+        "failures": 0
+      },
+      {
+        "examples": 943,
+        "failures": 0
+      }
+    ],
+    "numa-local-linux.log": [
+      {
+        "examples": 18,
+        "failures": 0
+      },
+      {
+        "examples": 944,
+        "failures": 0
+      }
+    ],
+    "numa-membind-linux.log": [
+      {
+        "examples": 18,
+        "failures": 0
+      },
+      {
+        "examples": 944,
+        "failures": 0
+      }
+    ]
+  },
+  "profiles": [
+    {
+      "name": "N1",
+      "status": "passed",
+      "reason": null,
+      "tests": {
+        "tests": 13,
+        "pass": 13,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0
+      },
+      "hash": "f304d867c580fe47e620287cc35f68d13f6c1d0ee0865c2c5f1cea19a8dbb6f5"
+    },
+    {
+      "name": "N2",
+      "status": "passed",
+      "reason": null,
+      "tests": {
+        "tests": 13,
+        "pass": 13,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0
+      },
+      "hash": "f304d867c580fe47e620287cc35f68d13f6c1d0ee0865c2c5f1cea19a8dbb6f5"
+    },
+    {
+      "name": "affinity-single",
+      "status": "passed",
+      "reason": null,
+      "tests": {
+        "tests": 13,
+        "pass": 13,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0
+      },
+      "hash": "f304d867c580fe47e620287cc35f68d13f6c1d0ee0865c2c5f1cea19a8dbb6f5"
+    },
+    {
+      "name": "affinity-qa",
+      "status": "passed",
+      "reason": null,
+      "tests": {
+        "tests": 13,
+        "pass": 13,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0
+      },
+      "hash": "f304d867c580fe47e620287cc35f68d13f6c1d0ee0865c2c5f1cea19a8dbb6f5"
+    },
+    {
+      "name": "numa-local",
+      "status": "passed",
+      "reason": null,
+      "tests": {
+        "tests": 13,
+        "pass": 13,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0
+      },
+      "hash": "f304d867c580fe47e620287cc35f68d13f6c1d0ee0865c2c5f1cea19a8dbb6f5"
+    },
+    {
+      "name": "numa-remote",
+      "status": "unaccepted",
+      "reason": "Thiếu hai RAM node Linux được cấp; chưa nghiệm thu remote.",
+      "tests": null,
+      "hash": null
+    },
+    {
+      "name": "numa-ghc",
+      "status": "unaccepted",
+      "reason": "Binary GHC 9.10.3 biên dịch không có NUMA support.",
+      "tests": null,
+      "hash": null
+    },
+    {
+      "name": "numa-membind",
+      "status": "passed",
+      "reason": null,
+      "tests": {
+        "tests": 13,
+        "pass": 13,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0
+      },
+      "hash": "f304d867c580fe47e620287cc35f68d13f6c1d0ee0865c2c5f1cea19a8dbb6f5"
+    }
+  ],
+  "harnessHashes": {
+    "scripts/test-runtime-profiles.mjs": "9a9f7db474aeba38c504d2dfb3da471023df9ac8b2c02ab67d5231494eaa3796",
+    "scripts/test-compose.mjs": "be6558cf44d36baf88353e877df592608974b0e5506e50c621b3cf879c1c9863",
+    "scripts/test/runtime-profiles.test.mjs": "6a9f78c13371bb14d467c3564c13b0b02c733b45556037840df8e0c242880eda",
+    "test/GameWorkerSpec.hs": "347069e50343ebc23e969c7df517fc5c11e05bde64ac0ed5684742619324fbe6",
+    "test/CoordinatorSpec.hs": "00bd39c7ca02ba2fd149769242629f386816da5982efb991427e7b1fad61b6b2"
+  },
+  "hostNode": "v24.19.0",
+  "hostOS": "Windows, kernel 10.0.26200; edition not collected",
+  "compiler": "GHC 9.10.3",
+  "snapshot": "lts-24.59",
+  "productionNode": "v24.21.0",
+  "serverSha256": "5adeea78495c3ae1c85d73126d625d4ccb23c28c6d5b0a5db7a09d8c280c2644",
+  "bridgeSha256": "e9df2330051379ef34815781878e0312848cfc68e7dde280efe40e5964066efa",
+  "scope": "One Windows host; two browser processes per accepted profile, not two physical devices. Prepared Linux compiler cache; current source rebuilt, complete suites executed. Native/Linux gates reused only with matching source, argv and image identities."
+}

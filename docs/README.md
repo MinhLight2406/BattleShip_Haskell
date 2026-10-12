@@ -2,6 +2,10 @@
 
 Cập nhật **2026-10-10**, nhánh `Update_docs_report`, từ `Test_2_container_va_LAN` tại commit `8bd7da92c083bcf9d8119f5c786342f9496c6cd7`. Mô tả hiện hành được đối chiếu với mã ở commit này. Nhánh tài liệu không tự thay luật, API hoặc xác nhận nghiệm thu của nhóm.
 
+Phần NUMA NM-01..NM-09 được cập nhật **2026-10-12** trên `Update_NUMA`;
+xem các hồ sơ riêng bên dưới để đọc trạng thái runtime và gate mới. Các
+hồ sơ cũ giữ ngày và phạm vi nghiệm thu của từng mốc.
+
 ## Đọc theo mục đích
 
 | Mục đích | Thứ tự đọc |
@@ -18,6 +22,9 @@ Cập nhật **2026-10-10**, nhánh `Update_docs_report`, từ `Test_2_container
 | Chạy CPU affinity | [NM-04: cpuset, RTS, kiểm chứng process và chuyển chế độ](affinity_runtime.md) |
 | Worker và locality hiện hành | [NM-05: mailbox, quyền sở hữu, strictness, supervision và số đo](worker_locality.md) |
 | Fleet tính sẵn và thử bố trí cache | [NM-06: metadata bất biến, bảng 100 ô, test độc lập và đánh đổi hiệu năng/bộ nhớ](fleet_index.md) |
+| Bố trí CPU–RAM theo NUMA | [NM-07: cpuset-mems, membind, kiểm chứng trang nhớ và giới hạn môi trường](numa_experiments.md) |
+| Hồi quy các cấu hình runtime | [NM-08: ma trận N1/N2, affinity/NUMA, transcript, hàng đợi và cleanup](runtime_regression.md) |
+| Kết luận kiến thức và cấu hình báo cáo | [NM-09: cơ chế, đánh đổi, số liệu riêng/kết hợp, tái hiện và phần chưa nghiệm thu](numa_acceptance.md) |
 | Kiểm chứng kết quả | [Hướng dẫn test](testing.md) → [chỉ mục bằng chứng](test_evidence.md) → log/ảnh từng mốc |
 | Kiểm tra đợt sửa docs này | [Hồ sơ rà tài liệu](docs_review.md): thay đổi, gate mới chạy và giới hạn |
 | Chuẩn bị bảo vệ | [Dàn ý báo cáo](report_outline.md) → [dàn ý trình bày](slides_outline.md) → [phần nhóm cần chốt](report_draft.md) |

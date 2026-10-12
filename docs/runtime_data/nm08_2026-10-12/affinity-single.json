@@ -1,0 +1,23 @@
+{
+  "name": "affinity-single",
+  "config": {
+    "mode": "container",
+    "capabilities": 1,
+    "haskell": [
+      11
+    ],
+    "web": [
+      0
+    ],
+    "environment": {
+      "HASKELL_CPUSET": "11",
+      "WEB_CPUSET": "0",
+      "HASKELL_CAPABILITIES": "1"
+    },
+    "gameCapability": 0,
+    "mems": null,
+    "policy": "cpuset",
+    "sysNice": false,
+    "ghcNuma": null
+  }
+}

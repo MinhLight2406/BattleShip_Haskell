@@ -1,0 +1,718 @@
+TAP version 13
+# Subtest: auto selects permitted IDs and prefers a separate core for web, not an SMT sibling
+ok 1 - auto selects permitted IDs and prefers a separate core for web, not an SMT sibling
+  ---
+  duration_ms: 1.9652
+  type: 'test'
+  ...
+# Subtest: noncontiguous masks, ranges and overlapping services are valid in container mode
+ok 2 - noncontiguous masks, ranges and overlapping services are valid in container mode
+  ---
+  duration_ms: 0.3294
+  type: 'test'
+  ...
+# Subtest: rejects invalid CPU syntax ""
+ok 3 - rejects invalid CPU syntax ""
+  ---
+  duration_ms: 0.2386
+  type: 'test'
+  ...
+# Subtest: rejects invalid CPU syntax "-1"
+ok 4 - rejects invalid CPU syntax "-1"
+  ---
+  duration_ms: 1.6633
+  type: 'test'
+  ...
+# Subtest: rejects invalid CPU syntax "2-"
+ok 5 - rejects invalid CPU syntax "2-"
+  ---
+  duration_ms: 0.3514
+  type: 'test'
+  ...
+# Subtest: rejects invalid CPU syntax "6-2"
+ok 6 - rejects invalid CPU syntax "6-2"
+  ---
+  duration_ms: 0.2202
+  type: 'test'
+  ...
+# Subtest: rejects invalid CPU syntax "1;echo bad"
+ok 7 - rejects invalid CPU syntax "1;echo bad"
+  ---
+  duration_ms: 0.1767
+  type: 'test'
+  ...
+# Subtest: rejects invalid CPU syntax "9999999999"
+ok 8 - rejects invalid CPU syntax "9999999999"
+  ---
+  duration_ms: 0.1741
+  type: 'test'
+  ...
+# Subtest: rejects invalid CPU syntax undefined
+ok 9 - rejects invalid CPU syntax undefined
+  ---
+  duration_ms: 0.2248
+  type: 'test'
+  ...
+# Subtest: offline, outside mask, incomplete topology and bad web mask fail before start
+ok 10 - offline, outside mask, incomplete topology and bad web mask fail before start
+  ---
+  duration_ms: 1.4377
+  type: 'test'
+  ...
+# Subtest: rejects invalid/outside capabilities "0"
+ok 11 - rejects invalid/outside capabilities "0"
+  ---
+  duration_ms: 0.2688
+  type: 'test'
+  ...
+# Subtest: rejects invalid/outside capabilities "-1"
+ok 12 - rejects invalid/outside capabilities "-1"
+  ---
+  duration_ms: 0.1089
+  type: 'test'
+  ...
+# Subtest: rejects invalid/outside capabilities "1.5"
+ok 13 - rejects invalid/outside capabilities "1.5"
+  ---
+  duration_ms: 0.1409
+  type: 'test'
+  ...
+# Subtest: rejects invalid/outside capabilities ""
+ok 14 - rejects invalid/outside capabilities ""
+  ---
+  duration_ms: 0.1017
+  type: 'test'
+  ...
+# Subtest: rejects invalid/outside capabilities "2 -qa"
+ok 15 - rejects invalid/outside capabilities "2 -qa"
+  ---
+  duration_ms: 0.143
+  type: 'test'
+  ...
+# Subtest: rejects invalid/outside capabilities "01"
+ok 16 - rejects invalid/outside capabilities "01"
+  ---
+  duration_ms: 0.1195
+  type: 'test'
+  ...
+# Subtest: rejects invalid/outside capabilities "4"
+ok 17 - rejects invalid/outside capabilities "4"
+  ---
+  duration_ms: 0.1147
+  type: 'test'
+  ...
+# Subtest: rejects invalid/outside capabilities "999999999999999999"
+ok 18 - rejects invalid/outside capabilities "999999999999999999"
+  ---
+  duration_ms: 0.2214
+  type: 'test'
+  ...
+# Subtest: N must fit the selected Haskell mask, not only the host mask
+ok 19 - N must fit the selected Haskell mask, not only the host mask
+  ---
+  duration_ms: 0.2163
+  type: 'test'
+  ...
+# Subtest: -qa is structured and allowed only for confirmed 0..N-1 mapping with exact N
+ok 20 - -qa is structured and allowed only for confirmed 0..N-1 mapping with exact N
+  ---
+  duration_ms: 0.5666
+  type: 'test'
+  ...
+# Subtest: port and CLI reject malformed values without invoking Docker
+ok 21 - port and CLI reject malformed values without invoking Docker
+  ---
+  duration_ms: 1.0529
+  type: 'test'
+  ...
+# Subtest: proc status parser preserves kernel CPU IDs and rejects missing masks
+ok 22 - proc status parser preserves kernel CPU IDs and rejects missing masks
+  ---
+  duration_ms: 0.8883
+  type: 'test'
+  ...
+# Subtest: requested Docker mask, process/task masks and actual RTS command must agree
+ok 23 - requested Docker mask, process/task masks and actual RTS command must agree
+  ---
+  duration_ms: 2.0941
+  type: 'test'
+  ...
+# Subtest: runtime capability and -qa thread evidence are required, not inferred from command
+ok 24 - runtime capability and -qa thread evidence are required, not inferred from command
+  ---
+  duration_ms: 0.8573
+  type: 'test'
+  ...
+# Subtest: example declares only affinity settings and does not override port/origin deployment
+ok 25 - example declares only affinity settings and does not override port/origin deployment
+  ---
+  duration_ms: 0.6301
+  type: 'test'
+  ...
+# Subtest: NM-05 requires the observed worker capability to match the chosen index
+ok 26 - NM-05 requires the observed worker capability to match the chosen index
+  ---
+  duration_ms: 0.4148
+  type: 'test'
+  ...
+# Subtest: JSON parser retains a 64-bit checksum as a string and marks optional metrics missing
+ok 27 - JSON parser retains a 64-bit checksum as a string and marks optional metrics missing
+  ---
+  duration_ms: 2.0383
+  type: 'test'
+  ...
+# Subtest: unsupported, invalid and null metrics never become zero
+ok 28 - unsupported, invalid and null metrics never become zero
+  ---
+  duration_ms: 0.3003
+  type: 'test'
+  ...
+# Subtest: invalid required metrics/schema/checksum fail instead of producing a baseline
+ok 29 - invalid required metrics/schema/checksum fail instead of producing a baseline
+  ---
+  duration_ms: 1.2124
+  type: 'test'
+  ...
+# Subtest: RTS parser handles real machine-readable pairs, optional omissions and ordinary stderr
+ok 30 - RTS parser handles real machine-readable pairs, optional omissions and ordinary stderr
+  ---
+  duration_ms: 0.3811
+  type: 'test'
+  ...
+# Subtest: summary computes medians, response p95 and three-block noise using measured samples
+ok 31 - summary computes medians, response p95 and three-block noise using measured samples
+  ---
+  duration_ms: 24.2251
+  type: 'test'
+  ...
+# Subtest: summary preserves unknown metrics and insufficient blocks as null
+ok 32 - summary preserves unknown metrics and insufficient blocks as null
+  ---
+  duration_ms: 2.1052
+  type: 'test'
+  ...
+# Subtest: retained heap is reported only for live retained fleets, separately from allocation
+ok 33 - retained heap is reported only for live retained fleets, separately from allocation
+  ---
+  duration_ms: 9.6909
+  type: 'test'
+  ...
+# Subtest: missing retained heap is unavailable rather than zero
+ok 34 - missing retained heap is unavailable rather than zero
+  ---
+  duration_ms: 1.9819
+  type: 'test'
+  ...
+# Subtest: noncontiguous node/CPU IDs are preserved; local/remote keep CPU/N identical and GHC off
+ok 35 - noncontiguous node/CPU IDs are preserved; local/remote keep CPU/N identical and GHC off
+  ---
+  duration_ms: 4.2676
+  type: 'test'
+  ...
+# Subtest: one visible node cannot run remote, even when its ID is not zero
+ok 36 - one visible node cannot run remote, even when its ID is not zero
+  ---
+  duration_ms: 1.035
+  type: 'test'
+  ...
+# Subtest: remote needs RAM on B, not permission to execute CPUs on B (memory-only node is valid)
+ok 37 - remote needs RAM on B, not permission to execute CPUs on B (memory-only node is valid)
+  ---
+  duration_ms: 0.2229
+  type: 'test'
+  ...
+# Subtest: rejects invalid/outside/inconsistent resource config {"NUMA_CPU_NODE":"1"}
+ok 38 - rejects invalid/outside/inconsistent resource config {"NUMA_CPU_NODE":"1"}
+  ---
+  duration_ms: 0.2527
+  type: 'test'
+  ...
+# Subtest: rejects invalid/outside/inconsistent resource config {"NUMA_CPU_NODE":"9"}
+ok 39 - rejects invalid/outside/inconsistent resource config {"NUMA_CPU_NODE":"9"}
+  ---
+  duration_ms: 0.144
+  type: 'test'
+  ...
+# Subtest: rejects invalid/outside/inconsistent resource config {"NUMA_MEMORY_NODE":"9"}
+ok 40 - rejects invalid/outside/inconsistent resource config {"NUMA_MEMORY_NODE":"9"}
+  ---
+  duration_ms: 0.1545
+  type: 'test'
+  ...
+# Subtest: rejects invalid/outside/inconsistent resource config {"NUMA_MEMORY_NODE":"1"}
+ok 41 - rejects invalid/outside/inconsistent resource config {"NUMA_MEMORY_NODE":"1"}
+  ---
+  duration_ms: 0.1202
+  type: 'test'
+  ...
+# Subtest: rejects invalid/outside/inconsistent resource config {"HASKELL_CPUSET":"11"}
+ok 42 - rejects invalid/outside/inconsistent resource config {"HASKELL_CPUSET":"11"}
+  ---
+  duration_ms: 0.1089
+  type: 'test'
+  ...
+# Subtest: rejects invalid/outside/inconsistent resource config {"HASKELL_CPUSET":"19"}
+ok 43 - rejects invalid/outside/inconsistent resource config {"HASKELL_CPUSET":"19"}
+  ---
+  duration_ms: 0.1339
+  type: 'test'
+  ...
+# Subtest: rejects invalid/outside/inconsistent resource config {"HASKELL_CAPABILITIES":"3"}
+ok 44 - rejects invalid/outside/inconsistent resource config {"HASKELL_CAPABILITIES":"3"}
+  ---
+  duration_ms: 0.2447
+  type: 'test'
+  ...
+# Subtest: rejects invalid/outside/inconsistent resource config {"NUMA_PROFILE":"remote","NUMA_MEMORY_NODE":"2"}
+ok 45 - rejects invalid/outside/inconsistent resource config {"NUMA_PROFILE":"remote","NUMA_MEMORY_NODE":"2"}
+  ---
+  duration_ms: 0.123
+  type: 'test'
+  ...
+# Subtest: rejects invalid/outside/inconsistent resource config {"NUMA_MEMORY_NODE":"5"}
+ok 46 - rejects invalid/outside/inconsistent resource config {"NUMA_MEMORY_NODE":"5"}
+  ---
+  duration_ms: 0.2526
+  type: 'test'
+  ...
+# Subtest: rejects invalid/outside/inconsistent resource config {"NUMA_PROFILE":"default","NUMA_MEMORY_NODE":"2"}
+ok 47 - rejects invalid/outside/inconsistent resource config {"NUMA_PROFILE":"default","NUMA_MEMORY_NODE":"2"}
+  ---
+  duration_ms: 0.5346
+  type: 'test'
+  ...
+# Subtest: rejects invalid/outside/inconsistent resource config {"NUMA_PROFILE":"default","NUMA_MEMORY_POLICY":"membind"}
+ok 48 - rejects invalid/outside/inconsistent resource config {"NUMA_PROFILE":"default","NUMA_MEMORY_POLICY":"membind"}
+  ---
+  duration_ms: 0.1255
+  type: 'test'
+  ...
+# Subtest: rejects invalid/outside/inconsistent resource config {"NUMA_PROFILE":"fake"}
+ok 49 - rejects invalid/outside/inconsistent resource config {"NUMA_PROFILE":"fake"}
+  ---
+  duration_ms: 0.0714
+  type: 'test'
+  ...
+# Subtest: rejects invalid/outside/inconsistent resource config {"NUMA_SYS_NICE":"true"}
+ok 50 - rejects invalid/outside/inconsistent resource config {"NUMA_SYS_NICE":"true"}
+  ---
+  duration_ms: 0.0929
+  type: 'test'
+  ...
+# Subtest: rejects invalid/outside/inconsistent resource config {"NUMA_MEMORY_POLICY":"preferred"}
+ok 51 - rejects invalid/outside/inconsistent resource config {"NUMA_MEMORY_POLICY":"preferred"}
+  ---
+  duration_ms: 0.1256
+  type: 'test'
+  ...
+# Subtest: rejects invalid/outside/inconsistent resource config {"NUMA_MIN_FREE_MIB":"0"}
+ok 52 - rejects invalid/outside/inconsistent resource config {"NUMA_MIN_FREE_MIB":"0"}
+  ---
+  duration_ms: 0.1287
+  type: 'test'
+  ...
+# Subtest: rejects invalid/outside/inconsistent resource config {"NUMA_MIN_FREE_MIB":"9007199254740991"}
+ok 53 - rejects invalid/outside/inconsistent resource config {"NUMA_MIN_FREE_MIB":"9007199254740991"}
+  ---
+  duration_ms: 0.1175
+  type: 'test'
+  ...
+# Subtest: rejects invalid/outside/inconsistent resource config {"NUMA_CPU_NODE":""}
+ok 54 - rejects invalid/outside/inconsistent resource config {"NUMA_CPU_NODE":""}
+  ---
+  duration_ms: 0.0674
+  type: 'test'
+  ...
+# Subtest: rejects invalid/outside/inconsistent resource config {"NUMA_MEMORY_NODE":"http://2"}
+ok 55 - rejects invalid/outside/inconsistent resource config {"NUMA_MEMORY_NODE":"http://2"}
+  ---
+  duration_ms: 0.0682
+  type: 'test'
+  ...
+# Subtest: incomplete topology and ambiguous CPU mapping fail closed
+ok 56 - incomplete topology and ambiguous CPU mapping fail closed
+  ---
+  duration_ms: 0.1942
+  type: 'test'
+  ...
+# Subtest: private anonymous pages and file page cache are reported separately, mixed page sizes are not guessed
+ok 57 - private anonymous pages and file page cache are reported separately, mixed page sizes are not guessed
+  ---
+  duration_ms: 0.5794
+  type: 'test'
+  ...
+# Subtest: CPU field 39 handles task names containing spaces
+ok 58 - CPU field 39 handles task names containing spaces
+  ---
+  duration_ms: 0.3686
+  type: 'test'
+  ...
+# Subtest: CPU mask alone is insufficient: actual CPU, memory mask, resident pages and bind policy must match
+ok 59 - CPU mask alone is insufficient: actual CPU, memory mask, resident pages and bind policy must match
+  ---
+  duration_ms: 3.5617
+  type: 'test'
+  ...
+# Subtest: missing/insufficient free RAM cannot be relabelled as supported
+ok 60 - missing/insufficient free RAM cannot be relabelled as supported
+  ---
+  duration_ms: 1.3783
+  type: 'test'
+  ...
+# Subtest: NUMA syscalls rejected with exit zero are still failures
+ok 61 - NUMA syscalls rejected with exit zero are still failures
+  ---
+  duration_ms: 0.7899
+  type: 'test'
+  ...
+# Subtest: CLI keeps stop accessible and rejects malformed/duplicate options
+ok 62 - CLI keeps stop accessible and rejects malformed/duplicate options
+  ---
+  duration_ms: 0.788
+  type: 'test'
+  ...
+# Subtest: local/remote comparison refuses changes to CPU, N, policy or GHC RTS mode
+ok 63 - local/remote comparison refuses changes to CPU, N, policy or GHC RTS mode
+  ---
+  duration_ms: 0.7442
+  type: 'test'
+  ...
+# Subtest: profile batches admit at most two independent jobs and finish every job
+ok 64 - profile batches admit at most two independent jobs and finish every job
+  ---
+  duration_ms: 1.0717
+  type: 'test'
+  ...
+# Subtest: a failed profile waits for sibling cleanup and does not launch the next batch
+ok 65 - a failed profile waits for sibling cleanup and does not launch the next batch
+  ---
+  duration_ms: 0.379
+  type: 'test'
+  ...
+# Subtest: matrix keeps CPU IDs from topology, marks missing remote separately, and uses worker capability 1 for N2
+ok 66 - matrix keeps CPU IDs from topology, marks missing remote separately, and uses worker capability 1 for N2
+  ---
+  duration_ms: 1.5243
+  type: 'test'
+  ...
+# Subtest: memory-only remote node is eligible and preserves local CPU/workload settings
+ok 67 - memory-only remote node is eligible and preserves local CPU/workload settings
+  ---
+  duration_ms: 1.4085
+  type: 'test'
+  ...
+# Subtest: unknown topology and malformed profile masks, capabilities, policy or RTS are rejected
+ok 68 - unknown topology and malformed profile masks, capabilities, policy or RTS are rejected
+  ---
+  duration_ms: 13.7965
+  type: 'test'
+  ...
+# Subtest: TAP missing metrics, all skipped, failure, cancellation and inconsistent totals cannot pass
+ok 69 - TAP missing metrics, all skipped, failure, cancellation and inconsistent totals cannot pass
+  ---
+  duration_ms: 1.1451
+  type: 'test'
+  ...
+# Subtest: transcript comparison detects order, outcome, missing seed and leaked session metadata
+ok 70 - transcript comparison detects order, outcome, missing seed and leaked session metadata
+  ---
+  duration_ms: 4.4635
+  type: 'test'
+  ...
+# Subtest: ID lists normalize ranges, duplicates and sparse IDs without assuming CPU 0
+ok 71 - ID lists normalize ranges, duplicates and sparse IDs without assuming CPU 0
+  ---
+  duration_ms: 5.0075
+  type: 'test'
+  ...
+# Subtest: reject malformed or unbounded ID list ""
+ok 72 - reject malformed or unbounded ID list ""
+  ---
+  duration_ms: 0.8033
+  type: 'test'
+  ...
+# Subtest: reject malformed or unbounded ID list " "
+ok 73 - reject malformed or unbounded ID list " "
+  ---
+  duration_ms: 0.168
+  type: 'test'
+  ...
+# Subtest: reject malformed or unbounded ID list "-1"
+ok 74 - reject malformed or unbounded ID list "-1"
+  ---
+  duration_ms: 0.157
+  type: 'test'
+  ...
+# Subtest: reject malformed or unbounded ID list "4-2"
+ok 75 - reject malformed or unbounded ID list "4-2"
+  ---
+  duration_ms: 0.2221
+  type: 'test'
+  ...
+# Subtest: reject malformed or unbounded ID list "1,"
+ok 76 - reject malformed or unbounded ID list "1,"
+  ---
+  duration_ms: 0.2167
+  type: 'test'
+  ...
+# Subtest: reject malformed or unbounded ID list ",1"
+ok 77 - reject malformed or unbounded ID list ",1"
+  ---
+  duration_ms: 0.1488
+  type: 'test'
+  ...
+# Subtest: reject malformed or unbounded ID list "1,,2"
+ok 78 - reject malformed or unbounded ID list "1,,2"
+  ---
+  duration_ms: 0.1464
+  type: 'test'
+  ...
+# Subtest: reject malformed or unbounded ID list "1, 2"
+ok 79 - reject malformed or unbounded ID list "1, 2"
+  ---
+  duration_ms: 0.1825
+  type: 'test'
+  ...
+# Subtest: reject malformed or unbounded ID list "1.5"
+ok 80 - reject malformed or unbounded ID list "1.5"
+  ---
+  duration_ms: 0.6024
+  type: 'test'
+  ...
+# Subtest: reject malformed or unbounded ID list "A1"
+ok 81 - reject malformed or unbounded ID list "A1"
+  ---
+  duration_ms: 0.8172
+  type: 'test'
+  ...
+# Subtest: reject malformed or unbounded ID list "1-2-3"
+ok 82 - reject malformed or unbounded ID list "1-2-3"
+  ---
+  duration_ms: 0.1924
+  type: 'test'
+  ...
+# Subtest: reject malformed or unbounded ID list "0-65536"
+ok 83 - reject malformed or unbounded ID list "0-65536"
+  ---
+  duration_ms: 0.1323
+  type: 'test'
+  ...
+# Subtest: reject malformed or unbounded ID list "9007199254740993"
+ok 84 - reject malformed or unbounded ID list "9007199254740993"
+  ---
+  duration_ms: 0.1123
+  type: 'test'
+  ...
+# Subtest: reject malformed or unbounded ID list "2147483648"
+ok 85 - reject malformed or unbounded ID list "2147483648"
+  ---
+  duration_ms: 0.0738
+  type: 'test'
+  ...
+# Subtest: reject malformed or unbounded ID list undefined
+ok 86 - reject malformed or unbounded ID list undefined
+  ---
+  duration_ms: 0.1046
+  type: 'test'
+  ...
+# Subtest: one visible node is eligible for affinity, not for multi-node NUMA or a physical-host claim
+ok 87 - one visible node is eligible for affinity, not for multi-node NUMA or a physical-host claim
+  ---
+  duration_ms: 4.2655
+  type: 'test'
+  ...
+# Subtest: multiple sparse nodes support local/remote selection with CPUs on A and RAM on B
+ok 88 - multiple sparse nodes support local/remote selection with CPUs on A and RAM on B
+  ---
+  duration_ms: 1.4476
+  type: 'test'
+  ...
+# Subtest: online CPUs outside the process mask and offline IDs are rejected separately
+ok 89 - online CPUs outside the process mask and offline IDs are rejected separately
+  ---
+  duration_ms: 2.7083
+  type: 'test'
+  ...
+# Subtest: SMT retains two logical CPUs with the same socket/core and intersects allowed siblings
+ok 90 - SMT retains two logical CPUs with the same socket/core and intersects allowed siblings
+  ---
+  duration_ms: 0.533
+  type: 'test'
+  ...
+# Subtest: core IDs can repeat in different sockets without merging the cores
+ok 91 - core IDs can repeat in different sockets without merging the cores
+  ---
+  duration_ms: 0.4712
+  type: 'test'
+  ...
+# Subtest: nonexistent and disallowed memory nodes cannot pass preflight
+ok 92 - nonexistent and disallowed memory nodes cannot pass preflight
+  ---
+  duration_ms: 0.4264
+  type: 'test'
+  ...
+# Subtest: memory-only nodes are valid RAM targets but do not establish a second CPU/RAM NUMA locality
+ok 93 - memory-only nodes are valid RAM targets but do not establish a second CPU/RAM NUMA locality
+  ---
+  duration_ms: 0.3027
+  type: 'test'
+  ...
+# Subtest: missing/malformed mask fails closed: /sys/devices/system/cpu/online null
+ok 94 - missing/malformed mask fails closed: /sys/devices/system/cpu/online null
+  ---
+  duration_ms: 0.2914
+  type: 'test'
+  ...
+# Subtest: missing/malformed mask fails closed: /sys/devices/system/cpu/online 2-no
+ok 95 - missing/malformed mask fails closed: /sys/devices/system/cpu/online 2-no
+  ---
+  duration_ms: 0.1682
+  type: 'test'
+  ...
+# Subtest: missing/malformed mask fails closed: /proc/self/status Mems_allowed_list: 3\\n
+ok 96 - missing/malformed mask fails closed: /proc/self/status Mems_allowed_list: 3\\n
+  ---
+  duration_ms: 0.3276
+  type: 'test'
+  ...
+# Subtest: missing/malformed mask fails closed: /proc/self/status Cpus_allowed_list: 2,6\\nMems_allowed_list: nope\\n
+ok 97 - missing/malformed mask fails closed: /proc/self/status Cpus_allowed_list: 2,6\\nMems_allowed_list: nope\\n
+  ---
+  duration_ms: 1.3202
+  type: 'test'
+  ...
+# Subtest: missing/malformed mask fails closed: /sys/devices/system/node/online null
+ok 98 - missing/malformed mask fails closed: /sys/devices/system/node/online null
+  ---
+  duration_ms: 0.5337
+  type: 'test'
+  ...
+# Subtest: missing/malformed mask fails closed: /proc/self/status Error: denied
+ok 99 - missing/malformed mask fails closed: /proc/self/status Error: denied
+  ---
+  duration_ms: 0.4212
+  type: 'test'
+  ...
+# Subtest: unknown core/socket IDs and hidden cache produce explicit partial information
+ok 100 - unknown core/socket IDs and hidden cache produce explicit partial information
+  ---
+  duration_ms: 0.3624
+  type: 'test'
+  ...
+# Subtest: zero or unknown RAM and ambiguous CPU/node mapping cannot certify multi-node NUMA
+ok 101 - zero or unknown RAM and ambiguous CPU/node mapping cannot certify multi-node NUMA
+  ---
+  duration_ms: 1.7704
+  type: 'test'
+  ...
+# Subtest: shared cache is deduplicated while retaining full and effective CPU masks
+ok 102 - shared cache is deduplicated while retaining full and effective CPU masks
+  ---
+  duration_ms: 0.7697
+  type: 'test'
+  ...
+# Subtest: cache types/levels are not merged and plain-byte sizes are not mistaken for KiB
+ok 103 - cache types/levels are not merged and plain-byte sizes are not mistaken for KiB
+  ---
+  duration_ms: 0.7623
+  type: 'test'
+  ...
+# Subtest: malformed optional cache information is null with a diagnostic, never silently invented
+ok 104 - malformed optional cache information is null with a diagnostic, never silently invented
+  ---
+  duration_ms: 0.5479
+  type: 'test'
+  ...
+# Subtest: cache instance IDs distinguish caches even when type, level and sharing mask match
+ok 105 - cache instance IDs distinguish caches even when type, level and sharing mask match
+  ---
+  duration_ms: 0.5829
+  type: 'test'
+  ...
+# Subtest: empty effective CPU masks fail inspection instead of falling back to all online CPUs
+ok 106 - empty effective CPU masks fail inspection instead of falling back to all online CPUs
+  ---
+  duration_ms: 0.4488
+  type: 'test'
+  ...
+# Subtest: missing NUMA cpulist keeps CPU affinity available but never guesses CPU/node mapping
+ok 107 - missing NUMA cpulist keeps CPU affinity available but never guesses CPU/node mapping
+  ---
+  duration_ms: 0.4536
+  type: 'test'
+  ...
+# Subtest: container inside WSL/VM is represented as two layers, not a Linux physical host
+ok 108 - container inside WSL/VM is represented as two layers, not a Linux physical host
+  ---
+  duration_ms: 1.0535
+  type: 'test'
+  ...
+# Subtest: VM with hidden DMI and missing cache remains partial without a fabricated bare-metal claim
+ok 109 - VM with hidden DMI and missing cache remains partial without a fabricated bare-metal claim
+  ---
+  duration_ms: 0.2569
+  type: 'test'
+  ...
+# Subtest: Docker cgroup evidence detects a container without a marker
+ok 110 - Docker cgroup evidence detects a container without a marker
+  ---
+  duration_ms: 0.2815
+  type: 'test'
+  ...
+# Subtest: no perf probe is unknown even with PMU files and permissive paranoid policy
+ok 111 - no perf probe is unknown even with PMU files and permissive paranoid policy
+  ---
+  duration_ms: 0.226
+  type: 'test'
+  ...
+# Subtest: perf checks all required events with bounded subprocesses and no shell
+ok 112 - perf checks all required events with bounded subprocesses and no shell
+  ---
+  duration_ms: 1.0054
+  type: 'test'
+  ...
+# Subtest: perf missing, denied, timeout, unsupported and uncounted are distinct failed evidence
+ok 113 - perf missing, denied, timeout, unsupported and uncounted are distinct failed evidence
+  ---
+  duration_ms: 3.0309
+  type: 'test'
+  ...
+# Subtest: mixed perf results cannot certify all the counters required for a benchmark
+ok 114 - mixed perf results cannot certify all the counters required for a benchmark
+  ---
+  duration_ms: 0.6685
+  type: 'test'
+  ...
+# Subtest: non-Linux returns a structured unsupported report without reading Linux files
+ok 115 - non-Linux returns a structured unsupported report without reading Linux files
+  ---
+  duration_ms: 0.0881
+  type: 'test'
+  ...
+# Subtest: CLI rejects bad arguments before inspecting or probing the machine
+ok 116 - CLI rejects bad arguments before inspecting or probing the machine
+  ---
+  duration_ms: 0.4231
+  type: 'test'
+  ...
+# Subtest: CLI emits valid JSON with exit codes for accepted, rejected and incomplete inspections
+ok 117 - CLI emits valid JSON with exit codes for accepted, rejected and incomplete inspections
+  ---
+  duration_ms: 1.0851
+  type: 'test'
+  ...
+# Subtest: CLI handles unexpected IO failure and help without launching a game
+ok 118 - CLI handles unexpected IO failure and help without launching a game
+  ---
+  duration_ms: 0.1449
+  type: 'test'
+  ...
+1..118
+# tests 118
+# suites 0
+# pass 118
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 227.5412

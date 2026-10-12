@@ -1,0 +1,5 @@
+{
+  "profile": "ghc",
+  "verified": false,
+  "reason": "Command failed: C:/Users/nhatm/AppData/Local/Programs/DockerDesktop/resources/bin/docker.exe run --rm --network none --cap-add SYS_NICE --cpuset-cpus 0 --cpuset-mems 0 --entrypoint /usr/local/bin/battleship-server battleship-haskell:local +RTS -N1 --numa=1 --info -RTS\nbattleship-server: --numa=1: This GHC build was compiled without NUMA support.\nbattleship-server: Internal error in the RTS options parser\n\nbattleship-server: --numa=1: This GHC build was compiled without NUMA support.\nbattleship-server: Internal error in the RTS options parser\n"
+}

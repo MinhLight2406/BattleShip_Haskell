@@ -1,6 +1,11 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { parseRTS, parseSample, quantile, summarize } from '../benchmark-runtime.mjs'
+import { benchmarkModes, parseRTS, parseSample, quantile, summarize } from '../benchmark-runtime.mjs'
+
+test('historical baseline has four layers, current profile retains worker', () => {
+  assert.deepEqual(benchmarkModes(true), ['core', 'coordinator', 'tcp', 'web'])
+  assert.deepEqual(benchmarkModes(), ['core', 'coordinator', 'worker', 'tcp', 'web'])
+})
 
 const sample = { schemaVersion: 1, elapsedNs: 1e9, games: 3, commands: 75, capabilities: 1, checksum: '18446744073709551615' }
 test('JSON parser retains a 64-bit checksum as a string and marks optional metrics missing', () => {

@@ -532,3 +532,76 @@ Benchmark riêng battleship-fleet-benchmark, 9 test FleetIndexSpec (5 property
 gate. Occupied/index là dữ liệu chương trình; kết luận cache CPU/NUMA chỉ có
 thể đưa ra khi có counter/placement evidence. Số liệu và chi phí bộ nhớ nằm
 trong hồ sơ NM-06; test không thay xác nhận A/B/R trước hợp nhất.
+
+## 13. Phụ lục NM-07 — NUMA deployment, chờ C/B/R review
+
+Ngày 2026-10-12, Update_NUMA; xem [hợp đồng và nghiệm thu NUMA](numa_experiments.md).
+Không đổi API Haskell, GameState/Step, wire, luật, worker/mailbox/outbox hoặc
+resume. Thêm `.env.numa.example`, launcher/override NUMA và wrapper exec;
+runtime cài numactl. Compose mặc định vẫn dùng server trực tiếp.
+
+Launcher tạo đúng haskell/web, cấu hình CPU như NM-04, áp dụng Docker
+CpusetMems khi Haskell chưa chạy, rồi start theo health. MemFree chỉ là
+preflight, không phải reservation. Kiểm chứng mask từng thread, CPU gần
+nhất và private anonymous resident pages; không coi shared file cache là
+heap riêng. Lỗi policy/compiler phải dừng, lưu lỗi gốc và cleanup.
+
+Local/remote giữ cùng CPU, N, policy và workload; GHC --numa là thí nghiệm
+riêng, chỉ nhận khi RTS hỗ trợ và có placement evidence. SYS_NICE mặc định
+tắt, là quyền opt-in cần review cho membind/RTS trong môi trường kernel phù
+hợp. Không dùng privileged hoặc seccomp unconfined. Một node không được
+nghiệm thu remote. Compiler hiện tại báo compiled without NUMA support;
+không ghi nhận đã áp dụng GHC NUMA pools hoặc NUMA tăng tốc.
+
+## 14. Phụ lục NM-08 — Gate hồi quy, chờ B/D/C/R review
+
+Ngày 2026-10-12 trên Update_NUMA; xem [hồ sơ hồi quy runtime](runtime_regression.md).
+Giữ nguyên API production Haskell, Step/GameState, wire v1, dung lượng
+mailbox/outbox, thứ tự batch và grace period 300.000 ms. Thay đổi nằm ở
+test/harness và tài liệu: dùng chung cổng TMVar cho worker/coordinator,
+100 vòng independent khi đầy/stop/cancel; profile JSON cấu hình RTS và
+CPU/RAM cho fixture Compose, không phải API mới cho client.
+
+Gate bắt buộc: build, Werror full Haskell N1/N2 native; full Linux suites
+và cùng kịch bản web/Compose trên profile đủ điều kiện; ba seed cùng toàn
+bộ transcript; lệnh lỗi không đổi state, không commit thiếu batch; resume,
+timeout, private events, shutdown không treo. NUMA remote/compiler không
+khả dụng phải ghi unaccepted riêng. Không dùng test tính đúng để kết luận
+hiệu năng. B/D/C/R cần review bằng chứng thật trước hợp nhất.
+
+## 15. Phụ lục NM-09 — Kết luận và cấu hình báo cáo, chờ nhóm review
+
+Ngày 2026-10-12, nhánh Update_NUMA, nền `788f839` + source/artifact hash; xem
+[numa_acceptance.md](numa_acceptance.md). Chưa có commit NM-09 dùng nộp hoặc
+xác nhận R/A/B/C/D. Không sửa các block domain API/ownership đã khóa ở S-01.
+
+Luật, domain ADT, framing TCP v1, privacy, một GameState, STM state + batch,
+mailbox 32/outbox 128 (126 + 2), thứ tự error/terminal và resume 300.000 ms
+giữ nguyên. NM-09 bổ sung tài liệu/bằng chứng, source cache baseline có nhãn
+giới hạn và `compose.report.yaml` opt-in. Override cấu trúc command N1/worker0;
+không thêm service, cpuset/RAM policy/SYS_NICE hoặc đổi cổng/Origin/Host.
+Base Compose/package vẫn auto-N, không gán profile default lịch sử thành N1.
+
+Runner benchmark thêm flag `--baseline` cho binary lịch sử trước worker;
+default vẫn năm layer. Context re-measure tạo runner file mới/hash riêng,
+không sửa script cache hoặc dữ liệu NM-03 để vượt checksum. Đây là API
+measurement, không phải command TCP/client hay sửa luật.
+
+Đề xuất N1/no-pin cho MVP một trận dựa vào gate NM-08, memory RTS và workload
+tuần tự; không là khẳng định tối ưu mọi CPU/tải. Metadata có lợi trong cặp
+NM-06, worker được giữ vì ownership/cleanup; chưa kết luận worker/affinity/
+NUMA tăng tốc. Remote/GHC NUMA/PMU và Wi-Fi hai thiết bị thật chưa nghiệm thu.
+
+Nhóm review cùng revision trước hợp nhất:
+
+| Vai trò | Thay đổi cần duyệt | Xác nhận tên/SHA/ngày/link |
+|---|---|---|
+| R | Phạm vi số liệu, default đề xuất, bản nộp và giới hạn | CHỜ |
+| A | fleetCells/shipAt, private metadata, memory và generator oracle | CHỜ |
+| B | Step/View/privacy không đổi; ghép cặp/CI/combined phạm vi đúng | CHỜ |
+| C | GameRuntimeConfig/GameWorker/API ack/control, CPU/RAM và shutdown | CHỜ |
+| D | Logs/readiness, Origin/Host/LAN/public port/resume/UI và lệnh vận hành | CHỜ |
+
+Mỗi người ghi SHA thực sau commit cùng link review; test/commit/push không
+thay chữ ký. Nếu đổi base default sau review, tăng revision, kiểm tra config/
+runtime và cập nhật report/manifest để profile default không nhập nhằng.

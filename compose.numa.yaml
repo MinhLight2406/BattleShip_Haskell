@@ -1,0 +1,8 @@
+# Memory-node restrictions are applied by start-numa.mjs AFTER create, BEFORE start.
+# There is deliberately no unsupported cpuset_mems Compose key.
+services:
+  haskell:
+    entrypoint: ["/usr/local/bin/battleship-numa-entrypoint", "/usr/local/bin/battleship-server"]
+    environment:
+      BATTLESHIP_NUMA_POLICY: ${NUMA_MEMORY_POLICY:?Run start-numa.mjs}
+      BATTLESHIP_NUMA_MEMS: ${NUMA_SELECTED_MEMS-}

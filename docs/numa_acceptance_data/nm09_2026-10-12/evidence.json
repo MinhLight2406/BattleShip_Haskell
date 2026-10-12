@@ -1,0 +1,213 @@
+{
+  "observedOn": "2026-10-12",
+  "branch": "Update_NUMA",
+  "head": "788f8396638344e7a38fd2428d84feac2a9b5e38",
+  "dirtySource": true,
+  "reportingCommit": null,
+  "groupConfirmations": null,
+  "compiler": "GHC 9.10.3",
+  "snapshot": "lts-24.59",
+  "buildFlags": "-O2",
+  "docker": {
+    "Client": {
+      "Version": "29.8.2",
+      "ApiVersion": "1.56",
+      "DefaultAPIVersion": "1.56",
+      "GitCommit": "7fc2dff",
+      "GoVersion": "go1.26.8",
+      "Os": "windows",
+      "Arch": "amd64",
+      "BuildTime": "Wed Sep 30 19:35:42 2026",
+      "Context": "desktop-linux"
+    },
+    "Server": {
+      "Platform": {
+        "Name": "Docker Desktop 4.94.0 (241994)"
+      },
+      "Version": "29.8.2",
+      "ApiVersion": "1.56",
+      "MinAPIVersion": "1.40",
+      "Os": "linux",
+      "Arch": "amd64",
+      "Components": [
+        {
+          "Name": "Engine",
+          "Version": "29.8.2",
+          "Details": {
+            "ApiVersion": "1.56",
+            "Arch": "amd64",
+            "BuildTime": "Wed Sep 30 19:32:25 2026",
+            "Experimental": "false",
+            "GitCommit": "8af9fe3",
+            "GoVersion": "go1.26.8",
+            "KernelVersion": "6.18.40.1-microsoft-standard-WSL2",
+            "MinAPIVersion": "1.40",
+            "Module": "github.com/moby/moby/v2",
+            "ModuleVersion": "v2.0.0+unknown",
+            "Os": "linux"
+          }
+        },
+        {
+          "Name": "containerd",
+          "Version": "v2.3.6",
+          "Details": {
+            "GitCommit": "ee2735368117d2eb259779949d5e75cdafec9761"
+          }
+        },
+        {
+          "Name": "runc",
+          "Version": "1.5.1",
+          "Details": {
+            "GitCommit": "v1.5.1-0-g8f2685a4"
+          }
+        },
+        {
+          "Name": "docker-init",
+          "Version": "0.19.0",
+          "Details": {
+            "GitCommit": "de40ad0"
+          }
+        }
+      ],
+      "GitCommit": "8af9fe3",
+      "GoVersion": "go1.26.8",
+      "KernelVersion": "6.18.40.1-microsoft-standard-WSL2",
+      "BuildTime": "2026-09-30T19:32:25.000000000+00:00"
+    }
+  },
+  "compose": "5.5.1",
+  "images": [
+    {
+      "id": "sha256:cc2cf3d4feaab689f297e3a4a530529749a1734663293b35a99d9e2b64b158aa",
+      "tags": [
+        "battleship-benchmark:nm07"
+      ],
+      "platform": "linux/amd64"
+    },
+    {
+      "id": "sha256:44fe653d66ba84c8b64d4aa91bafb1067490d5d4ce4ba197335a32716a816c00",
+      "tags": [
+        "battleship-benchmark-build:nm03"
+      ],
+      "platform": "linux/amd64"
+    },
+    {
+      "id": "sha256:4c0740d21a0b8f2136bb75a73abd6e4166ab3ee531f5ad7985e3f9bb3ea30346",
+      "tags": [
+        "battleship-regression:nm08"
+      ],
+      "platform": "linux/amd64"
+    },
+    {
+      "id": "sha256:b78fff7bc1e3b9c79a8d09908e195757966180d8610b85b1e1b317bfebe98720",
+      "tags": [
+        "battleship-haskell:local"
+      ],
+      "platform": "linux/amd64"
+    },
+    {
+      "id": "sha256:b01ac11fc67f9725546fe9969a9a070b532fe76f30501bab834a3e781bddf949",
+      "tags": [
+        "battleship-web:local"
+      ],
+      "platform": "linux/amd64"
+    }
+  ],
+  "freshChecks": {
+    "combinedMeasured": 450,
+    "combinedWarmups": 75,
+    "stableGroups": 15,
+    "runnerUnitTests": 7,
+    "analysisUnitTests": 3,
+    "reportProfileTests": 1,
+    "sharedContractExamples": 11,
+    "baselineBuild": "passed",
+    "baselineSmokeGroups": 12,
+    "baselineFirstSmoke": "failed: cached harness bridge PORT=0 rejected; raw cache preserved"
+  },
+  "measurementRunner": {
+    "sha256": "6d8f97896530bcc39414af4855e0eb5ce15454b80039feb6d5ee36d886bb7aa3",
+    "recoverableFrom": "788f839:scripts/benchmark-runtime.mjs"
+  },
+  "checked": {
+    "documentLinks": true,
+    "fences": true,
+    "contractBlocksUnchanged": true
+  },
+  "sourceHashes": {
+    "README.md": "8e8a6067e08edcaffaec56dba20bd0bf867964ec9c3be2786917c3f17c7dcddc",
+    "docs/README.md": "01415a4a7af01da2c84e5bb1fd15d3fb06f38021d4ad29bf256d01adc68a405d",
+    "docs/numa_acceptance.md": "a31243e26b8557b812a3c661c916395d9c201c7d3b5605c64733846aa4579ab0",
+    "docs/slide_mapping.md": "f5dceb2e662e66fb489acd82d27d9287c666c2df73ffec72b43d64707fe7bb19",
+    "docs/report_final.md": "70bd23144a4d09245ed41970d33ddefa702f86236db4471e56ea435245c8c775",
+    "docs/shared_contract.md": "bf44a60b97e286c702382729055890ce08d89548da7dcce0405cf56acb9540dd",
+    "docs/numa_acceptance_data/nm09_2026-10-12/README.md": "3fe92743c2428a6db3d042937a3e75f6962de74fc8d16f23dcb18d7de4871fea",
+    "docs/numa_acceptance_data/nm09_2026-10-12/baseline-source/README.md": "74688bf32b57118ce3375538a9e2055775ac4b0d43d800bf69caf865463ea7ac",
+    "compose.report.yaml": "901867c70093309072490c321ddca43fb799fb21ebcc2e347a02001f89f566ff",
+    "scripts/benchmark-runtime.mjs": "0d775304ffd0f92d0533215ab8421ea6e4abe7b73c189679ea434568395e2e3a",
+    "scripts/test/benchmark.test.mjs": "a3000ab5fb6cc3cb7b27ed6837af5b8e0f4950f714dcb82b8d43e82fc4b0972e"
+  },
+  "unaccepted": [
+    "remote NUMA",
+    "GHC NUMA pools",
+    "PMU cache/migration counters",
+    "two physical Wi-Fi devices",
+    "exact NM03 measured harness",
+    "human review/reporting commit"
+  ],
+  "googleDocsVerification": "google_docs_verification.json",
+  "reproductionScope": "Historical game source rebuilt; corrected current runner in a NEW context/file; smoke only, not fresh formal historical timings.",
+  "artifacts": {
+    "analysis.json": "f3339b2dafc3adf589061f2360d11a1998e3741f29cbb9792e083ea14bdf1a0f",
+    "analyze.mjs": "a67e2437b3b0fa7cdea5f9c421e9842d02af91b066a8068ace085b1a1dc1fd5a",
+    "analyze.test.mjs": "3cc1f014e1f4713d587ea75c14392b5fdc5cf8216d572c33cb0eefb77c35e8a3",
+    "baseline.Dockerfile": "4f93cf519f85c33a3431df877bc7a6a19c2774667f3f6486bb621b0d3555a624",
+    "google_docs_verification.json": "d7b3d514e386e95b326cac093c41464946665b0ffe6f872c43c2e4ba11a0f599",
+    "prepare-baseline.py": "30a3d55c26ebc8535053d6b9d70e7aab366d47d2f2fd674e66206bbf1b728729",
+    "README.md": "3fe92743c2428a6db3d042937a3e75f6962de74fc8d16f23dcb18d7de4871fea",
+    "report-profile.test.mjs": "5e8524b436e75628254730df916b287eeeef819df091f2b52a3744b4388a1566",
+    "snapshot.json": "1d460da6e6f5e699114b4ecc92e430bd38226ebbf321c8ebfb8d13542ba56d41",
+    "baseline-smoke/fixtures.json": "f2ba5c5403ec9d965520b7df7e5456f1bc1474e7b886a6af30f87253b895da99",
+    "baseline-smoke/manifest.json": "e1fcae0053256959c898ad52c03d6cc1b5c05ea0dd2f1b3d161d3442817b762a",
+    "baseline-smoke/samples.jsonl": "e52cc364ea351200aa4afe1be695dda378a1730b5530a546559162bc4df29168",
+    "baseline-smoke/summary.json": "7b43dc0a5d1f14db5eb0232065f4947bd8d82fd565f13da10f7f0c64c74afe4f",
+    "baseline-source/package.yaml": "8b14d378d3b76d11060a8a207b1e47cd16a9e99f07bb44a3b77a66241c3794bd",
+    "baseline-source/README.md": "74688bf32b57118ce3375538a9e2055775ac4b0d43d800bf69caf865463ea7ac",
+    "baseline-source/stack.yaml": "047e3eb53a70d0e8f4c51a1fafab0bce36d0a509092ac512c7a9c58cebdcc7a7",
+    "baseline-source/stack.yaml.lock": "38439cf1bdc51eb9987eebb3de9bd3149d96b8233676bfb546ffa7e9242c9e23",
+    "combined/fixtures.json": "f2ba5c5403ec9d965520b7df7e5456f1bc1474e7b886a6af30f87253b895da99",
+    "combined/manifest.json": "a1b4af7906c47a9c65ebf81c03e4f0c5ce921d32a511778f155d508738ea537e",
+    "combined/samples.jsonl": "bd5471721e372320680aa32e8dabcef771509042c113295c6497a33cd404d873",
+    "combined/summary.json": "717384cdb2ac0b8c84f95b02eb1554105bd96b780f0cff73aa93d4dfadfbba10",
+    "logs/baseline-build-final.txt": "68deaef0a1b5f6362cd17facda8082a51f805fe3818fb74f09f58c1ef7efe912",
+    "logs/baseline-build.txt": "82b0447392bf5895bb9d7c7bd624ec37fd8e0db5768b6370e78fdd0c8ea8cf8a",
+    "logs/baseline-smoke-final.txt": "0b5c95d979b13083f6e97136a59a9a8b9ed1c833fed32d0dd744ee5193f46153",
+    "logs/baseline-smoke.txt": "6258b882853077bf3989d4d177e9d7423e2127eafc45ebaae610877077c2cdcb",
+    "logs/benchmark-unit.txt": "35deea738f93a53809bba1f15aa471d49d332bf57b1ae6db61c4d6dacf5a20b5",
+    "logs/combined.txt": "d9769cc917f88c3ff29f2379601605412871e2cf0f60e31f81cf1b8ca993028c",
+    "logs/shared-contract.txt": "0da59754cff24dd9583d0f32bc03e37672317895e4e9cc6471d495fb8b818020",
+    "logs/unit.txt": "a5d6097756b293e407b388c2af21aa379acb6fb6a1bb848d192194fd32ec90b1",
+    "baseline-source/app/ClientMain.hs": "e52f450ec70b356a665a75883ab4707c5d08e07fe274c17d226686f56d092194",
+    "baseline-source/app/ServerMain.hs": "f5edc171a04892cbf9e4453c74843bbd3460655c94b412863c9deb7ecc820c1a",
+    "baseline-source/bench/fixtures-v1.json": "1820e84d045124e7829ae4ff62b790929baf33b051bcbbcdb4a611a5a47ae8c5",
+    "baseline-source/bench/Fixtures.hs": "90fc4f46e3b155842ebf03e1a8d02b591916bbc00a33f245d34b1f2601f39805",
+    "baseline-source/bench/FixturesSpec.hs": "bed4bc4f8fc075451b882998b47ee42d57a4acd9455553355b88ea5d1c117b5f",
+    "baseline-source/bench/Main.hs": "d4b7956dff7f7684910356bcd2c106014040f112eec0462b54068f83d28a01be",
+    "baseline-source/docker/benchmark.Dockerfile": "54040d46fa49bc442648f1c50d6f6a0e3f6e2a7cc55671276179c2e38ea3c9ce",
+    "baseline-source/frontend/bridge.mjs": "e9df2330051379ef34815781878e0312848cfc68e7dde280efe40e5964066efa",
+    "baseline-source/frontend/package.json": "20cc460614659973cc63e73fffa85c019d4be3affcccbf07437fe69e60bff9cf",
+    "baseline-source/frontend/pnpm-lock.yaml": "b9202d3615ec2d7ba38db1c25fbb1c71be773716409381f9739c387cdf3b966c",
+    "baseline-source/scripts/benchmark-runtime.mjs": "d9473b16ed3bd37badd1a085736cf46462d755cbdb49bc5ffeaba02d8e1162d4",
+    "baseline-source/scripts/inspect-topology.mjs": "781fc38bf7a40e74dd25ccc6563151cc75c9a04a9930d2ec10009db624d6d2e0",
+    "baseline-source/src/Battleship/Board.hs": "8666066e5d0d4489361592bbfda1b84396c49ecee8a095328d7b2a30532889d7",
+    "baseline-source/src/Battleship/Client.hs": "feac1380fc30e2f3762a29936a4c1fcf0c5d397679c334e0cbfeb7fe058e5686",
+    "baseline-source/src/Battleship/Coordinator.hs": "df547bf17b171f0d8e181708ee35ee4e60f05f8b86253d709855b6b5eaa24579",
+    "baseline-source/src/Battleship/Protocol.hs": "95f01500656a7a0f1fca785bce0c4c1917384c9901e6cc0593dc81df660a93d7",
+    "baseline-source/src/Battleship/Rules.hs": "0950d81b65ea0ccef49278afc79cb5313e2668f4dc6e513041fa789cf9805582",
+    "baseline-source/src/Battleship/Server.hs": "fc813b221694cb09e220b9dbdc825f76055469b941ccd25564fd3fb2344efa1e",
+    "baseline-source/src/Battleship/Types.hs": "39ccf4de14a4ab0de98116a6f111dde0730f6f93babb0bc05d6c206b07d71ed8",
+    "baseline-source/src/Battleship/View.hs": "b2571b9eb9d89eebf928a62b19ac7044bfaaff41f9c9e7ad089a7ea8af1c5174",
+    "baseline-source/src/Battleship/Internal/Fleet.hs": "42d41114839263aac4a8407e142543f30afdffd9c5795ca8e374342a5725804f",
+    "baseline-source/test/TestSupport/Generators.hs": "46a7e3d703fd010963f6e830f7d439c55247d0aecf15ff91a4710d18d2b1d836"
+  }
+}

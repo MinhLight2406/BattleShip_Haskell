@@ -1,0 +1,1204 @@
+{
+  "schemaVersion": 1,
+  "capturedAt": "2026-10-12T00:54:14.415631+00:00",
+  "head": "788f8396638344e7a38fd2428d84feac2a9b5e38",
+  "branch": "Update_NUMA",
+  "sourceDirty": true,
+  "status": "one-node configuration and game gates passed; multi-node remote and GHC NUMA pools remain unaccepted",
+  "tests": {
+    "nodeTotal": 111,
+    "numaUnit": 29,
+    "containerPassed": 5,
+    "containerSkipped": 2,
+    "containerFailures": 0,
+    "skipReasons": [
+      "only one permitted RAM node",
+      "GHC binary compiled without NUMA support"
+    ],
+    "firstContainerAttemptFailures": 1
+  },
+  "samples": {
+    "runs": {
+      "first/default": {
+        "measured": 30,
+        "warmups": 5
+      },
+      "first/local": {
+        "measured": 30,
+        "warmups": 5
+      },
+      "repeat/default": {
+        "measured": 30,
+        "warmups": 5
+      },
+      "repeat/local": {
+        "measured": 30,
+        "warmups": 5
+      }
+    },
+    "measuredTotal": 120,
+    "warmupsTotal": 20
+  },
+  "matrix": {
+    "schemaVersion": 1,
+    "topology": {
+      "schemaVersion": 1,
+      "observedAt": "2026-10-12T00:47:26.945Z",
+      "scope": "linux-visible-current-process",
+      "platform": "linux",
+      "inspectionOk": true,
+      "environment": {
+        "container": true,
+        "virtualMachine": true,
+        "evidence": [
+          {
+            "layer": "container",
+            "source": "/.dockerenv",
+            "detail": "marker tồn tại"
+          },
+          {
+            "layer": "vm",
+            "source": "/proc/sys/kernel/osrelease",
+            "detail": "Kernel WSL/Microsoft."
+          },
+          {
+            "layer": "vm",
+            "source": "/proc/cpuinfo",
+            "detail": "CPU có hypervisor flag."
+          }
+        ],
+        "physicalHostTopologyVerified": false,
+        "kernelRelease": "6.18.40.1-microsoft-standard-WSL2",
+        "interpretation": "Chỉ mô tả Linux nhìn thấy; không xác nhận topology máy vật lý bên ngoài VM/container."
+      },
+      "cpu": {
+        "online": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11
+        ],
+        "allowed": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11
+        ],
+        "effective": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11
+        ],
+        "details": [
+          {
+            "id": 0,
+            "allowed": true,
+            "coreId": 0,
+            "socketId": 0,
+            "threadSiblings": [
+              0,
+              1
+            ],
+            "effectiveThreadSiblings": [
+              0,
+              1
+            ],
+            "nodeIds": [
+              0
+            ]
+          },
+          {
+            "id": 1,
+            "allowed": true,
+            "coreId": 0,
+            "socketId": 0,
+            "threadSiblings": [
+              0,
+              1
+            ],
+            "effectiveThreadSiblings": [
+              0,
+              1
+            ],
+            "nodeIds": [
+              0
+            ]
+          },
+          {
+            "id": 2,
+            "allowed": true,
+            "coreId": 1,
+            "socketId": 0,
+            "threadSiblings": [
+              2,
+              3
+            ],
+            "effectiveThreadSiblings": [
+              2,
+              3
+            ],
+            "nodeIds": [
+              0
+            ]
+          },
+          {
+            "id": 3,
+            "allowed": true,
+            "coreId": 1,
+            "socketId": 0,
+            "threadSiblings": [
+              2,
+              3
+            ],
+            "effectiveThreadSiblings": [
+              2,
+              3
+            ],
+            "nodeIds": [
+              0
+            ]
+          },
+          {
+            "id": 4,
+            "allowed": true,
+            "coreId": 2,
+            "socketId": 0,
+            "threadSiblings": [
+              4,
+              5
+            ],
+            "effectiveThreadSiblings": [
+              4,
+              5
+            ],
+            "nodeIds": [
+              0
+            ]
+          },
+          {
+            "id": 5,
+            "allowed": true,
+            "coreId": 2,
+            "socketId": 0,
+            "threadSiblings": [
+              4,
+              5
+            ],
+            "effectiveThreadSiblings": [
+              4,
+              5
+            ],
+            "nodeIds": [
+              0
+            ]
+          },
+          {
+            "id": 6,
+            "allowed": true,
+            "coreId": 3,
+            "socketId": 0,
+            "threadSiblings": [
+              6,
+              7
+            ],
+            "effectiveThreadSiblings": [
+              6,
+              7
+            ],
+            "nodeIds": [
+              0
+            ]
+          },
+          {
+            "id": 7,
+            "allowed": true,
+            "coreId": 3,
+            "socketId": 0,
+            "threadSiblings": [
+              6,
+              7
+            ],
+            "effectiveThreadSiblings": [
+              6,
+              7
+            ],
+            "nodeIds": [
+              0
+            ]
+          },
+          {
+            "id": 8,
+            "allowed": true,
+            "coreId": 4,
+            "socketId": 0,
+            "threadSiblings": [
+              8,
+              9
+            ],
+            "effectiveThreadSiblings": [
+              8,
+              9
+            ],
+            "nodeIds": [
+              0
+            ]
+          },
+          {
+            "id": 9,
+            "allowed": true,
+            "coreId": 4,
+            "socketId": 0,
+            "threadSiblings": [
+              8,
+              9
+            ],
+            "effectiveThreadSiblings": [
+              8,
+              9
+            ],
+            "nodeIds": [
+              0
+            ]
+          },
+          {
+            "id": 10,
+            "allowed": true,
+            "coreId": 5,
+            "socketId": 0,
+            "threadSiblings": [
+              10,
+              11
+            ],
+            "effectiveThreadSiblings": [
+              10,
+              11
+            ],
+            "nodeIds": [
+              0
+            ]
+          },
+          {
+            "id": 11,
+            "allowed": true,
+            "coreId": 5,
+            "socketId": 0,
+            "threadSiblings": [
+              10,
+              11
+            ],
+            "effectiveThreadSiblings": [
+              10,
+              11
+            ],
+            "nodeIds": [
+              0
+            ]
+          }
+        ]
+      },
+      "memory": {
+        "onlineNodes": [
+          0
+        ],
+        "allowedNodes": [
+          0
+        ],
+        "effectiveNodes": [
+          0
+        ],
+        "nodes": [
+          {
+            "id": 0,
+            "cpus": [
+              0,
+              1,
+              2,
+              3,
+              4,
+              5,
+              6,
+              7,
+              8,
+              9,
+              10,
+              11
+            ],
+            "effectiveCpus": [
+              0,
+              1,
+              2,
+              3,
+              4,
+              5,
+              6,
+              7,
+              8,
+              9,
+              10,
+              11
+            ],
+            "allowed": true,
+            "memoryBytes": 8165761024
+          }
+        ]
+      },
+      "caches": [
+        {
+          "key": "1:Data:0:0,1",
+          "id": 0,
+          "level": 1,
+          "type": "Data",
+          "sizeBytes": 49152,
+          "lineBytes": 64,
+          "sharedCpus": [
+            0,
+            1
+          ],
+          "effectiveSharedCpus": [
+            0,
+            1
+          ],
+          "observedFromCpus": [
+            0,
+            1
+          ]
+        },
+        {
+          "key": "1:Instruction:0:0,1",
+          "id": 0,
+          "level": 1,
+          "type": "Instruction",
+          "sizeBytes": 32768,
+          "lineBytes": 64,
+          "sharedCpus": [
+            0,
+            1
+          ],
+          "effectiveSharedCpus": [
+            0,
+            1
+          ],
+          "observedFromCpus": [
+            0,
+            1
+          ]
+        },
+        {
+          "key": "2:Unified:0:0,1",
+          "id": 0,
+          "level": 2,
+          "type": "Unified",
+          "sizeBytes": 1310720,
+          "lineBytes": 64,
+          "sharedCpus": [
+            0,
+            1
+          ],
+          "effectiveSharedCpus": [
+            0,
+            1
+          ],
+          "observedFromCpus": [
+            0,
+            1
+          ]
+        },
+        {
+          "key": "3:Unified:0:0,1,2,3,4,5,6,7,8,9,10,11",
+          "id": 0,
+          "level": 3,
+          "type": "Unified",
+          "sizeBytes": 12582912,
+          "lineBytes": 64,
+          "sharedCpus": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11
+          ],
+          "effectiveSharedCpus": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11
+          ],
+          "observedFromCpus": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11
+          ]
+        },
+        {
+          "key": "1:Data:1:2,3",
+          "id": 1,
+          "level": 1,
+          "type": "Data",
+          "sizeBytes": 49152,
+          "lineBytes": 64,
+          "sharedCpus": [
+            2,
+            3
+          ],
+          "effectiveSharedCpus": [
+            2,
+            3
+          ],
+          "observedFromCpus": [
+            2,
+            3
+          ]
+        },
+        {
+          "key": "1:Instruction:1:2,3",
+          "id": 1,
+          "level": 1,
+          "type": "Instruction",
+          "sizeBytes": 32768,
+          "lineBytes": 64,
+          "sharedCpus": [
+            2,
+            3
+          ],
+          "effectiveSharedCpus": [
+            2,
+            3
+          ],
+          "observedFromCpus": [
+            2,
+            3
+          ]
+        },
+        {
+          "key": "2:Unified:1:2,3",
+          "id": 1,
+          "level": 2,
+          "type": "Unified",
+          "sizeBytes": 1310720,
+          "lineBytes": 64,
+          "sharedCpus": [
+            2,
+            3
+          ],
+          "effectiveSharedCpus": [
+            2,
+            3
+          ],
+          "observedFromCpus": [
+            2,
+            3
+          ]
+        },
+        {
+          "key": "1:Data:2:4,5",
+          "id": 2,
+          "level": 1,
+          "type": "Data",
+          "sizeBytes": 49152,
+          "lineBytes": 64,
+          "sharedCpus": [
+            4,
+            5
+          ],
+          "effectiveSharedCpus": [
+            4,
+            5
+          ],
+          "observedFromCpus": [
+            4,
+            5
+          ]
+        },
+        {
+          "key": "1:Instruction:2:4,5",
+          "id": 2,
+          "level": 1,
+          "type": "Instruction",
+          "sizeBytes": 32768,
+          "lineBytes": 64,
+          "sharedCpus": [
+            4,
+            5
+          ],
+          "effectiveSharedCpus": [
+            4,
+            5
+          ],
+          "observedFromCpus": [
+            4,
+            5
+          ]
+        },
+        {
+          "key": "2:Unified:2:4,5",
+          "id": 2,
+          "level": 2,
+          "type": "Unified",
+          "sizeBytes": 1310720,
+          "lineBytes": 64,
+          "sharedCpus": [
+            4,
+            5
+          ],
+          "effectiveSharedCpus": [
+            4,
+            5
+          ],
+          "observedFromCpus": [
+            4,
+            5
+          ]
+        },
+        {
+          "key": "1:Data:3:6,7",
+          "id": 3,
+          "level": 1,
+          "type": "Data",
+          "sizeBytes": 49152,
+          "lineBytes": 64,
+          "sharedCpus": [
+            6,
+            7
+          ],
+          "effectiveSharedCpus": [
+            6,
+            7
+          ],
+          "observedFromCpus": [
+            6,
+            7
+          ]
+        },
+        {
+          "key": "1:Instruction:3:6,7",
+          "id": 3,
+          "level": 1,
+          "type": "Instruction",
+          "sizeBytes": 32768,
+          "lineBytes": 64,
+          "sharedCpus": [
+            6,
+            7
+          ],
+          "effectiveSharedCpus": [
+            6,
+            7
+          ],
+          "observedFromCpus": [
+            6,
+            7
+          ]
+        },
+        {
+          "key": "2:Unified:3:6,7",
+          "id": 3,
+          "level": 2,
+          "type": "Unified",
+          "sizeBytes": 1310720,
+          "lineBytes": 64,
+          "sharedCpus": [
+            6,
+            7
+          ],
+          "effectiveSharedCpus": [
+            6,
+            7
+          ],
+          "observedFromCpus": [
+            6,
+            7
+          ]
+        },
+        {
+          "key": "1:Data:4:8,9",
+          "id": 4,
+          "level": 1,
+          "type": "Data",
+          "sizeBytes": 49152,
+          "lineBytes": 64,
+          "sharedCpus": [
+            8,
+            9
+          ],
+          "effectiveSharedCpus": [
+            8,
+            9
+          ],
+          "observedFromCpus": [
+            8,
+            9
+          ]
+        },
+        {
+          "key": "1:Instruction:4:8,9",
+          "id": 4,
+          "level": 1,
+          "type": "Instruction",
+          "sizeBytes": 32768,
+          "lineBytes": 64,
+          "sharedCpus": [
+            8,
+            9
+          ],
+          "effectiveSharedCpus": [
+            8,
+            9
+          ],
+          "observedFromCpus": [
+            8,
+            9
+          ]
+        },
+        {
+          "key": "2:Unified:4:8,9",
+          "id": 4,
+          "level": 2,
+          "type": "Unified",
+          "sizeBytes": 1310720,
+          "lineBytes": 64,
+          "sharedCpus": [
+            8,
+            9
+          ],
+          "effectiveSharedCpus": [
+            8,
+            9
+          ],
+          "observedFromCpus": [
+            8,
+            9
+          ]
+        },
+        {
+          "key": "1:Data:5:10,11",
+          "id": 5,
+          "level": 1,
+          "type": "Data",
+          "sizeBytes": 49152,
+          "lineBytes": 64,
+          "sharedCpus": [
+            10,
+            11
+          ],
+          "effectiveSharedCpus": [
+            10,
+            11
+          ],
+          "observedFromCpus": [
+            10,
+            11
+          ]
+        },
+        {
+          "key": "1:Instruction:5:10,11",
+          "id": 5,
+          "level": 1,
+          "type": "Instruction",
+          "sizeBytes": 32768,
+          "lineBytes": 64,
+          "sharedCpus": [
+            10,
+            11
+          ],
+          "effectiveSharedCpus": [
+            10,
+            11
+          ],
+          "observedFromCpus": [
+            10,
+            11
+          ]
+        },
+        {
+          "key": "2:Unified:5:10,11",
+          "id": 5,
+          "level": 2,
+          "type": "Unified",
+          "sizeBytes": 1310720,
+          "lineBytes": 64,
+          "sharedCpus": [
+            10,
+            11
+          ],
+          "effectiveSharedCpus": [
+            10,
+            11
+          ],
+          "observedFromCpus": [
+            10,
+            11
+          ]
+        }
+      ],
+      "capabilities": {
+        "affinity": {
+          "eligible": true,
+          "reason": "Có CPU online trong mask tiến trình; launcher còn phải áp dụng và kiểm tra affinity."
+        },
+        "multiNodeNuma": {
+          "eligible": false,
+          "usableNodes": [
+            0
+          ],
+          "reason": "Không xác nhận được ít nhất hai node có RAM và CPU được phép; chưa thể nghiệm thu local/remote."
+        },
+        "performanceCounters": {
+          "usable": null,
+          "events": [],
+          "reason": "Bỏ qua probe theo --no-perf; counter chưa được xác minh.",
+          "perfEventParanoid": 2,
+          "pmuDevices": [
+            "breakpoint",
+            "kprobe",
+            "msr",
+            "power",
+            "software",
+            "tracepoint",
+            "uprobe"
+          ]
+        }
+      },
+      "diagnostics": [],
+      "sources": {
+        "onlineCpus": "/sys/devices/system/cpu/online",
+        "allowedCpus": "/proc/self/status:Cpus_allowed_list",
+        "onlineMemoryNodes": "/sys/devices/system/node/online",
+        "allowedMemoryNodes": "/proc/self/status:Mems_allowed_list",
+        "cpuQuotaMeasured": false
+      },
+      "validation": {
+        "ok": true,
+        "requested": {
+          "cpus": null,
+          "mems": null,
+          "requireNuma": false
+        },
+        "errors": []
+      }
+    },
+    "results": [
+      {
+        "profile": "remote",
+        "accepted": false,
+        "reason": "Remote cần ít nhất hai RAM node được cấp; chưa nghiệm thu trên máy một node.",
+        "requiredEnvironment": "two permitted NUMA nodes"
+      },
+      {
+        "profile": "default",
+        "accepted": true,
+        "placementVerified": true,
+        "timingEligible": true,
+        "config": {
+          "mode": "container",
+          "capabilities": 1,
+          "haskell": [
+            0
+          ],
+          "web": [
+            2
+          ],
+          "environment": {
+            "HASKELL_CPUSET": "0",
+            "WEB_CPUSET": "2",
+            "HASKELL_CAPABILITIES": "1",
+            "NUMA_MEMORY_POLICY": "cpuset",
+            "NUMA_SELECTED_MEMS": ""
+          },
+          "profile": "default",
+          "cpuNode": 0,
+          "mems": null,
+          "policy": "cpuset",
+          "sysNice": true,
+          "minFreeBytes": 67108864,
+          "ghcNuma": null
+        },
+        "summary": {
+          "samples": 30,
+          "medianUsPerCommand": 5.227033235677084,
+          "median95CI": [
+            5.169310436197916,
+            5.33977765625
+          ],
+          "p95SampleUsPerCommand": 5.459043720703125,
+          "p95ResponseUs": null,
+          "blockMedians": [
+            5.24438892578125,
+            5.211955260416667,
+            5.239720182291666
+          ],
+          "stabilitySpread": 0.00620498548645288,
+          "stable": true,
+          "allocatedBytesPerCommand": {
+            "median": 51082.0440625,
+            "availableSamples": 30
+          },
+          "cpuSeconds": {
+            "median": 0.401338756,
+            "availableSamples": 30
+          },
+          "gcCpuSecondsAccounting": {
+            "median": 0.0081770055,
+            "availableSamples": 30
+          },
+          "gcCpuSecondsProcess": {
+            "median": null,
+            "availableSamples": 0
+          },
+          "maxLiveBytesProcess": {
+            "median": 83368,
+            "availableSamples": 30
+          },
+          "maxMemoryBytesProcess": {
+            "median": 6291456,
+            "availableSamples": 30
+          }
+        }
+      },
+      {
+        "profile": "local",
+        "accepted": true,
+        "placementVerified": true,
+        "timingEligible": true,
+        "config": {
+          "mode": "container",
+          "capabilities": 1,
+          "haskell": [
+            0
+          ],
+          "web": [
+            2
+          ],
+          "environment": {
+            "HASKELL_CPUSET": "0",
+            "WEB_CPUSET": "2",
+            "HASKELL_CAPABILITIES": "1",
+            "NUMA_MEMORY_POLICY": "cpuset",
+            "NUMA_SELECTED_MEMS": "0"
+          },
+          "profile": "local",
+          "cpuNode": 0,
+          "mems": [
+            0
+          ],
+          "policy": "cpuset",
+          "sysNice": true,
+          "minFreeBytes": 67108864,
+          "ghcNuma": null
+        },
+        "summary": {
+          "samples": 30,
+          "medianUsPerCommand": 5.4369779947916665,
+          "median95CI": [
+            5.3432210091145835,
+            5.53991107421875
+          ],
+          "p95SampleUsPerCommand": 5.836534692057291,
+          "p95ResponseUs": null,
+          "blockMedians": [
+            5.3241928450520835,
+            5.441171315104167,
+            5.548390078124999
+          ],
+          "stabilitySpread": 0.04123563370822629,
+          "stable": true,
+          "allocatedBytesPerCommand": {
+            "median": 51082.0440625,
+            "availableSamples": 30
+          },
+          "cpuSeconds": {
+            "median": 0.417326866,
+            "availableSamples": 30
+          },
+          "gcCpuSecondsAccounting": {
+            "median": 0.0085561445,
+            "availableSamples": 30
+          },
+          "gcCpuSecondsProcess": {
+            "median": null,
+            "availableSamples": 0
+          },
+          "maxLiveBytesProcess": {
+            "median": 83368,
+            "availableSamples": 30
+          },
+          "maxMemoryBytesProcess": {
+            "median": 6291456,
+            "availableSamples": 30
+          }
+        }
+      },
+      {
+        "profile": "ghc",
+        "accepted": false,
+        "reason": "Command failed: C:/Users/nhatm/AppData/Local/Programs/DockerDesktop/resources/bin/docker.exe run --rm --network none --read-only --tmpfs /tmp --cpuset-cpus 0 --cpuset-mems 0 --cap-add SYS_NICE --mount type=bind,source=C:\\Users\\nhatm\\Downloads\\Laa\\Project\\BattleShip_Haskell\\,target=/probe,readonly --mount type=bind,source=C:\\Users\\nhatm\\Downloads\\Laa\\Project\\BattleShip_Haskell\\.stack-work\\nm07\\measurement-repeat,target=/results --entrypoint node battleship-benchmark:nm07 /probe/scripts/benchmark-numa.mjs --inside /results/ghc.json /results/ghc\nError: Command failed: /usr/local/bin/battleship-benchmark +RTS -N1 --numa=1 --info -RTS\nbattleship-benchmark: --numa=1: This GHC build was compiled without NUMA support.\nbattleship-benchmark: Internal error in the RTS options parser\n\n    at genericNodeError (node:internal/errors:986:15)\n    at wrappedFn (node:internal/errors:540:14)\n    at ChildProcess.exithandler (node:child_process:417:12)\n    at ChildProcess.emit (node:events:514:28)\n    at maybeClose (node:internal/child_process:1141:16)\n    at Socket.<anonymous> (node:internal/child_process:498:11)\n    at Socket.emit (node:events:514:28)\n    at Pipe.<anonymous> (node:net:362:12)\nbattleship-benchmark: --numa=1: This GHC build was compiled without NUMA support.\nbattleship-benchmark: Internal error in the RTS options parser\n\n\nError: Command failed: /usr/local/bin/battleship-benchmark +RTS -N1 --numa=1 --info -RTS\nbattleship-benchmark: --numa=1: This GHC build was compiled without NUMA support.\nbattleship-benchmark: Internal error in the RTS options parser\n\n    at genericNodeError (node:internal/errors:986:15)\n    at wrappedFn (node:internal/errors:540:14)\n    at ChildProcess.exithandler (node:child_process:417:12)\n    at ChildProcess.emit (node:events:514:28)\n    at maybeClose (node:internal/child_process:1141:16)\n    at Socket.<anonymous> (node:internal/child_process:498:11)\n    at Socket.emit (node:events:514:28)\n    at Pipe.<anonymous> (node:net:362:12)\nbattleship-benchmark: --numa=1: This GHC build was compiled without NUMA support.\nbattleship-benchmark: Internal error in the RTS options parser\n\n"
+      }
+    ],
+    "speedupClaim": false
+  },
+  "binaries": {
+    "haskellServerSha256": "4c313c92eb4bb6e5065ecda22e226053c4035bf04c0799524289716634458e05",
+    "coreBenchmarkSha256": "6d1e7b2511ce96251637e17c502744b44b585fa3f911236685c0e559b8941c91"
+  },
+  "images": {
+    "haskell": "sha256:281c29a57fae615c085a3f7bcd8f49943e388aac49c003af5add6f76f526bc96",
+    "benchmark": "sha256:cc2cf3d4feaab689f297e3a4a530529749a1734663293b35a99d9e2b64b158aa",
+    "web": "sha256:b01ac11fc67f9725546fe9969a9a070b532fe76f30501bab834a3e781bddf949"
+  },
+  "reusedHaskellSourceHashes": {
+    "src/Battleship/Board.hs": "55dc5bb7b1136e2af42fa336c9ec4729f04e98221459e1e3a4d7f5390676a875",
+    "src/Battleship/Client.hs": "feac1380fc30e2f3762a29936a4c1fcf0c5d397679c334e0cbfeb7fe058e5686",
+    "src/Battleship/Coordinator.hs": "2e692c264f3873110ac1f1f383c58b4483a4c5164454aeef892b8e070645df07",
+    "src/Battleship/GameWorker.hs": "3cb10f857e4a138ef6505ceb363f583f49d0cf6f6492cace54ab47d2ce3a0085",
+    "src/Battleship/Protocol.hs": "95f01500656a7a0f1fca785bce0c4c1917384c9901e6cc0593dc81df660a93d7",
+    "src/Battleship/Rules.hs": "0bd64ef836aed1e1d58d5f311aaf9d38c1e19427333cc280f76f820b913743c3",
+    "src/Battleship/Server.hs": "69f94fa010a31405229be32f7b2ba18e0d5502ae063b74648dc098d6339f02b9",
+    "src/Battleship/Types.hs": "ca8776658b47f80648e25cd5487686e6fea9e718f8d013016e65269fac9fb310",
+    "src/Battleship/View.hs": "b2571b9eb9d89eebf928a62b19ac7044bfaaff41f9c9e7ad089a7ea8af1c5174",
+    "src/Battleship/Internal/Fleet.hs": "8eb9fb4b540681c21ea278c3e7fbb90512bc475cd10c441c68594b9664f17166",
+    "app/ClientMain.hs": "e52f450ec70b356a665a75883ab4707c5d08e07fe274c17d226686f56d092194",
+    "app/ServerMain.hs": "3a9a9b6bb73794092b221998b810a02a62ef4558a26b8a0db850b162b4e5fa6b",
+    "test/BoardSpec.hs": "f9d0746178c97b8fcdbd75ab4c5e1135d91ba61b4f0aeede749f1a2570fa0c27",
+    "test/ClientSpec.hs": "290af66627ee3b3e8fe87e4ff6cf775a616f5466bca82829d86606d238621346",
+    "test/CoordinatorSpec.hs": "2b6e45752855d1b3ee269e3f37244649b34d435bb335994c47fe0438c2eee2f6",
+    "test/FleetIndexSpec.hs": "c6135b2c055adcbe8196f6b1de46f1d097f0d1ef4125423007192cf94782b95d",
+    "test/GameWorkerSpec.hs": "6cb84fc6205c3ca78bc63c9aa90aba8ad44dc30b99bff7e58756154459e57fef",
+    "test/IntegrationSpec.hs": "f328d7e7643b4de8ff0fdcb07409216afec24e4bdc602f296f67873082c44b29",
+    "test/ProtocolSpec.hs": "db6b23ed15bd9ad48e1c127b0470a43e118807ce6281f310500bce6943b95c61",
+    "test/RulesSpec.hs": "f15fb8f5d1c67f733ed37ff28d1ee22947a67c9584f62b6cac37614389edede7",
+    "test/ServerSpec.hs": "a76eab700e133e62b9107b6a8b10f0d90a7c3fc9f5c689938e39fda4758fa90f",
+    "test/SharedContractSpec.hs": "8c03f8d3ac1881a117c0f2ebf8a116ca2b5859034b6f6f06160f5087eb21c744",
+    "test/Spec.hs": "bcc3b93a3d3aceacb906402ad91aca16600d82d3da8ca857eb8dd06651cd1b68",
+    "test/TypesSpec.hs": "ef47657b4440f6bcd1a6b1ae65df6ec9b6a4e57b6a2bf2b78966114821d6e270",
+    "test/ViewSpec.hs": "93264303479cc28038a1efc64d028b04128533a4121810c4e0b744c9cd34e52c",
+    "test/TestSupport/Generators.hs": "46a7e3d703fd010963f6e830f7d439c55247d0aecf15ff91a4710d18d2b1d836",
+    "bench/Fixtures.hs": "9d36b04d924f55c669f942c374e8dfb46c1ec27922d69ba4fefd7f3c84ad4dd6",
+    "bench/FixturesSpec.hs": "3705fc912db8514589691249cc04bca3e294d206cbb924294f8e90912dff7298",
+    "bench/FleetMain.hs": "e8d6089a5246e9842e232fb2e9d68097530ce42360d0f89c241c460f8537daa5",
+    "bench/Main.hs": "5da45df3a70b9b3a0b3c73418b84a878f8b212b295da2f838b2dbd64f9afa242",
+    "package.yaml": "0e32eb5788d47b90f28332dca87b76c4c96894cfbe1f46256448732afe26d897",
+    "stack.yaml": "047e3eb53a70d0e8f4c51a1fafab0bce36d0a509092ac512c7a9c58cebdcc7a7",
+    "stack.yaml.lock": "38439cf1bdc51eb9987eebb3de9bd3149d96b8233676bfb546ffa7e9242c9e23"
+  },
+  "limits": {
+    "multiNodeRemoteVerified": false,
+    "ghcNumaPoolsVerified": false,
+    "physicalHostNumaVerified": false,
+    "cpuCacheCountersMeasured": false,
+    "freshLinuxCompilerBuild": false,
+    "fullHaskellSuiteRerun": false,
+    "realTwoDeviceWiFiRerun": false,
+    "humanGroupReviewRecorded": false
+  },
+  "notes": [
+    "Final remote eligibility also accepts memory-only B; pure unit regression covers this refinement.",
+    "First snapshot could be early exec/stack; repeat requires GHC worker plus >=64 private resident pages.",
+    "Two policies on the same single node are not a local/remote hardware comparison.",
+    "Prior stopped containers from other projects were preserved."
+  ],
+  "implementationHashes": {
+    "scripts/start-numa.mjs": "fc15adc34e73f97c83dcdb92f4995dcf28d34ed8a03c07f906450f852eba5e45",
+    "scripts/benchmark-numa.mjs": "ce3cc91fc1a6b8ded2c76968413c049353cebc64a2bbce9a3c769b02c6ba4dfb",
+    "scripts/test/numa-config.test.mjs": "0ce29f76ec1b9ac2ad04013d00485374591c342d4292fcc2cb49ad9806a3b6ee",
+    "scripts/test/numa-compose.test.mjs": "90e1f88dc29608766476c6b46aee77b935bd29d28ece407584447fbc3b9ab941",
+    "docker/numa-entrypoint.sh": "3fab574d9cf065f9e307cc3326b1fd1eb59be6adb5ea2f51722c058ae65d90ca",
+    "docker/haskell.Dockerfile": "8aada047bfd3f4d6dfe18830065e6aae8d548f33409453d9c95e3bd899af951a",
+    "docker/benchmark.Dockerfile": "a50ef25e8aa0c12707983bc7ab1410d25d1acc68a01198a654932e448db5869f",
+    "compose.numa.yaml": "8bf333fe76f025d80f403db298835eaaaa41d35dbdf78c33b54e3cb18635749e",
+    ".env.numa.example": "838608048c541b3b0e5a494733c3cd8e7833d7418111fbb1a561993b56051304"
+  },
+  "artifactHashes": {
+    "benchmark-build.txt": "fa56f2d9f49026ae1d307ebfe8a75ca485903f12b2859f55cfd939376114b44e",
+    "cached-benchmark.Dockerfile": "94595770eb9321cbd86a08f19b209fb5f3ec0af3a205049b27840fb6256d2115",
+    "cached-runtime.Dockerfile": "c82a41a4d59277bd327b3b678c246c4ad55fc631d881d4bc6ea6d91e374ab1f1",
+    "compose-test-final.txt": "f3e53638ba0084ec0f90e8440edab77a01919506e26654f662452e74e0d84d30",
+    "compose-test.txt": "3bfbe866ca7a091a27d7f5159e218f735f48fc25eb215fc882801121ab08097a",
+    "default.json": "f402467c1c464234d0fd3cb05bd83a37bfb25a30d19c91c4e1bb9760637c0c84",
+    "first/default/manifest.json": "e818115e31bf0101f19584d00862fa2ca07daf405712c2ae2ae732ac8186046f",
+    "first/default/samples.jsonl": "53742615ba6847987619fac6107ef860d687c06d4d4d04771bc9e62b7615206f",
+    "first/default/summary.json": "61fc2a26b5007df4b76745cfc292b1b9b18f8275c0a1f62264cb8410d06ac17f",
+    "first/default.json": "0b01fa8b40ccb3573c4135b12bef1ab8609eba87953dc1ba7852a14d970c1c90",
+    "first/ghc.json": "52f928f333a33edd255294242243e52f48092b313066b3d37cf1a7f4f4f3049a",
+    "first/local/manifest.json": "ff2d99d148f28027ca0cab47c9d45b735bb4d9ff8a41a05124fe41541f87abdd",
+    "first/local/samples.jsonl": "27425d37ceb170c8099e8c54ab9031186cc907f33935b2c903568e7f561a63d3",
+    "first/local/summary.json": "221d4d61c13e066578e35c2490045c9ccba4488639aa891218cbd7530007976b",
+    "first/local.json": "0a54fd3180070e988a4d3c89444c8f617291b5f3e97e85159eb7b98ed3749bee",
+    "first/matrix.json": "5ae79650435fae21598952b32a53a88a6452e732798763e18bfc2599114d5730",
+    "ghc.json": "bc87795f985b9cf7c5fc00d3d9ab9c0031a1f87faf73f24bcf5d55dfc86791ec",
+    "google_docs_verification.json": "80dc9706630e9410be74d5a23165337c313140cfc675aebe5f6ff5a0068aa2fa",
+    "local-cpuset.json": "d260c565f45a6892fd6f4225aa7b4b5eb0afe4ae5ed45850fff80cb752c09c33",
+    "local-membind.json": "149c0bb9d9c720ae8e2889eb25042c9a2904630bc5db8dd6e5c13d4b1c867719",
+    "measurement-repeat.txt": "1194257361ef52fd3c1fccb34c009d470ca12910fde8aef84315f5ded8e629b9",
+    "measurement.txt": "1194257361ef52fd3c1fccb34c009d470ca12910fde8aef84315f5ded8e629b9",
+    "node-test-final.txt": "1bee8a6a4ebcf62581004651b36cf8ca936743b821dfd675af8250404b94fa45",
+    "README.md": "96849cb660fdfd204bf45c0df42077d46da527367077fb4077f7ed021be837ee",
+    "repeat/default/manifest.json": "d9885521e9d7c5d43b1abdb5b44c65cc79ac2396a0c6228f7df5ef6ce7c38dc0",
+    "repeat/default/samples.jsonl": "77e46644806520c573b2c7f55379a0d8b7bb6fca5d3272cc1e09baa0f77d34ca",
+    "repeat/default/summary.json": "351b05c693b60d82568f808a361d87f2c7d5070194d501aaa7600c5eb6bcedd3",
+    "repeat/default.json": "0b01fa8b40ccb3573c4135b12bef1ab8609eba87953dc1ba7852a14d970c1c90",
+    "repeat/ghc.json": "52f928f333a33edd255294242243e52f48092b313066b3d37cf1a7f4f4f3049a",
+    "repeat/local/manifest.json": "9727e3dda62147cf34e5d5d669f81ffd64c785a859cc5e1e63e49516b1e0a557",
+    "repeat/local/samples.jsonl": "b8c96352b4aa0815bce9fe19404041098c61686c68e22e510b95ac68d98ebe73",
+    "repeat/local/summary.json": "0ae1da7ad3230b83791675b88687633d1495d8cae2a5fcf160da889aeb5b30b9",
+    "repeat/local.json": "0a54fd3180070e988a4d3c89444c8f617291b5f3e97e85159eb7b98ed3749bee",
+    "repeat/matrix.json": "4dbcfcd00966bf3ff27b3677cc4752051ce15e802dd62335ddcbd102ec5a5f46",
+    "runtime-build.txt": "4f90594e4dcd35e457e6ab7e0a6470868812680289a01dac474bc316639392ff",
+    "shutdown-restart.json": "ef19894b824eb7add95b89c700e25420402617dae7b6b7656358425598d7edfa"
+  },
+  "googleDocs": {
+    "documentUrl": "https://docs.google.com/document/d/1-T7iROKnpNmbHCWr-XmAnOSihwIi-Y5PacRBFk4Xyhw",
+    "documentId": "1-T7iROKnpNmbHCWr-XmAnOSihwIi-Y5PacRBFk4Xyhw",
+    "revisionId": "AHj4eMRGGe_Zjl71gduLtvMe42RoIQtIC30321AJnYbdF2MvzKY22jy4k83Nq7wUu_-6kUTsHChMDiyUWNnyb5LorXbNh5c-LZK2gi3w6_px",
+    "tabId": "t.9kdmgzitre9d",
+    "title": "NM-07 — CPU–RAM NUMA và kiểm chứng local/remote",
+    "parentTabId": "t.bskjwjzb41bq",
+    "index": 6,
+    "exactTextMatches": true,
+    "textUtf16Length": 20742,
+    "nativeHeadings": {
+      "TITLE": 1,
+      "NORMAL_TEXT": 119,
+      "HEADING_1": 12,
+      "HEADING_2": 4
+    },
+    "listParagraphs": 47,
+    "codeParagraphs": 10,
+    "preservedTabs": [
+      {
+        "tabId": "t.0",
+        "title": "Plan Sprint",
+        "bodyUnchanged": true,
+        "propertiesUnchanged": true
+      },
+      {
+        "tabId": "t.3f8lnf480yal",
+        "title": "Plan Task",
+        "bodyUnchanged": true,
+        "propertiesUnchanged": true
+      },
+      {
+        "tabId": "t.tp47wqncwp94",
+        "title": "Thẻ 3",
+        "bodyUnchanged": true,
+        "propertiesUnchanged": true
+      },
+      {
+        "tabId": "t.z2vxki9p1hdu",
+        "title": "task LAN",
+        "bodyUnchanged": true,
+        "propertiesUnchanged": true
+      },
+      {
+        "tabId": "t.smgi9li6oqib",
+        "title": "Docker Compose plan",
+        "bodyUnchanged": true,
+        "propertiesUnchanged": true
+      },
+      {
+        "tabId": "t.bskjwjzb41bq",
+        "title": "Update NUMA",
+        "bodyUnchanged": true,
+        "propertiesUnchanged": true
+      },
+      {
+        "tabId": "t.m9mq874psso8",
+        "title": "NM-01 — Hợp đồng kiến trúc và tiêu chí đo",
+        "bodyUnchanged": true,
+        "propertiesUnchanged": true
+      },
+      {
+        "tabId": "t.pte5hi1m7lt0",
+        "title": "NM-02 — Phát hiện topology và kiểm tra tài nguyên",
+        "bodyUnchanged": true,
+        "propertiesUnchanged": true
+      },
+      {
+        "tabId": "t.boqulsoufewe",
+        "title": "NM-03 — Benchmark và baseline trước tối ưu",
+        "bodyUnchanged": true,
+        "propertiesUnchanged": true
+      },
+      {
+        "tabId": "t.h4ztyl55uk",
+        "title": "NM-04 — Affinity container và GHC runtime",
+        "bodyUnchanged": true,
+        "propertiesUnchanged": true
+      },
+      {
+        "tabId": "t.aexr75u196ee",
+        "title": "NM-05 — Worker sở hữu trận và locality",
+        "bodyUnchanged": true,
+        "propertiesUnchanged": true
+      },
+      {
+        "tabId": "t.hewrnqyatiai",
+        "title": "NM-06 — Fleet tính sẵn và thử bố trí cache",
+        "bodyUnchanged": true,
+        "propertiesUnchanged": true
+      }
+    ]
+  },
+  "toolVersions": {
+    "dockerEngine": "29.8.2",
+    "compose": "5.5.1",
+    "numactl": "2.0.16-1",
+    "libnuma1": "2.0.16-1",
+    "ghc": "9.10.3",
+    "snapshot": "lts-24.59"
+  },
+  "reportHashes": {
+    "docs/numa_experiments.md": "5193f328dab42e4587a46a47abf90b349d0d5a4b528c4333aa8124f5ce9848dd",
+    "docs/shared_contract.md": "ce3b328d9d0f4f737d85549d0d6ba05e083bfb2abc4e42ffcebc0b76cfdb9a45",
+    "docs/README.md": "2fe8ea8a0171996f1905ca179a1db6c029cf537f3be2b2ead151327a41e2dd8a",
+    "README.md": "cc7bfbfa4319edb8bd89190fc9deade771639dac1c4ab9c4a718b32b373b5e76",
+    "docker/README.md": "354e1d2bbde96c9a3c66502e159992de54b015d87200c6009c60e67af30777d6"
+  }
+}

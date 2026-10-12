@@ -1,0 +1,1 @@
+{"mode":"container","capabilities":1,"haskell":[0],"web":[2],"environment":{"HASKELL_CPUSET":"0","WEB_CPUSET":"2","HASKELL_CAPABILITIES":"1","NUMA_MEMORY_POLICY":"cpuset","NUMA_SELECTED_MEMS":""},"profile":"default","cpuNode":0,"mems":null,"policy":"cpuset","sysNice":true,"minFreeBytes":67108864,"ghcNuma":null}
