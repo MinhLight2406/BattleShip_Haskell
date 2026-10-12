@@ -207,8 +207,13 @@ export async function networkSample({ mode, profile, workload, serverBinary, bri
 
 function argumentsFor(profile) { return ['+RTS', ...profile.rts, '-T', '-RTS'] }
 
+export function benchmarkModes(baseline = false) {
+  return baseline ? ['core', 'coordinator', 'tcp', 'web'] : ['core', 'coordinator', 'worker', 'tcp', 'web']
+}
+
 export async function runBenchmark(options) {
   const { output, benchBinary, serverBinary, bridgeModule, samples = 30, warmups = 5, smoke = false } = options
+  const modes = benchmarkModes(options.baseline)
   assert.ok(smoke || (samples >= 30 && warmups >= 5), 'formal baseline needs >=30 samples and >=5 warmups')
   const topology = await inspectTopology()
   assert.equal(topology.inspectionOk, true, 'baseline must run in Linux with verified masks')
@@ -238,7 +243,7 @@ export async function runBenchmark(options) {
   assert.deepEqual(workloads, locked, 'workload differs from pre-optimization fixtures-v1')
   const repetitions = {}
   const checksums = new Map()
-  for (const mode of ['core', 'coordinator', 'worker']) {
+  for (const mode of modes.filter((mode) => !['tcp', 'web'].includes(mode))) {
     let count = 1
     for (let round = 0; round < 4; round++) {
       const measured = parseSample((await execBench([mode, String(count)], profiles[0])).stdout)
@@ -256,13 +261,13 @@ export async function runBenchmark(options) {
   const manifest = { schemaVersion: 1, startedAt: new Date().toISOString(), smoke, source, topology, cgroupLimits, binaryHashes,
     compiler: 'ghc 9.10.3', snapshot: 'lts-24.59', buildFlags: options.buildFlags ?? 'not supplied',
     runtime: { node: process.version, platform: process.platform, arch: process.arch, cpus: os.cpus().map((cpu) => cpu.model) },
-    profiles, seeds, fixtureHash, repetitions, samples, warmups,
+    profiles, seeds, fixtureHash, repetitions, samples, warmups, modes,
     unsupportedMetrics: { contextSwitches: 'No instrumented kernel/perf counter', migrations: 'No instrumented kernel/perf counter',
       peakRss: 'Not measured; RTS heap/live bytes are reported separately' } }
   await writeFile(path.join(output, 'manifest.json'), JSON.stringify(manifest, null, 2))
   await writeFile(path.join(output, 'samples.jsonl'), '')
   const results = []
-  for (const mode of ['core', 'coordinator', 'worker', 'tcp', 'web']) {
+  for (const mode of modes) {
     const groups = new Map(profiles.map((profile) => [profile.name, []]))
     for (let index = -warmups; index < samples; index++) {
       // Rotate profile order; each measured index uses the same network seed.
@@ -313,6 +318,7 @@ async function main(args) {
   for (let index = 0; index < args.length; index++) {
     const arg = args[index]
     if (arg === '--smoke') { options.smoke = true; options.samples = 1; options.warmups = 0 }
+    else if (arg === '--baseline') options.baseline = true
     else if (keys[arg] && args[index + 1]) options[keys[arg]] = path.resolve(args[++index])
     else throw new Error(`Unknown/missing argument: ${arg}`)
   }

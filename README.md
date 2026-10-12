@@ -691,3 +691,66 @@ Lịch sử bắn, luật và dữ liệu riêng tư giữ hợp đồng hiện 
 đối chiếu đủ 100 ô với geometry độc lập; benchmark ghi cả chi phí tạo/heap.
 Phân tích và số liệu tại [NM-06](docs/fleet_index.md). Bảng này là dữ liệu
 chương trình, không phải cấu hình cache L1/L2/L3 của CPU.
+
+## Bố trí CPU–RAM theo NUMA — NM-07
+
+```powershell
+Copy-Item .env.numa.example .env.numa
+node scripts/start-numa.mjs inspect
+node scripts/start-numa.mjs start
+node scripts/start-numa.mjs verify
+node scripts/start-numa.mjs stop
+```
+
+Launcher dùng `.env` triển khai hiện có, tạo container rồi áp dụng
+`cpuset-mems` trước khi chạy Haskell; kiểm tra CPU và resident pages thật.
+Xem [NM-07](docs/numa_experiments.md) để chọn local/remote/membind và đo lại.
+Remote cần ít nhất hai node được cấp. Image GHC hiện tại không được build
+có NUMA support: profile `ghc` báo lỗi rõ, không tự bỏ cờ. Không thay luật,
+Origin/Host, port mapping hoặc resume. Đổi profile cần mở trận mới.
+
+## Hồi quy toàn hệ thống — NM-08
+
+Sau khi cài frontend dependency bằng lockfile và chuẩn bị Docker Linux:
+
+```powershell
+$env:BATTLESHIP_BROWSER_CHANNELS = 'chrome,msedge' # khi hai browser này đã cài; mặc định dùng Chromium
+node scripts/test-runtime-profiles.mjs --output .stack-work/nm08/recheck
+```
+
+Runner build/test native N1/N2, frontend, rồi full Haskell Linux và các ca
+web/Compose dưới N1/N2, affinity và NUMA khả dụng. Ba seed phải có cùng toàn
+bộ transcript; mailbox/outbox, cancel, resume, client chậm và shutdown vẫn
+đúng. Profile thiếu phần cứng/compiler ghi `unaccepted`, không tính thành
+pass. Lệnh, bằng chứng và giới hạn tại [NM-08](docs/runtime_regression.md).
+
+## Kết luận và cấu hình dùng báo cáo — NM-09
+
+[Báo cáo nghiệm thu kiến thức](docs/numa_acceptance.md) nối slide → code → test/benchmark,
+ghi CPU/RAM/VM/OS/compiler/commit/seed/lệnh và cả kết quả không tăng tốc.
+[Ma trận 14 slide](docs/slide_mapping.md) và [báo cáo đồ án](docs/report_final.md) đã
+cập nhật worker, metadata Fleet và phạm vi NUMA thực sự kiểm chứng được.
+
+- Metadata Fleet giảm median lõi khoảng 7,4–7,7% trong cặp benchmark NM-06,
+  allocation giảm 3,32%; retained fixture tăng khoảng 900 byte/Fleet.
+- Worker/affinity có bằng chứng tính đúng và placement; timing worker NM-05
+  chưa ổn định, affinity chưa có ablation tốc độ. Không ghi là tối ưu đã chứng minh.
+- CPU/RAM node0 trong guest qua gate; remote/GHC NUMA/PMU còn chưa nghiệm thu.
+- Đề xuất cho một trận: N1, worker0, không pin CPU/RAM. Base package/Compose
+  vẫn auto-N. Override opt-in dưới đây cần nhóm review cùng revision trước hợp nhất.
+
+Sau chuẩn bị `.env`/thư mục LAN theo [hướng dẫn Docker](docs/docker_deployment.md),
+chạy một deployment trên cổng public đã chọn:
+
+```powershell
+docker compose --env-file .env -p battleship-report -f compose.yaml -f compose.report.yaml config --quiet
+docker compose --env-file .env -p battleship-report -f compose.yaml -f compose.report.yaml up -d --build --wait
+docker compose --env-file .env -p battleship-report -f compose.yaml -f compose.report.yaml logs --tail 80
+docker compose --env-file .env -p battleship-report -f compose.yaml -f compose.report.yaml down --timeout 10 --remove-orphans
+```
+
+Override không thêm service/quyền/cpuset hoặc đổi cổng/Origin/resume. Dùng
+cùng `-p/-f/--env-file` cho `start haskell` khi trận trước đã kết thúc, hoặc
+`down` khi dừng. LAN động dùng helper `-WatchOnly`; đổi profile phải mở trận mới.
+Commit nộp và xác nhận A/B/C/D/R còn chờ thông tin thật. Hai browser cùng host
+không thay nghiệm thu hai thiết bị Wi-Fi vật lý.

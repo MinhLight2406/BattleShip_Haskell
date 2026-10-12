@@ -1,0 +1,2017 @@
+{
+  "schemaVersion": 1,
+  "games": [
+    {
+      "seed": 424242,
+      "checksum": "3724987551376790105",
+      "commandCount": 25,
+      "frames": [
+        [
+          "WELCOME 1 P1",
+          "ERROR FLEETS_NOT_READY",
+          "OK PLACE",
+          "WAITING OPPONENT",
+          "ERROR FLEET_ALREADY_PLACED",
+          "START P1",
+          "TURN P1",
+          "SHOT A1 MISS",
+          "TURN P2",
+          "INCOMING A1 MISS",
+          "TURN P1",
+          "ERROR ALREADY_FIRED A1",
+          "SHOT A3 HIT",
+          "TURN P1",
+          "SHOT C3 HIT",
+          "TURN P1",
+          "SHOT B3 SUNK SB",
+          "TURN P1",
+          "SHOT J3 HIT",
+          "TURN P1",
+          "SHOT J4 HIT",
+          "TURN P1",
+          "SHOT J5 SUNK CR",
+          "TURN P1",
+          "SHOT B1 HIT",
+          "TURN P1",
+          "SHOT B2 SUNK DD",
+          "TURN P1",
+          "SHOT C5 HIT",
+          "TURN P1",
+          "SHOT E5 HIT",
+          "TURN P1",
+          "SHOT D5 HIT",
+          "TURN P1",
+          "SHOT G5 HIT",
+          "TURN P1",
+          "SHOT F5 SUNK CV",
+          "TURN P1",
+          "SHOT A6 HIT",
+          "TURN P1",
+          "SHOT A7 HIT",
+          "TURN P1",
+          "SHOT A5 HIT",
+          "TURN P1",
+          "SHOT A8 WIN",
+          "GAME_OVER P1 ALL_SHIPS_SUNK"
+        ],
+        [
+          "WELCOME 1 P2",
+          "OK PLACE",
+          "START P1",
+          "TURN P1",
+          "ERROR NOT_YOUR_TURN P1",
+          "INCOMING A1 MISS",
+          "TURN P2",
+          "SHOT A1 MISS",
+          "TURN P1",
+          "INCOMING A3 HIT",
+          "TURN P1",
+          "INCOMING C3 HIT",
+          "TURN P1",
+          "INCOMING B3 SUNK SB",
+          "TURN P1",
+          "INCOMING J3 HIT",
+          "TURN P1",
+          "INCOMING J4 HIT",
+          "TURN P1",
+          "INCOMING J5 SUNK CR",
+          "TURN P1",
+          "INCOMING B1 HIT",
+          "TURN P1",
+          "INCOMING B2 SUNK DD",
+          "TURN P1",
+          "INCOMING C5 HIT",
+          "TURN P1",
+          "INCOMING E5 HIT",
+          "TURN P1",
+          "INCOMING D5 HIT",
+          "TURN P1",
+          "INCOMING G5 HIT",
+          "TURN P1",
+          "INCOMING F5 SUNK CV",
+          "TURN P1",
+          "INCOMING A6 HIT",
+          "TURN P1",
+          "INCOMING A7 HIT",
+          "TURN P1",
+          "INCOMING A5 HIT",
+          "TURN P1",
+          "INCOMING A8 WIN",
+          "GAME_OVER P1 ALL_SHIPS_SUNK"
+        ]
+      ]
+    },
+    {
+      "seed": 8675309,
+      "checksum": "18305205042670867969",
+      "commandCount": 25,
+      "frames": [
+        [
+          "WELCOME 1 P1",
+          "ERROR FLEETS_NOT_READY",
+          "OK PLACE",
+          "WAITING OPPONENT",
+          "ERROR FLEET_ALREADY_PLACED",
+          "START P1",
+          "TURN P1",
+          "SHOT A1 MISS",
+          "TURN P2",
+          "INCOMING A1 MISS",
+          "TURN P1",
+          "ERROR ALREADY_FIRED A1",
+          "SHOT D8 HIT",
+          "TURN P1",
+          "SHOT D7 HIT",
+          "TURN P1",
+          "SHOT D9 SUNK CR",
+          "TURN P1",
+          "SHOT D3 HIT",
+          "TURN P1",
+          "SHOT D2 HIT",
+          "TURN P1",
+          "SHOT D1 SUNK SB",
+          "TURN P1",
+          "SHOT J6 HIT",
+          "TURN P1",
+          "SHOT J8 HIT",
+          "TURN P1",
+          "SHOT J7 HIT",
+          "TURN P1",
+          "SHOT J5 HIT",
+          "TURN P1",
+          "SHOT J4 SUNK CV",
+          "TURN P1",
+          "SHOT D10 HIT",
+          "TURN P1",
+          "SHOT E10 SUNK DD",
+          "TURN P1",
+          "SHOT C9 HIT",
+          "TURN P1",
+          "SHOT C6 HIT",
+          "TURN P1",
+          "SHOT C8 HIT",
+          "TURN P1",
+          "SHOT C7 WIN",
+          "GAME_OVER P1 ALL_SHIPS_SUNK"
+        ],
+        [
+          "WELCOME 1 P2",
+          "OK PLACE",
+          "START P1",
+          "TURN P1",
+          "ERROR NOT_YOUR_TURN P1",
+          "INCOMING A1 MISS",
+          "TURN P2",
+          "SHOT A1 MISS",
+          "TURN P1",
+          "INCOMING D8 HIT",
+          "TURN P1",
+          "INCOMING D7 HIT",
+          "TURN P1",
+          "INCOMING D9 SUNK CR",
+          "TURN P1",
+          "INCOMING D3 HIT",
+          "TURN P1",
+          "INCOMING D2 HIT",
+          "TURN P1",
+          "INCOMING D1 SUNK SB",
+          "TURN P1",
+          "INCOMING J6 HIT",
+          "TURN P1",
+          "INCOMING J8 HIT",
+          "TURN P1",
+          "INCOMING J7 HIT",
+          "TURN P1",
+          "INCOMING J5 HIT",
+          "TURN P1",
+          "INCOMING J4 SUNK CV",
+          "TURN P1",
+          "INCOMING D10 HIT",
+          "TURN P1",
+          "INCOMING E10 SUNK DD",
+          "TURN P1",
+          "INCOMING C9 HIT",
+          "TURN P1",
+          "INCOMING C6 HIT",
+          "TURN P1",
+          "INCOMING C8 HIT",
+          "TURN P1",
+          "INCOMING C7 WIN",
+          "GAME_OVER P1 ALL_SHIPS_SUNK"
+        ]
+      ]
+    },
+    {
+      "seed": 20261011,
+      "checksum": "658854099022739308",
+      "commandCount": 25,
+      "frames": [
+        [
+          "WELCOME 1 P1",
+          "ERROR FLEETS_NOT_READY",
+          "OK PLACE",
+          "WAITING OPPONENT",
+          "ERROR FLEET_ALREADY_PLACED",
+          "START P1",
+          "TURN P1",
+          "SHOT A1 MISS",
+          "TURN P2",
+          "INCOMING A1 MISS",
+          "TURN P1",
+          "ERROR ALREADY_FIRED A1",
+          "SHOT E7 HIT",
+          "TURN P1",
+          "SHOT E9 HIT",
+          "TURN P1",
+          "SHOT E8 HIT",
+          "TURN P1",
+          "SHOT E10 SUNK BB",
+          "TURN P1",
+          "SHOT J9 HIT",
+          "TURN P1",
+          "SHOT J7 HIT",
+          "TURN P1",
+          "SHOT J8 SUNK CR",
+          "TURN P1",
+          "SHOT E6 HIT",
+          "TURN P1",
+          "SHOT I6 HIT",
+          "TURN P1",
+          "SHOT G6 HIT",
+          "TURN P1",
+          "SHOT F6 HIT",
+          "TURN P1",
+          "SHOT H6 SUNK CV",
+          "TURN P1",
+          "SHOT I9 HIT",
+          "TURN P1",
+          "SHOT I8 SUNK DD",
+          "TURN P1",
+          "SHOT C6 HIT",
+          "TURN P1",
+          "SHOT C8 HIT",
+          "TURN P1",
+          "SHOT C7 WIN",
+          "GAME_OVER P1 ALL_SHIPS_SUNK"
+        ],
+        [
+          "WELCOME 1 P2",
+          "OK PLACE",
+          "START P1",
+          "TURN P1",
+          "ERROR NOT_YOUR_TURN P1",
+          "INCOMING A1 MISS",
+          "TURN P2",
+          "SHOT A1 MISS",
+          "TURN P1",
+          "INCOMING E7 HIT",
+          "TURN P1",
+          "INCOMING E9 HIT",
+          "TURN P1",
+          "INCOMING E8 HIT",
+          "TURN P1",
+          "INCOMING E10 SUNK BB",
+          "TURN P1",
+          "INCOMING J9 HIT",
+          "TURN P1",
+          "INCOMING J7 HIT",
+          "TURN P1",
+          "INCOMING J8 SUNK CR",
+          "TURN P1",
+          "INCOMING E6 HIT",
+          "TURN P1",
+          "INCOMING I6 HIT",
+          "TURN P1",
+          "INCOMING G6 HIT",
+          "TURN P1",
+          "INCOMING F6 HIT",
+          "TURN P1",
+          "INCOMING H6 SUNK CV",
+          "TURN P1",
+          "INCOMING I9 HIT",
+          "TURN P1",
+          "INCOMING I8 SUNK DD",
+          "TURN P1",
+          "INCOMING C6 HIT",
+          "TURN P1",
+          "INCOMING C8 HIT",
+          "TURN P1",
+          "INCOMING C7 WIN",
+          "GAME_OVER P1 ALL_SHIPS_SUNK"
+        ]
+      ]
+    }
+  ],
+  "placements": [
+    {
+      "profile": "numa-local",
+      "command": [
+        "4000",
+        "+RTS",
+        "-N1",
+        "-RTS"
+      ],
+      "tasks": [
+        {
+          "tid": 1,
+          "name": "battleship-serv",
+          "allowed": [
+            0
+          ]
+        },
+        {
+          "tid": 10,
+          "name": "ghc_worker",
+          "allowed": [
+            0
+          ]
+        },
+        {
+          "tid": 11,
+          "name": "ghc_worker",
+          "allowed": [
+            0
+          ]
+        },
+        {
+          "tid": 7,
+          "name": "ghc_ticker",
+          "allowed": [
+            0
+          ]
+        },
+        {
+          "tid": 8,
+          "name": "ghc_worker",
+          "allowed": [
+            0
+          ]
+        },
+        {
+          "tid": 9,
+          "name": "ghc_worker",
+          "allowed": [
+            0
+          ]
+        }
+      ],
+      "placement": {
+        "tasks": [
+          {
+            "tid": 1,
+            "name": "battleship-serv",
+            "allowed": [
+              0
+            ]
+          },
+          {
+            "tid": 10,
+            "name": "ghc_worker",
+            "allowed": [
+              0
+            ]
+          },
+          {
+            "tid": 11,
+            "name": "ghc_worker",
+            "allowed": [
+              0
+            ]
+          },
+          {
+            "tid": 7,
+            "name": "ghc_ticker",
+            "allowed": [
+              0
+            ]
+          },
+          {
+            "tid": 8,
+            "name": "ghc_worker",
+            "allowed": [
+              0
+            ]
+          },
+          {
+            "tid": 9,
+            "name": "ghc_worker",
+            "allowed": [
+              0
+            ]
+          }
+        ],
+        "cpuSamples": [
+          {
+            "tid": 1,
+            "lastCpu": 0
+          },
+          {
+            "tid": 10,
+            "lastCpu": 0
+          },
+          {
+            "tid": 11,
+            "lastCpu": 0
+          },
+          {
+            "tid": 7,
+            "lastCpu": 0
+          },
+          {
+            "tid": 8,
+            "lastCpu": 0
+          },
+          {
+            "tid": 9,
+            "lastCpu": 0
+          }
+        ],
+        "memory": {
+          "rows": [
+            {
+              "address": "00400000",
+              "policy": "default",
+              "privateAnonymous": false,
+              "pages": {
+                "0": 496
+              }
+            },
+            {
+              "address": "00721000",
+              "policy": "default",
+              "privateAnonymous": false,
+              "pages": {
+                "0": 1
+              }
+            },
+            {
+              "address": "00722000",
+              "policy": "default",
+              "privateAnonymous": false,
+              "pages": {
+                "0": 56
+              }
+            },
+            {
+              "address": "0075a000",
+              "policy": "default",
+              "privateAnonymous": true,
+              "pages": {
+                "0": 3
+              }
+            },
+            {
+              "address": "1f7cd000",
+              "policy": "default",
+              "privateAnonymous": true,
+              "pages": {
+                "0": 14
+              }
+            },
+            {
+              "address": "4200000000",
+              "policy": "default",
+              "privateAnonymous": true,
+              "pages": {
+                "0": 98
+              }
+            },
+            {
+              "address": "4200600000",
+              "policy": "default",
+              "privateAnonymous": false,
+              "pages": {}
+            },
+            {
+              "address": "73f000000000",
+              "policy": "default",
+              "privateAnonymous": true,
+              "pages": {
+                "0": 5
+              }
+            },
+            {
+              "address": "73f000021000",
+              "policy": "default",
+              "privateAnonymous": false,
+              "pages": {}
+            },
+            {
+              "address": "73f004000000",
+              "policy": "default",
+              "privateAnonymous": true,
+              "pages": {
+                "0": 1
+              }
+            },
+            {
+              "address": "73f004021000",
+              "policy": "default",
+              "privateAnonymous": false,
+              "pages": {}
+            },
+            {
+              "address": "73f008000000",
+              "policy": "default",
+              "privateAnonymous": true,
+              "pages": {
+                "0": 1
+              }
+            },
+            {
+              "address": "73f008021000",
+              "policy": "default",
+              "privateAnonymous": false,
+              "pages": {}
+            },
+            {
+              "address": "73f00c000000",
+              "policy": "default",
+              "privateAnonymous": true,
+              "pages": {
+                "0": 1
+              }
+            },
+            {
+              "address": "73f00c021000",
+              "policy": "default",
+              "privateAnonymous": false,
+              "pages": {}
+            },
+            {
+              "address": "73f010000000",
+              "policy": "default",
+              "privateAnonymous": true,
+              "pages": {
+                "0": 1
+              }
+            },
+            {
+              "address": "73f010021000",
+              "policy": "default",
+              "privateAnonymous": false,
+              "pages": {}
+            },
+            {
+              "address": "73f0148ef000",
+              "policy": "default",
+              "privateAnonymous": false,
+              "pages": {}
+            },
+            {
+              "address": "73f0148f0000",
+              "policy": "default",
+              "privateAnonymous": true,
+              "pages": {
+                "0": 2
+              }
+            },
+            {
+              "address": "73f0150f0000",
+              "policy": "default",
+              "privateAnonymous": false,
+              "pages": {}
+            },
+            {
+              "address": "73f0150f1000",
+              "policy": "default",
+              "privateAnonymous": true,
+              "pages": {
+                "0": 3
+              }
+            },
+            {
+              "address": "73f0158f1000",
+              "policy": "default",
+              "privateAnonymous": false,
+              "pages": {}
+            },
+            {
+              "address": "73f0158f2000",
+              "policy": "default",
+              "privateAnonymous": true,
+              "pages": {
+                "0": 3
+              }
+            },
+            {
+              "address": "73f0160f2000",
+              "policy": "default",
+              "privateAnonymous": false,
+              "pages": {}
+            },
+            {
+              "address": "73f0160f3000",
+              "policy": "default",
+              "privateAnonymous": true,
+              "pages": {
+                "0": 3
+              }
+            },
+            {
+              "address": "73f0168f3000",
+              "policy": "default",
+              "privateAnonymous": true,
+              "pages": {
+                "0": 1
+              }
+            },
+            {
+              "address": "73f01694c000",
+              "policy": "default",
+              "privateAnonymous": false,
+              "pages": {}
+            },
+            {
+              "address": "73f01694d000",
+              "policy": "default",
+              "privateAnonymous": true,
+              "pages": {
+                "0": 2
+              }
+            },
+            {
+              "address": "73f01714d000",
+              "policy": "default",
+              "privateAnonymous": true,
+              "pages": {
+                "0": 2
+              }
+            },
+            {
+              "address": "73f01754f000",
+              "policy": "default",
+              "privateAnonymous": false,
+              "pages": {
+                "0": 7
+              }
+            },
+            {
+              "address": "73f017556000",
+              "policy": "default",
+              "privateAnonymous": false,
+              "pages": {
+                "0": 32
+              }
+            },
+            {
+              "address": "73f0175ad000",
+              "policy": "default",
+              "privateAnonymous": true,
+              "pages": {
+                "0": 2
+              }
+            },
+            {
+              "address": "73f0175b0000",
+              "policy": "default",
+              "privateAnonymous": false,
+              "pages": {
+                "0": 37
+              }
+            },
+            {
+              "address": "73f0175d6000",
+              "policy": "default",
+              "privateAnonymous": false,
+              "pages": {
+                "0": 266
+              }
+            },
+            {
+              "address": "73f01772c000",
+              "policy": "default",
+              "privateAnonymous": false,
+              "pages": {
+                "0": 48
+              }
+            },
+            {
+              "address": "73f01777f000",
+              "policy": "default",
+              "privateAnonymous": false,
+              "pages": {
+                "0": 4
+              }
+            },
+            {
+              "address": "73f017783000",
+              "policy": "default",
+              "privateAnonymous": false,
+              "pages": {
+                "0": 2
+              }
+            },
+            {
+              "address": "73f017785000",
+              "policy": "default",
+              "privateAnonymous": true,
+              "pages": {
+                "0": 5
+              }
+            },
+            {
+              "address": "73f017792000",
+              "policy": "default",
+              "privateAnonymous": false,
+              "pages": {
+                "0": 11
+              }
+            },
+            {
+              "address": "73f01779d000",
+              "policy": "default",
+              "privateAnonymous": false,
+              "pages": {
+                "0": 16
+              }
+            },
+            {
+              "address": "73f0177fa000",
+              "policy": "default",
+              "privateAnonymous": false,
+              "pages": {}
+            },
+            {
+              "address": "73f017811000",
+              "policy": "default",
+              "privateAnonymous": false,
+              "pages": {
+                "0": 1
+              }
+            },
+            {
+              "address": "73f017812000",
+              "policy": "default",
+              "privateAnonymous": false,
+              "pages": {
+                "0": 1
+              }
+            },
+            {
+              "address": "73f017813000",
+              "policy": "default",
+              "privateAnonymous": false,
+              "pages": {
+                "0": 15
+              }
+            },
+            {
+              "address": "73f017823000",
+              "policy": "default",
+              "privateAnonymous": false,
+              "pages": {
+                "0": 77
+              }
+            },
+            {
+              "address": "73f017897000",
+              "policy": "default",
+              "privateAnonymous": false,
+              "pages": {
+                "0": 57
+              }
+            },
+            {
+              "address": "73f0178f1000",
+              "policy": "default",
+              "privateAnonymous": false,
+              "pages": {
+                "0": 1
+              }
+            },
+            {
+              "address": "73f0178f2000",
+              "policy": "default",
+              "privateAnonymous": false,
+              "pages": {
+                "0": 1
+              }
+            },
+            {
+              "address": "73f0178f5000",
+              "policy": "default",
+              "privateAnonymous": true,
+              "pages": {
+                "0": 2
+              }
+            },
+            {
+              "address": "73f0178f7000",
+              "policy": "default",
+              "privateAnonymous": false,
+              "pages": {}
+            },
+            {
+              "address": "73f0178fb000",
+              "policy": "default",
+              "privateAnonymous": false,
+              "pages": {}
+            },
+            {
+              "address": "73f0178fd000",
+              "policy": "default",
+              "privateAnonymous": false,
+              "pages": {}
+            },
+            {
+              "address": "73f0178ff000",
+              "policy": "default",
+              "privateAnonymous": false,
+              "pages": {
+                "0": 1
+              }
+            },
+            {
+              "address": "73f017900000",
+              "policy": "default",
+              "privateAnonymous": false,
+              "pages": {
+                "0": 38
+              }
+            },
+            {
+              "address": "73f017926000",
+              "policy": "default",
+              "privateAnonymous": false,
+              "pages": {
+                "0": 10
+              }
+            },
+            {
+              "address": "73f017930000",
+              "policy": "default",
+              "privateAnonymous": false,
+              "pages": {
+                "0": 2
+              }
+            },
+            {
+              "address": "73f017932000",
+              "policy": "default",
+              "privateAnonymous": false,
+              "pages": {
+                "0": 2
+              }
+            },
+            {
+              "address": "7fff59d30000",
+              "policy": "default",
+              "privateAnonymous": true,
+              "pages": {
+                "0": 5
+              }
+            }
+          ],
+          "privateAnonymousPages": {
+            "0": 154
+          },
+          "boundPrivatePages": 0
+        },
+        "scope": "snapshot of last CPU and private anonymous resident pages; not all future pages or physical host topology"
+      },
+      "haskellImage": "sha256:b78fff7bc1e3b9c79a8d09908e195757966180d8610b85b1e1b317bfebe98720",
+      "webImage": "sha256:b01ac11fc67f9725546fe9969a9a070b532fe76f30501bab834a3e781bddf949"
+    },
+    {
+      "profile": "numa-local",
+      "command": [
+        "4000",
+        "+RTS",
+        "-N1",
+        "-RTS"
+      ],
+      "tasks": [
+        {
+          "tid": 1,
+          "name": "battleship-serv",
+          "allowed": [
+            0
+          ]
+        },
+        {
+          "tid": 10,
+          "name": "ghc_worker",
+          "allowed": [
+            0
+          ]
+        },
+        {
+          "tid": 11,
+          "name": "ghc_worker",
+          "allowed": [
+            0
+          ]
+        },
+        {
+          "tid": 7,
+          "name": "ghc_ticker",
+          "allowed": [
+            0
+          ]
+        },
+        {
+          "tid": 8,
+          "name": "ghc_worker",
+          "allowed": [
+            0
+          ]
+        },
+        {
+          "tid": 9,
+          "name": "ghc_worker",
+          "allowed": [
+            0
+          ]
+        }
+      ],
+      "placement": {
+        "tasks": [
+          {
+            "tid": 1,
+            "name": "battleship-serv",
+            "allowed": [
+              0
+            ]
+          },
+          {
+            "tid": 10,
+            "name": "ghc_worker",
+            "allowed": [
+              0
+            ]
+          },
+          {
+            "tid": 11,
+            "name": "ghc_worker",
+            "allowed": [
+              0
+            ]
+          },
+          {
+            "tid": 7,
+            "name": "ghc_ticker",
+            "allowed": [
+              0
+            ]
+          },
+          {
+            "tid": 8,
+            "name": "ghc_worker",
+            "allowed": [
+              0
+            ]
+          },
+          {
+            "tid": 9,
+            "name": "ghc_worker",
+            "allowed": [
+              0
+            ]
+          }
+        ],
+        "cpuSamples": [
+          {
+            "tid": 1,
+            "lastCpu": 0
+          },
+          {
+            "tid": 10,
+            "lastCpu": 0
+          },
+          {
+            "tid": 11,
+            "lastCpu": 0
+          },
+          {
+            "tid": 7,
+            "lastCpu": 0
+          },
+          {
+            "tid": 8,
+            "lastCpu": 0
+          },
+          {
+            "tid": 9,
+            "lastCpu": 0
+          }
+        ],
+        "memory": {
+          "rows": [
+            {
+              "address": "00400000",
+              "policy": "default",
+              "privateAnonymous": false,
+              "pages": {
+                "0": 496
+              }
+            },
+            {
+              "address": "00721000",
+              "policy": "default",
+              "privateAnonymous": false,
+              "pages": {
+                "0": 1
+              }
+            },
+            {
+              "address": "00722000",
+              "policy": "default",
+              "privateAnonymous": false,
+              "pages": {
+                "0": 56
+              }
+            },
+            {
+              "address": "0075a000",
+              "policy": "default",
+              "privateAnonymous": true,
+              "pages": {
+                "0": 3
+              }
+            },
+            {
+              "address": "0f08f000",
+              "policy": "default",
+              "privateAnonymous": true,
+              "pages": {
+                "0": 14
+              }
+            },
+            {
+              "address": "4200000000",
+              "policy": "default",
+              "privateAnonymous": true,
+              "pages": {
+                "0": 98
+              }
+            },
+            {
+              "address": "4200600000",
+              "policy": "default",
+              "privateAnonymous": false,
+              "pages": {}
+            },
+            {
+              "address": "7dfcf8000000",
+              "policy": "default",
+              "privateAnonymous": true,
+              "pages": {
+                "0": 5
+              }
+            },
+            {
+              "address": "7dfcf8021000",
+              "policy": "default",
+              "privateAnonymous": false,
+              "pages": {}
+            },
+            {
+              "address": "7dfcfc000000",
+              "policy": "default",
+              "privateAnonymous": true,
+              "pages": {
+                "0": 1
+              }
+            },
+            {
+              "address": "7dfcfc021000",
+              "policy": "default",
+              "privateAnonymous": false,
+              "pages": {}
+            },
+            {
+              "address": "7dfd00000000",
+              "policy": "default",
+              "privateAnonymous": true,
+              "pages": {
+                "0": 1
+              }
+            },
+            {
+              "address": "7dfd00021000",
+              "policy": "default",
+              "privateAnonymous": false,
+              "pages": {}
+            },
+            {
+              "address": "7dfd04000000",
+              "policy": "default",
+              "privateAnonymous": true,
+              "pages": {
+                "0": 1
+              }
+            },
+            {
+              "address": "7dfd04021000",
+              "policy": "default",
+              "privateAnonymous": false,
+              "pages": {}
+            },
+            {
+              "address": "7dfd08000000",
+              "policy": "default",
+              "privateAnonymous": true,
+              "pages": {
+                "0": 1
+              }
+            },
+            {
+              "address": "7dfd08021000",
+              "policy": "default",
+              "privateAnonymous": false,
+              "pages": {}
+            },
+            {
+              "address": "7dfd0e14d000",
+              "policy": "default",
+              "privateAnonymous": false,
+              "pages": {}
+            },
+            {
+              "address": "7dfd0e14e000",
+              "policy": "default",
+              "privateAnonymous": true,
+              "pages": {
+                "0": 3
+              }
+            },
+            {
+              "address": "7dfd0e94e000",
+              "policy": "default",
+              "privateAnonymous": false,
+              "pages": {}
+            },
+            {
+              "address": "7dfd0e94f000",
+              "policy": "default",
+              "privateAnonymous": true,
+              "pages": {
+                "0": 3
+              }
+            },
+            {
+              "address": "7dfd0f14f000",
+              "policy": "default",
+              "privateAnonymous": false,
+              "pages": {}
+            },
+            {
+              "address": "7dfd0f150000",
+              "policy": "default",
+              "privateAnonymous": true,
+              "pages": {
+                "0": 3
+              }
+            },
+            {
+              "address": "7dfd0f950000",
+              "policy": "default",
+              "privateAnonymous": false,
+              "pages": {}
+            },
+            {
+              "address": "7dfd0f951000",
+              "policy": "default",
+              "privateAnonymous": true,
+              "pages": {
+                "0": 3
+              }
+            },
+            {
+              "address": "7dfd10151000",
+              "policy": "default",
+              "privateAnonymous": true,
+              "pages": {
+                "0": 1
+              }
+            },
+            {
+              "address": "7dfd101aa000",
+              "policy": "default",
+              "privateAnonymous": false,
+              "pages": {}
+            },
+            {
+              "address": "7dfd101ab000",
+              "policy": "default",
+              "privateAnonymous": true,
+              "pages": {
+                "0": 2
+              }
+            },
+            {
+              "address": "7dfd109ab000",
+              "policy": "default",
+              "privateAnonymous": true,
+              "pages": {
+                "0": 2
+              }
+            },
+            {
+              "address": "7dfd10dad000",
+              "policy": "default",
+              "privateAnonymous": false,
+              "pages": {
+                "0": 7
+              }
+            },
+            {
+              "address": "7dfd10db4000",
+              "policy": "default",
+              "privateAnonymous": false,
+              "pages": {
+                "0": 32
+              }
+            },
+            {
+              "address": "7dfd10e0b000",
+              "policy": "default",
+              "privateAnonymous": true,
+              "pages": {
+                "0": 2
+              }
+            },
+            {
+              "address": "7dfd10e0e000",
+              "policy": "default",
+              "privateAnonymous": false,
+              "pages": {
+                "0": 37
+              }
+            },
+            {
+              "address": "7dfd10e34000",
+              "policy": "default",
+              "privateAnonymous": false,
+              "pages": {
+                "0": 268
+              }
+            },
+            {
+              "address": "7dfd10f8a000",
+              "policy": "default",
+              "privateAnonymous": false,
+              "pages": {
+                "0": 38
+              }
+            },
+            {
+              "address": "7dfd10fdd000",
+              "policy": "default",
+              "privateAnonymous": false,
+              "pages": {
+                "0": 4
+              }
+            },
+            {
+              "address": "7dfd10fe1000",
+              "policy": "default",
+              "privateAnonymous": false,
+              "pages": {
+                "0": 2
+              }
+            },
+            {
+              "address": "7dfd10fe3000",
+              "policy": "default",
+              "privateAnonymous": true,
+              "pages": {
+                "0": 5
+              }
+            },
+            {
+              "address": "7dfd10ff0000",
+              "policy": "default",
+              "privateAnonymous": false,
+              "pages": {
+                "0": 11
+              }
+            },
+            {
+              "address": "7dfd10ffb000",
+              "policy": "default",
+              "privateAnonymous": false,
+              "pages": {
+                "0": 5
+              }
+            },
+            {
+              "address": "7dfd11058000",
+              "policy": "default",
+              "privateAnonymous": false,
+              "pages": {}
+            },
+            {
+              "address": "7dfd1106f000",
+              "policy": "default",
+              "privateAnonymous": false,
+              "pages": {
+                "0": 1
+              }
+            },
+            {
+              "address": "7dfd11070000",
+              "policy": "default",
+              "privateAnonymous": false,
+              "pages": {
+                "0": 1
+              }
+            },
+            {
+              "address": "7dfd11071000",
+              "policy": "default",
+              "privateAnonymous": false,
+              "pages": {
+                "0": 15
+              }
+            },
+            {
+              "address": "7dfd11081000",
+              "policy": "default",
+              "privateAnonymous": false,
+              "pages": {
+                "0": 79
+              }
+            },
+            {
+              "address": "7dfd110f5000",
+              "policy": "default",
+              "privateAnonymous": false,
+              "pages": {
+                "0": 43
+              }
+            },
+            {
+              "address": "7dfd1114f000",
+              "policy": "default",
+              "privateAnonymous": false,
+              "pages": {
+                "0": 1
+              }
+            },
+            {
+              "address": "7dfd11150000",
+              "policy": "default",
+              "privateAnonymous": false,
+              "pages": {
+                "0": 1
+              }
+            },
+            {
+              "address": "7dfd11153000",
+              "policy": "default",
+              "privateAnonymous": true,
+              "pages": {
+                "0": 2
+              }
+            },
+            {
+              "address": "7dfd11155000",
+              "policy": "default",
+              "privateAnonymous": false,
+              "pages": {}
+            },
+            {
+              "address": "7dfd11159000",
+              "policy": "default",
+              "privateAnonymous": false,
+              "pages": {}
+            },
+            {
+              "address": "7dfd1115b000",
+              "policy": "default",
+              "privateAnonymous": false,
+              "pages": {}
+            },
+            {
+              "address": "7dfd1115d000",
+              "policy": "default",
+              "privateAnonymous": false,
+              "pages": {
+                "0": 1
+              }
+            },
+            {
+              "address": "7dfd1115e000",
+              "policy": "default",
+              "privateAnonymous": false,
+              "pages": {
+                "0": 38
+              }
+            },
+            {
+              "address": "7dfd11184000",
+              "policy": "default",
+              "privateAnonymous": false,
+              "pages": {
+                "0": 10
+              }
+            },
+            {
+              "address": "7dfd1118e000",
+              "policy": "default",
+              "privateAnonymous": false,
+              "pages": {
+                "0": 2
+              }
+            },
+            {
+              "address": "7dfd11190000",
+              "policy": "default",
+              "privateAnonymous": false,
+              "pages": {
+                "0": 2
+              }
+            },
+            {
+              "address": "7fffce93f000",
+              "policy": "default",
+              "privateAnonymous": true,
+              "pages": {
+                "0": 4
+              }
+            }
+          ],
+          "privateAnonymousPages": {
+            "0": 154
+          },
+          "boundPrivatePages": 0
+        },
+        "scope": "snapshot of last CPU and private anonymous resident pages; not all future pages or physical host topology"
+      },
+      "haskellImage": "sha256:b78fff7bc1e3b9c79a8d09908e195757966180d8610b85b1e1b317bfebe98720",
+      "webImage": "sha256:b01ac11fc67f9725546fe9969a9a070b532fe76f30501bab834a3e781bddf949"
+    },
+    {
+      "profile": "numa-local",
+      "command": [
+        "4000",
+        "+RTS",
+        "-N1",
+        "-RTS"
+      ],
+      "tasks": [
+        {
+          "tid": 1,
+          "name": "battleship-serv",
+          "allowed": [
+            0
+          ]
+        },
+        {
+          "tid": 10,
+          "name": "ghc_worker",
+          "allowed": [
+            0
+          ]
+        },
+        {
+          "tid": 11,
+          "name": "ghc_worker",
+          "allowed": [
+            0
+          ]
+        },
+        {
+          "tid": 7,
+          "name": "ghc_ticker",
+          "allowed": [
+            0
+          ]
+        },
+        {
+          "tid": 8,
+          "name": "ghc_worker",
+          "allowed": [
+            0
+          ]
+        },
+        {
+          "tid": 9,
+          "name": "ghc_worker",
+          "allowed": [
+            0
+          ]
+        }
+      ],
+      "placement": {
+        "tasks": [
+          {
+            "tid": 1,
+            "name": "battleship-serv",
+            "allowed": [
+              0
+            ]
+          },
+          {
+            "tid": 10,
+            "name": "ghc_worker",
+            "allowed": [
+              0
+            ]
+          },
+          {
+            "tid": 11,
+            "name": "ghc_worker",
+            "allowed": [
+              0
+            ]
+          },
+          {
+            "tid": 7,
+            "name": "ghc_ticker",
+            "allowed": [
+              0
+            ]
+          },
+          {
+            "tid": 8,
+            "name": "ghc_worker",
+            "allowed": [
+              0
+            ]
+          },
+          {
+            "tid": 9,
+            "name": "ghc_worker",
+            "allowed": [
+              0
+            ]
+          }
+        ],
+        "cpuSamples": [
+          {
+            "tid": 1,
+            "lastCpu": 0
+          },
+          {
+            "tid": 10,
+            "lastCpu": 0
+          },
+          {
+            "tid": 11,
+            "lastCpu": 0
+          },
+          {
+            "tid": 7,
+            "lastCpu": 0
+          },
+          {
+            "tid": 8,
+            "lastCpu": 0
+          },
+          {
+            "tid": 9,
+            "lastCpu": 0
+          }
+        ],
+        "memory": {
+          "rows": [
+            {
+              "address": "00400000",
+              "policy": "default",
+              "privateAnonymous": false,
+              "pages": {
+                "0": 496
+              }
+            },
+            {
+              "address": "00721000",
+              "policy": "default",
+              "privateAnonymous": false,
+              "pages": {
+                "0": 1
+              }
+            },
+            {
+              "address": "00722000",
+              "policy": "default",
+              "privateAnonymous": false,
+              "pages": {
+                "0": 56
+              }
+            },
+            {
+              "address": "0075a000",
+              "policy": "default",
+              "privateAnonymous": true,
+              "pages": {
+                "0": 3
+              }
+            },
+            {
+              "address": "02759000",
+              "policy": "default",
+              "privateAnonymous": true,
+              "pages": {
+                "0": 14
+              }
+            },
+            {
+              "address": "4200000000",
+              "policy": "default",
+              "privateAnonymous": true,
+              "pages": {
+                "0": 98
+              }
+            },
+            {
+              "address": "4200600000",
+              "policy": "default",
+              "privateAnonymous": false,
+              "pages": {}
+            },
+            {
+              "address": "7ab8dc000000",
+              "policy": "default",
+              "privateAnonymous": true,
+              "pages": {
+                "0": 1
+              }
+            },
+            {
+              "address": "7ab8dc021000",
+              "policy": "default",
+              "privateAnonymous": false,
+              "pages": {}
+            },
+            {
+              "address": "7ab8e4000000",
+              "policy": "default",
+              "privateAnonymous": true,
+              "pages": {
+                "0": 5
+              }
+            },
+            {
+              "address": "7ab8e4021000",
+              "policy": "default",
+              "privateAnonymous": false,
+              "pages": {}
+            },
+            {
+              "address": "7ab8eaffe000",
+              "policy": "default",
+              "privateAnonymous": false,
+              "pages": {}
+            },
+            {
+              "address": "7ab8eafff000",
+              "policy": "default",
+              "privateAnonymous": true,
+              "pages": {
+                "0": 2
+              }
+            },
+            {
+              "address": "7ab8eb7ff000",
+              "policy": "default",
+              "privateAnonymous": false,
+              "pages": {}
+            },
+            {
+              "address": "7ab8eb800000",
+              "policy": "default",
+              "privateAnonymous": true,
+              "pages": {
+                "0": 3
+              }
+            },
+            {
+              "address": "7ab8ec000000",
+              "policy": "default",
+              "privateAnonymous": true,
+              "pages": {
+                "0": 1
+              }
+            },
+            {
+              "address": "7ab8ec021000",
+              "policy": "default",
+              "privateAnonymous": false,
+              "pages": {}
+            },
+            {
+              "address": "7ab8f0000000",
+              "policy": "default",
+              "privateAnonymous": true,
+              "pages": {
+                "0": 1
+              }
+            },
+            {
+              "address": "7ab8f0021000",
+              "policy": "default",
+              "privateAnonymous": false,
+              "pages": {}
+            },
+            {
+              "address": "7ab8f4000000",
+              "policy": "default",
+              "privateAnonymous": true,
+              "pages": {
+                "0": 1
+              }
+            },
+            {
+              "address": "7ab8f4021000",
+              "policy": "default",
+              "privateAnonymous": false,
+              "pages": {}
+            },
+            {
+              "address": "7ab8f8193000",
+              "policy": "default",
+              "privateAnonymous": false,
+              "pages": {}
+            },
+            {
+              "address": "7ab8f8194000",
+              "policy": "default",
+              "privateAnonymous": true,
+              "pages": {
+                "0": 3
+              }
+            },
+            {
+              "address": "7ab8f8994000",
+              "policy": "default",
+              "privateAnonymous": false,
+              "pages": {}
+            },
+            {
+              "address": "7ab8f8995000",
+              "policy": "default",
+              "privateAnonymous": true,
+              "pages": {
+                "0": 3
+              }
+            },
+            {
+              "address": "7ab8f9195000",
+              "policy": "default",
+              "privateAnonymous": true,
+              "pages": {
+                "0": 1
+              }
+            },
+            {
+              "address": "7ab8f91ee000",
+              "policy": "default",
+              "privateAnonymous": false,
+              "pages": {}
+            },
+            {
+              "address": "7ab8f91ef000",
+              "policy": "default",
+              "privateAnonymous": true,
+              "pages": {
+                "0": 2
+              }
+            },
+            {
+              "address": "7ab8f99ef000",
+              "policy": "default",
+              "privateAnonymous": true,
+              "pages": {
+                "0": 2
+              }
+            },
+            {
+              "address": "7ab8f9df1000",
+              "policy": "default",
+              "privateAnonymous": false,
+              "pages": {
+                "0": 7
+              }
+            },
+            {
+              "address": "7ab8f9df8000",
+              "policy": "default",
+              "privateAnonymous": false,
+              "pages": {
+                "0": 40
+              }
+            },
+            {
+              "address": "7ab8f9e4f000",
+              "policy": "default",
+              "privateAnonymous": true,
+              "pages": {
+                "0": 2
+              }
+            },
+            {
+              "address": "7ab8f9e52000",
+              "policy": "default",
+              "privateAnonymous": false,
+              "pages": {
+                "0": 37
+              }
+            },
+            {
+              "address": "7ab8f9e78000",
+              "policy": "default",
+              "privateAnonymous": false,
+              "pages": {
+                "0": 216
+              }
+            },
+            {
+              "address": "7ab8f9fce000",
+              "policy": "default",
+              "privateAnonymous": false,
+              "pages": {
+                "0": 50
+              }
+            },
+            {
+              "address": "7ab8fa021000",
+              "policy": "default",
+              "privateAnonymous": false,
+              "pages": {
+                "0": 4
+              }
+            },
+            {
+              "address": "7ab8fa025000",
+              "policy": "default",
+              "privateAnonymous": false,
+              "pages": {
+                "0": 2
+              }
+            },
+            {
+              "address": "7ab8fa027000",
+              "policy": "default",
+              "privateAnonymous": true,
+              "pages": {
+                "0": 5
+              }
+            },
+            {
+              "address": "7ab8fa034000",
+              "policy": "default",
+              "privateAnonymous": false,
+              "pages": {
+                "0": 11
+              }
+            },
+            {
+              "address": "7ab8fa03f000",
+              "policy": "default",
+              "privateAnonymous": false,
+              "pages": {
+                "0": 16
+              }
+            },
+            {
+              "address": "7ab8fa09c000",
+              "policy": "default",
+              "privateAnonymous": false,
+              "pages": {}
+            },
+            {
+              "address": "7ab8fa0b3000",
+              "policy": "default",
+              "privateAnonymous": false,
+              "pages": {
+                "0": 1
+              }
+            },
+            {
+              "address": "7ab8fa0b4000",
+              "policy": "default",
+              "privateAnonymous": false,
+              "pages": {
+                "0": 1
+              }
+            },
+            {
+              "address": "7ab8fa0b5000",
+              "policy": "default",
+              "privateAnonymous": false,
+              "pages": {
+                "0": 15
+              }
+            },
+            {
+              "address": "7ab8fa0c5000",
+              "policy": "default",
+              "privateAnonymous": false,
+              "pages": {
+                "0": 75
+              }
+            },
+            {
+              "address": "7ab8fa139000",
+              "policy": "default",
+              "privateAnonymous": false,
+              "pages": {
+                "0": 55
+              }
+            },
+            {
+              "address": "7ab8fa193000",
+              "policy": "default",
+              "privateAnonymous": false,
+              "pages": {
+                "0": 1
+              }
+            },
+            {
+              "address": "7ab8fa194000",
+              "policy": "default",
+              "privateAnonymous": false,
+              "pages": {
+                "0": 1
+              }
+            },
+            {
+              "address": "7ab8fa197000",
+              "policy": "default",
+              "privateAnonymous": true,
+              "pages": {
+                "0": 2
+              }
+            },
+            {
+              "address": "7ab8fa199000",
+              "policy": "default",
+              "privateAnonymous": false,
+              "pages": {}
+            },
+            {
+              "address": "7ab8fa19d000",
+              "policy": "default",
+              "privateAnonymous": false,
+              "pages": {}
+            },
+            {
+              "address": "7ab8fa19f000",
+              "policy": "default",
+              "privateAnonymous": false,
+              "pages": {}
+            },
+            {
+              "address": "7ab8fa1a1000",
+              "policy": "default",
+              "privateAnonymous": false,
+              "pages": {
+                "0": 1
+              }
+            },
+            {
+              "address": "7ab8fa1a2000",
+              "policy": "default",
+              "privateAnonymous": false,
+              "pages": {
+                "0": 38
+              }
+            },
+            {
+              "address": "7ab8fa1c8000",
+              "policy": "default",
+              "privateAnonymous": false,
+              "pages": {
+                "0": 10
+              }
+            },
+            {
+              "address": "7ab8fa1d2000",
+              "policy": "default",
+              "privateAnonymous": false,
+              "pages": {
+                "0": 2
+              }
+            },
+            {
+              "address": "7ab8fa1d4000",
+              "policy": "default",
+              "privateAnonymous": false,
+              "pages": {
+                "0": 2
+              }
+            },
+            {
+              "address": "7ffe3efc4000",
+              "policy": "default",
+              "privateAnonymous": true,
+              "pages": {
+                "0": 5
+              }
+            }
+          ],
+          "privateAnonymousPages": {
+            "0": 154
+          },
+          "boundPrivatePages": 0
+        },
+        "scope": "snapshot of last CPU and private anonymous resident pages; not all future pages or physical host topology"
+      },
+      "haskellImage": "sha256:b78fff7bc1e3b9c79a8d09908e195757966180d8610b85b1e1b317bfebe98720",
+      "webImage": "sha256:b01ac11fc67f9725546fe9969a9a070b532fe76f30501bab834a3e781bddf949"
+    }
+  ]
+}

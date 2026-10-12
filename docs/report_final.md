@@ -1,6 +1,6 @@
 # Báo cáo tổng thể đồ án BattleShip Haskell
 
-**Bản đối chiếu:** 2026-10-10, nhánh `Update_docs_report`, nền `8bd7da92c083bcf9d8119f5c786342f9496c6cd7`. Báo cáo tổng hợp yêu cầu trong cuộc trao đổi, lịch sử Git, mã Haskell/frontend/scripts/Docker và hồ sơ kiểm thử. Lý do thiết kế là các căn cứ kỹ thuật kiểm chứng được: yêu cầu, phương án, đánh đổi và kết quả; không suy đoán lời xác nhận của thành viên.
+**Bản đối chiếu cập nhật:** 2026-10-12, nhánh `Update_NUMA`, nền `788f8396638344e7a38fd2428d84feac2a9b5e38` + các thay đổi NM-07..09 chưa commit. Bản trước ngày 2026-10-10 dùng nền `8bd7da9` trên `Update_docs_report`. Báo cáo tổng hợp yêu cầu, mã và hồ sơ kiểm thử; phần affinity/locality/cache/NUMA có kết quả chi tiết ở [numa_acceptance.md](numa_acceptance.md). Lý do thiết kế là căn cứ kỹ thuật kiểm chứng được: yêu cầu, phương án, đánh đổi và kết quả; không suy đoán lời xác nhận của thành viên hoặc ghi SHA nộp chưa tồn tại.
 
 Hồ sơ nghiệm thu lõi thuần S-02 trước đây dùng tên `report_final.md` được bảo tồn tại [s02_acceptance.md](s02_acceptance.md). [Chỉ mục tài liệu](README.md) hướng dẫn đọc theo mục đích.
 
@@ -17,6 +17,7 @@ Ban đầu là terminal/localhost. Sau S-04, người dùng yêu cầu ghép gia
 - Bridge Node chuyển WebSocket–TCP, giữ một TCP cho mỗi phiên người chơi.
 - Hai image/Compose `haskell` và `web`; Windows helper cập nhật origin LAN.
 - Hspec, QuickCheck, test STM/TCP/frontend/bridge/runtime/Compose và log/ảnh nghiệm thu.
+- GameWorker sở hữu xử lý, mailbox giới hạn, Fleet metadata bất biến và công cụ kiểm chứng CPU/RAM/runtime profile; benchmark có seed/source hash và số liệu chi phí.
 
 Phạm vi: một phòng, hai slot cố định, một trận mỗi lần chạy Haskell. Không có AI, nhiều phòng, tài khoản, lưu trận, phục hồi sau restart hoặc chế độ Trinh sát. Tự bố trí tàu ở UI là hỗ trợ nhập, không phải AI chơi.
 
@@ -42,6 +43,9 @@ Task/phụ thuộc/commit đầy đủ: [development_history.md](development_his
 | A-06/B-06 | Generator độc lập, property ≥1.000 trường hợp | Đa dạng hơn fixture thủ công; có coverage và phản ví dụ |
 | C-07 | Queue 128, batch nguyên tử, chỗ kết thúc, Quit client chậm | Giới hạn bộ đệm và tránh chờ socket chậm trong giao dịch |
 | DK-01..09 | Config, image Linux, helper host, Compose, nghiệm thu/hướng dẫn | Chạy cùng môi trường, đúng cổng public, healthcheck không chiếm slot, dừng sạch |
+| NM-01..04 | Hợp đồng đo, topology, baseline, affinity có verify | Không cố định CPU/node; nối capability với thực thi thực tế, chưa mặc định pin |
+| NM-05..06 | Worker ownership/control và Fleet occupied/UArray | Giữ một state, shutdown tiến triển; dùng lại hình học bất biến, đo cả chi phí |
+| NM-07..09 | CPU–RAM placement, hồi quy profile, kết luận và default đề xuất | Không gắn nhãn remote/NUMA speedup khi thiếu phần cứng; phân biệt tính đúng và hiệu năng |
 
 **Lỗi thật C-05:** đóng socket khi còn input chưa đọc có thể gây TCP reset và mất `GAME_OVER`. Sửa bằng gửi hết FIFO, half-close chiều gửi, reader hiện hữu đọc bỏ input bằng buffer hữu hạn, sau 200 ms đóng; watchdog gửi 2 giây vẫn hoạt động. Test trước/sau nằm trong [test_evidence.md](test_evidence.md). Không nuốt lỗi trong test để coi mất phản hồi là thành công.
 
@@ -53,7 +57,11 @@ Task/phụ thuộc/commit đầy đủ: [development_history.md](development_his
 flowchart LR
   P[React hoặc terminal] --> T[WebSocket bridge hoặc TCP]
   T --> S[Server: framing và actor socket]
-  S --> C[Coordinator: STM]
+  S --> M[Mailbox TBQueue 32]
+  S --> D[EOF / stop: control riêng]
+  M --> W[GameWorker capability chọn]
+  D --> W
+  W --> C[Coordinator: STM]
   C --> R[Rules.step / Board thuần]
   R --> C
   C <--> G[(Một TVar GameState)]
@@ -69,8 +77,8 @@ flowchart LR
 
 1. Chỉnh nháp cục bộ; UI/terminal báo lỗi trước khi gửi.
 2. Kết nối nhận `WELCOME 1 P1/P2`; danh tính do server gán, không nằm trong PLACE.
-3. Parser tạo danh sách `ShipPlacement`, giữ ID trùng để Board phát hiện.
-4. `step` kiểm tra phase/đã đặt; `placeFleet` kiểm tra năm ID, hình học/giao nhau. Chỉ `Right Fleet` được gắn vào người chơi.
+3. Reader gửi payload qua mailbox; GameWorker xử lý parser/coordinator và trả ack. Parser giữ ID trùng để Board phát hiện; lỗi parser/dòng quá dài cũng đi cùng worker.
+4. `step` kiểm tra phase/đã đặt; `placeFleet` kiểm tra năm ID, hình học/giao nhau rồi tạo geometry + occupied + UArray 100 ô nhất quán. Chỉ `Right Fleet` được gắn vào người chơi.
 5. Người đặt đầu nhận `OK PLACE`, `WAITING OPPONENT`. Người đặt cuối nhận OK; cả hai nhận `START P1`, `TURN P1`.
 6. State và toàn bộ frame commit cùng STM; writer từng socket gửi FIFO sau đó.
 
@@ -79,7 +87,7 @@ flowchart LR
 ### 4.2 Bắn
 
 1. UI đợi TURN, khóa click ngay bằng ref, gửi FIRE, chờ phản hồi. Cố gửi sai vẫn bị Haskell kiểm tra.
-2. Parser kiểm tra cú pháp; Rules kiểm tra readiness → lượt → tọa độ → bắn lặp → fleet đích.
+2. Reader gửi qua worker; parser kiểm tra cú pháp; Rules kiểm tra readiness → lượt → tọa độ → bắn lặp → fleet đích. Bảng tra cứu kiểm tra ngoài bàn trước index, không thay luật.
 3. Thêm ô vào lịch sử **người bắn**; xét fleet đích và tập ô đã bắn để chọn MISS/HIT/SUNK/WIN. WIN ưu tiên hơn SUNK ở ô cuối toàn fleet.
 4. `ShotResolved` thành SHOT cho người bắn, INCOMING cho đối thủ; TURN/GAME_OVER theo sau.
 5. Coordinator encode batch và kiểm tra dung lượng cả hai queue trước khi ghi; không IO mạng trong STM.
@@ -97,6 +105,7 @@ Chìm xét theo ShipId, không gom tàu chạm cạnh thành vùng liên thông.
 | Hết hạn web | QUIT qua TCP đúng phiên | Haskell vẫn quyết định bỏ cuộc |
 | Bấm Rời trận khi đang kết nối | QUIT ngay | Chủ động bỏ cuộc, không dùng grace period |
 | Queue thiếu chỗ | Bỏ batch/nước gây tràn; Quit người nhận chậm từ state cũ | Không để state mới mà thiếu SHOT/TURN |
+| Mailbox đầy / worker cancel | Control EOF/stop riêng; supervise worker, đánh thức ack waiter | Không chờ slot thường để dọn, không bịa thắng do lỗi nội bộ |
 | Restart/host tắt/Engine dừng | Phiên RAM mất, cần trận mới | Không có persistence GameState/token |
 
 Hạn resume bắt đầu khi bridge **phát hiện** WebSocket mất; không đo chính xác từ thời điểm Wi-Fi ngắt. Ping 10 giây, mất im lặng thường phát hiện khoảng hai chu kỳ; scheduling/mạng có thể tăng độ trễ. Thiếu người thì bridge chặn PLACE/FIRE của các phiên web, vẫn cho QUIT. Đây là chính sách web, không thêm phase vào lõi.
@@ -106,12 +115,13 @@ Hạn resume bắt đầu khi bridge **phát hiện** WebSocket mất; không đ
 | File | Nội dung / lợi ích |
 |---|---|
 | [Types.hs](../src/Battleship/Types.hs) | ADT/record/chữ ký thống nhất người, tàu, phase, lệnh/sự kiện/lỗi/góc nhìn |
-| [Internal/Fleet.hs](../src/Battleship/Internal/Fleet.hs) | Biểu diễn private, tránh vòng import, ngăn caller package dựng Fleet sai |
-| [Board.hs](../src/Battleship/Board.hs) | Constructor kiểm tra; Set phát hiện chồng, Map giữ ShipId |
+| [Internal/Fleet.hs](../src/Battleship/Internal/Fleet.hs) | Geometry + occupied + UArray private, tránh vòng import, ngăn caller dựng metadata sai |
+| [Board.hs](../src/Battleship/Board.hs) | Constructor kiểm tra; Set phát hiện chồng, Map giữ ShipId; fleetCells/shipAt đọc metadata |
 | [Rules.hs](../src/Battleship/Rules.hs) | `step` thuần, mọi Command/Phase, một nguồn luật |
 | [View.hs](../src/Battleship/View.hs) | Phép chiếu chỉ dữ liệu cho phép; không copy hình học đối thủ |
 | [Protocol.hs](../src/Battleship/Protocol.hs) | Codec ASCII/dòng 256 byte, framing, lỗi wire và recipient |
 | [Coordinator.hs](../src/Battleship/Coordinator.hs) | TVar/queue, batch, commit hoặc Quit quá tải |
+| [GameWorker.hs](../src/Battleship/GameWorker.hs) | Capability/ownership, mailbox 32/control/ack, supervision và evaluation |
 | [Server.hs](../src/Battleship/Server.hs) | Listener/slot/worker/timeout/readiness/cleanup |
 | [Client.hs](../src/Battleship/Client.hs) | Nhập nháp/bắn/hiển thị terminal, chờ event server |
 | [App.tsx](../frontend/App.tsx), [game.ts](../frontend/game.ts), [connection.ts](../frontend/connection.ts) | Trình bày, nháp, wire/public view, resume/replay |
@@ -130,8 +140,9 @@ Luồng và hằng số: [architecture.md](architecture.md). Đánh đổi/phư�
 Đối chiếu đủ 14 PDF theo **trang vật lý tính từ 1**, vì số slide in trong tài liệu ADT không luôn trùng số trang. [slide_mapping.md](slide_mapping.md) ghi trang/source/mức áp dụng/giới hạn.
 
 - Trực tiếp: pure function/immutable, lambda/higher order/composition, kiểu/ADT/Maybe/Either/pattern matching, module/package/snapshot, Hspec/QuickCheck, thread/MVar/STM, supervision/cleanup, producer–consumer/pipeline, message/file passing và TCP client–server.
+- Đợt NM: capability placement tương ứng forkOn qua withAsyncOn, affinity có kiểm chứng, locality xử lý, metadata/mảng thử spatial locality, CPU–RAM node0 và profiling có phạm vi.
 - Mở rộng: React/TypeScript/Vite/pnpm, WebSocket/token resume/Origin/Host, Dockerfile/Compose/healthcheck, atomic rename Windows/TTL allowlist và Playwright/test container.
-- Chưa triển khai: pin thread NUMA, GPU/SIMD, Map–Reduce, Kafka/RabbitMQ, Cloud Haskell, mmap/shared memory liên process, NFS/RPC filesystem/replication/consensus.
+- Chưa nghiệm thu: remote NUMA nhiều node, GHC NUMA pools, cache PMU, hai thiết bị Wi-Fi vật lý. Chưa triển khai GPU/SIMD, Map–Reduce, Kafka/RabbitMQ, Cloud Haskell, mmap/shared memory liên process, NFS/RPC filesystem/replication/consensus.
 
 QuickCheck **có trong Chap8**, không ghi là hoàn toàn ngoài slide. C-07 dùng TBQueue của Chap9 nhưng chọn Quit khi quá tải thay chờ writeTBQueue đầy: yêu cầu giữ tiến triển của trận và đường kết thúc là lý do điều chỉnh.
 
@@ -146,6 +157,9 @@ QuickCheck **có trong Chap8**, không ghi là hoàn toàn ngoài slide. C-07 d�
 | DK-08 Compose | 19/19, 0 skip | Health/slot/trận/lỗi/riêng tư/resume/restart/chậm/down |
 | DK-08 Chrome/Edge cùng Windows host | 1/1 trận UI, reload, thắng/thua | Hai process/profile độc lập qua LAN IP cùng host |
 | DK-09 build/bàn giao | 908 Haskell, 36 frontend; 8 vận hành; 10 S-01 | Lệnh helper/port 8082/trận mới/log/stop/down chạy lại |
+| NM-08 native N1/N2, 2026-10-12 | Mỗi profile 943 functional +18 fixture, 0 lỗi | Werror, A-06/B-06/FleetIndex, worker/concurrency |
+| NM-08 Linux sáu profile | Mỗi profile 944 functional +18 fixture; Compose tổng 78/78 | Affinity/local/membind, cùng transcript3 seed; remote/GHCNUMA chưa nghiệm thu |
+| NM-08 frontend và UI | 51 unit/helper +11 integration; TS/Vite; hai browser process mỗi profile | Same-host UI, không hai thiết bị thật; script final 119/119 |
 
 Không cộng các lần chạy hoặc dữ liệu QuickCheck thành “tổng unit test”. Một example property chạy nhiều dữ liệu; một ca integration chứa cả ván. Clock kiểm soát/hạn fixture ngắn không phải chờ 5 phút thời gian thực. Test chứng minh các trường hợp đã chạy, không chứng minh mọi lịch trình mạng không còn lỗi.
 
@@ -180,9 +194,39 @@ Package hiện ghi `AllRightsReserved`. Khi lấy thêm mã/asset ngoài, nhóm 
 | R9-S03-01 terminal 80 cột | TODO: câu kết thúc 81 ký tự wrap; luật vẫn đúng | Rút/chia dòng, regression renderer, chạy console lại |
 | Thông tin bản nộp/nguồn asset | Chưa có đầy đủ tác giả/lớp/ngày/nguồn ảnh | R bổ sung thông tin thật |
 | Persistence/Internet | Ngoài MVP; RAM mất, HTTP không mã hóa | Chỉ mở task nếu đổi yêu cầu, không mô tả đã có |
+| NUMA/cache đo phần cứng | Guest chỉ một RAM node; compiler không NUMA, thiếu PMU | Host phù hợp/compiler mới, baseline/gate/placement riêng; không tính pass |
+| Default/commit nộp NM-09 | Đề xuất N1 opt-in, base vẫn auto-N; chưa SHA nộp/xác nhận nhóm | Review cùng revision, chạy override hướng dẫn và ghi SHA thật |
 
 Các gate kỹ thuật có bằng chứng xanh; không ghi nhận lỗi luật/riêng tư đang mở trong hồ sơ hiện có. Điều này không thay test thực địa/review. AI/nhiều phòng/lưu trận/TLS Internet là hướng phát triển có điều kiện, không cần thêm để hoàn thành phạm vi hiện tại.
 
 ## 11. Kết luận
 
 Hàm thuần/ADT tổ chức lõi; module tạo hợp đồng; STM commit state/event; supervision quản lý socket; message passing nối client. UI/LAN/Docker thêm sau để thuận tiện chơi/triển khai, vẫn giữ Haskell quyết định luật. Lợi ích là dễ test, rõ trách nhiệm, client chậm không gây mất đồng bộ; đánh đổi là codec/bridge và phiên chỉ sống khi tiến trình còn chạy. Báo cáo hoàn chỉnh về hiện trạng kỹ thuật; chốt nhóm/bản nộp cần thông tin thật ở mục 10.
+
+## 12. Đánh giá affinity, locality, cache và NUMA — NM-09
+
+Lý do mở đợt NM không phải game cần nhiều CPU để bắn một ô, mà để biến kiến thức phần cứng/runtime thành cơ chế có thể kiểm tra và đo chi phí. Một trận tuần tự được giữ là bối cảnh đo, không mở nhiều phòng hoặc thêm dữ liệu giả để tìm kết quả thuận lợi.
+
+### 12.1 Quyền xử lý và locality
+
+Trước NM-05 các reader submit coordinator; sau thay đổi, reader chỉ tiếp nhận socket/framing và gửi request/đợi ack. Một GameWorker khởi tạo coordinator và xử lý trên capability chọn. Mailbox32 giới hạn request, control EOF/stop không chờ slot, outbox 128 có reserved terminal path. Đây là bounded producer–consumer và scoped supervision theo Chap5/7/9. STM vẫn commit state/batch vì writers/cleanup còn đồng thời; một worker không thay toàn bộ trách nhiệm transaction.
+
+Lựa chọn này làm ownership rõ và có test failure/queue/full/100 vòng, nhưng thêm envelope/ack/vòng đời. Allocation worker harness tăng khoảng 5,6–5,7%; timing worker NM-05 bị drift vượt 10%. Vì vậy bảo vệ worker bằng tính đúng và khả năng kiểm soát thực thi, không bằng lời hứa tăng tốc chưa đo được. OS/GC có thể bố trí RAM khác nơi khởi tạo; capability placement chỉ là một mức của locality.
+
+### 12.2 Dữ liệu bất biến thay việc tính lặp
+
+Fleet geometry không đổi sau đặt nên occupied Set và index 100 ô tính một lần trong smart constructor rồi đọc nhiều lần. Constructor private bảo đảm geometry/metadata cùng hợp lệ; shipAt guard tọa độ trước arithmetic, chìm vẫn theo ShipId. Không thêm state bắn thứ hai hoặc counter mutable cần cập nhật song song.
+
+Cặp replay lõi NM-06 cùng container/source flags cho median giảm7,4–7,7%, allocation giảm 3,32%. Chi phí constructor allocation tăng 30,82%, retained fixture tăng khoảng 900 byte/Fleet. Đây là sự đổi giữa chi phí một lần và dùng lại. UArray unboxed là thử spatial locality, không chứng minh cacheCPU L1/L2/L3: chưa có PMU/cache-miss counter. Chọn metadata có kiểm chứng và API tương thích thay viết lại toàn bộ Fleet/luật thành mảng mutable.
+
+### 12.3 CPU/RAM có kiểm chứng và giới hạn môi trường
+
+Topology lấy từ Linux được cấp, không cố định theo Windows host. Affinity override kiểm tra cpuset sau create và task mask sau start; N/capability không đồng nhất CPU/core/node, affinity không độc quyền. NUMA launcher đặt CpusetMems trước process, kiểm tra private resident pages; membind/node0 và signal/cleanup qua. Remote node B thiếu và GHCbinary không NUMAsupport nên còn unaccepted.
+
+Loạt repeat NM-07 CPU0/N1, default RAM5,227µs/command so local node0 5,437µs (+4,02%), allocation bằng nhau. Cả hai trong guest một node nên không phải local/remote vật lý và không cho lợi ích tốc độ. Kết quả này được giữ nguyên; phù hợp workload nhỏ và chi phí runtime, chưa phân rã từng nguyên nhân.
+
+### 12.4 Cấu hình và hồ sơ bảo vệ báo cáo
+
+Đề xuất cho một trận là N1/worker0, không pinCPU/RAM; giữ worker/Fleet metadata, luật/bridge/resume không đổi. Có [compose.report.yaml](../compose.report.yaml) opt-in để nhóm kiểm tra; base/package vẫn auto-N cho tới thống nhất. N1 qua toàn bộ NM-08, ít bộ nhớ RTS hơn trong baseline; N2/N12 chưa cải thiện mạng ≥5%. Không suy lựa chọn này sang nhiều phòng/phần cứng khác.
+
+[numa_acceptance.md](numa_acceptance.md) là chương bằng chứng mở rộng: số liệu từng layer, ghép cặp và combined, topology/OS/Docker/GHC/hash/seed/lệnh, stability, memory cost, metric N/A, sourcebaseline khôi phục 24/25 file và một harness cache kháchash. [slide_mapping.md](slide_mapping.md) nối từng kiến thức/trang với code/test. Phép đo game lặp để nhìn heap không phải syntheticRAM latency, loopback không phải hai máy Wi-Fi. Nhóm còn phải xác nhận cùng commit thật trước nộp; không ghi thay thành viên.

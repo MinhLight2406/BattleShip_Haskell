@@ -1,0 +1,4 @@
+# Preserve captured artifact bytes and their SHA-256 across Windows/Linux checkouts.
+docs/numa_data/** -text -whitespace
+docs/runtime_data/** -text -whitespace
+docs/numa_acceptance_data/** -text -whitespace

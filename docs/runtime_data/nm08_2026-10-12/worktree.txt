@@ -1,0 +1,23 @@
+ M .gitignore
+ M README.md
+ M docker/README.md
+ M docker/benchmark.Dockerfile
+ M docker/haskell.Dockerfile
+ M docs/README.md
+ M docs/shared_contract.md
+ M docs/testing.md
+ M scripts/test-compose.mjs
+ M test/CoordinatorSpec.hs
+ M test/GameWorkerSpec.hs
+?? .env.numa.example
+?? compose.numa.yaml
+?? docker/numa-entrypoint.sh
+?? docs/numa_data/
+?? docs/numa_experiments.md
+?? docs/runtime_regression.md
+?? scripts/benchmark-numa.mjs
+?? scripts/start-numa.mjs
+?? scripts/test-runtime-profiles.mjs
+?? scripts/test/numa-compose.test.mjs
+?? scripts/test/numa-config.test.mjs
+?? scripts/test/runtime-profiles.test.mjs

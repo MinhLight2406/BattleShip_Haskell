@@ -1,0 +1,14 @@
+{
+  "name": "N1",
+  "config": {
+    "capabilities": 1,
+    "gameCapability": 0,
+    "haskell": null,
+    "web": null,
+    "mems": null,
+    "mode": "container",
+    "policy": "cpuset",
+    "sysNice": false,
+    "ghcNuma": null
+  }
+}

@@ -1,0 +1,14 @@
+# LTS 24.59 selects GHC 9.10.3 and a fixed dependency set.
+resolver: lts-24.59
+
+packages:
+  - .
+
+# Reuse a matching GHC on PATH; Stack can install it if unavailable.
+system-ghc: true
+
+# Hspec uses ansi-terminal. Compile its C probes without executing them,
+# including on Windows machines with Application Control enabled.
+configure-options:
+  ansi-terminal:
+    - --hsc2hs-option=--cross-compile

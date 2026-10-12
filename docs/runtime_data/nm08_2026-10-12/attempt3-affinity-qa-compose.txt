@@ -1,0 +1,104 @@
+TAP version 13
+# Subtest: DK-07: 100 health probes preserve P1/P2; stop cleans real sockets and restart reuses the port
+ok 1 - DK-07: 100 health probes preserve P1/P2; stop cleans real sockets and restart reuses the port
+  ---
+  duration_ms: 29476.7486
+  type: 'test'
+  ...
+# Subtest: DK-07: one match exits without restart; start haskell opens a new match; down releases containers/network
+ok 2 - DK-07: one match exits without restart; start haskell opens a new match; down releases containers/network
+  ---
+  duration_ms: 35775.606
+  type: 'test'
+  ...
+# Subtest: NM-08: three locked seeds have complete, identical private transcripts under the selected runtime
+ok 3 - NM-08: three locked seeds have complete, identical private transcripts under the selected runtime
+  ---
+  duration_ms: 35614.6211
+  type: 'test'
+  ...
+# Subtest: DK-08: strict Origin/Host rejection cannot allocate a slot; both players resume their own private history
+ok 4 - DK-08: strict Origin/Host rejection cannot allocate a slot; both players resume their own private history
+  ---
+  duration_ms: 13249.8387
+  type: 'test'
+  ...
+# Subtest: DK-08: exact five-minute clock boundary while placing forfeits the correct player
+ok 5 - DK-08: exact five-minute clock boundary while placing forfeits the correct player
+  ---
+  duration_ms: 15913.263
+  type: 'test'
+  ...
+# Clock fixture imports unmodified /app/bridge.mjs; default RECONNECT_GRACE_MS remains 300000, winner comes from real Haskell Quit.
+# Subtest: DK-08: exact five-minute clock boundary during battle after a successful resume forfeits the correct player
+ok 6 - DK-08: exact five-minute clock boundary during battle after a successful resume forfeits the correct player
+  ---
+  duration_ms: 18177.7356
+  type: 'test'
+  ...
+# Clock fixture imports unmodified /app/bridge.mjs; default RECONNECT_GRACE_MS remains 300000, winner comes from real Haskell Quit.
+# Subtest: DK-08: restarting haskell mid-game closes old sessions and never restores old state
+ok 7 - DK-08: restarting haskell mid-game closes old sessions and never restores old state
+  ---
+  duration_ms: 19550.8483
+  type: 'test'
+  ...
+# Subtest: DK-08: restarting web mid-game closes old sessions and never restores old state
+ok 8 - DK-08: restarting web mid-game closes old sessions and never restores old state
+  ---
+  duration_ms: 21090.8795
+  type: 'test'
+  ...
+# Subtest: DK-08: concurrent WebSocket shots have one valid actor and exactly one update per target
+ok 9 - DK-08: concurrent WebSocket shots have one valid actor and exactly one update per target
+  ---
+  duration_ms: 13610.1421
+  type: 'test'
+  ...
+# Subtest: DK-08: C-07 P1 stops reading TCP; server and sockets exit within deadline
+ok 10 - DK-08: C-07 P1 stops reading TCP; server and sockets exit within deadline
+  ---
+  duration_ms: 15456.0614
+  type: 'test'
+  ...
+# Subtest: DK-08: C-07 P2 stops reading TCP; server and sockets exit within deadline
+ok 11 - DK-08: C-07 P2 stops reading TCP; server and sockets exit within deadline
+  ---
+  duration_ms: 15521.8284
+  type: 'test'
+  ...
+# Subtest: DK-08: C-07 both clients stops reading TCP; server and sockets exit within deadline
+ok 12 - DK-08: C-07 both clients stops reading TCP; server and sockets exit within deadline
+  ---
+  duration_ms: 15618.3021
+  type: 'test'
+  ...
+# Subtest: DK-08: two separate browser processes play the production React UI to victory without secret reveal
+not ok 13 - DK-08: two separate browser processes play the production React UI to victory without secret reveal
+  ---
+  duration_ms: 21571.2791
+  type: 'test'
+  location: 'C:\\Users\\nhatm\\Downloads\\Laa\\Project\\BattleShip_Haskell\\scripts\\test-compose.mjs:603:1'
+  failureType: 'testCodeFailure'
+  error: 'two distinct player slots'
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected: true
+  actual: false
+  operator: '=='
+  stack: |-
+    TestContext.<anonymous> (file:///C:/Users/nhatm/Downloads/Laa/Project/BattleShip_Haskell/scripts/test-compose.mjs:642:60)
+    async Test.run (node:internal/test_runner/test:1389:7)
+    async Test.processPendingSubtests (node:internal/test_runner/test:960:7)
+  ...
+1..13
+# tests 13
+# suites 0
+# pass 12
+# fail 1
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 270772.7557
+
+Command failed: C:\Users\nhatm\.cache\codex-runtimes\codex-primary-runtime\dependencies\node\bin\node.exe --test --test-concurrency=1 --test-reporter=tap --test-name-pattern=NM-08:|DK-07: 100 health|DK-07: one match|DK-08: strict|DK-08: exact|DK-08: restarting|DK-08: concurrent|DK-08: C-07|DK-08: two separate scripts/test-compose.mjs

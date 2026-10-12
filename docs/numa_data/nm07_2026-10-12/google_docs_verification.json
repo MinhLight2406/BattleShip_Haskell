@@ -1,0 +1,93 @@
+{
+  "documentUrl": "https://docs.google.com/document/d/1-T7iROKnpNmbHCWr-XmAnOSihwIi-Y5PacRBFk4Xyhw",
+  "documentId": "1-T7iROKnpNmbHCWr-XmAnOSihwIi-Y5PacRBFk4Xyhw",
+  "revisionId": "AHj4eMRGGe_Zjl71gduLtvMe42RoIQtIC30321AJnYbdF2MvzKY22jy4k83Nq7wUu_-6kUTsHChMDiyUWNnyb5LorXbNh5c-LZK2gi3w6_px",
+  "tabId": "t.9kdmgzitre9d",
+  "title": "NM-07 — CPU–RAM NUMA và kiểm chứng local/remote",
+  "parentTabId": "t.bskjwjzb41bq",
+  "index": 6,
+  "exactTextMatches": true,
+  "textUtf16Length": 20742,
+  "nativeHeadings": {
+    "TITLE": 1,
+    "NORMAL_TEXT": 119,
+    "HEADING_1": 12,
+    "HEADING_2": 4
+  },
+  "listParagraphs": 47,
+  "codeParagraphs": 10,
+  "preservedTabs": [
+    {
+      "tabId": "t.0",
+      "title": "Plan Sprint",
+      "bodyUnchanged": true,
+      "propertiesUnchanged": true
+    },
+    {
+      "tabId": "t.3f8lnf480yal",
+      "title": "Plan Task",
+      "bodyUnchanged": true,
+      "propertiesUnchanged": true
+    },
+    {
+      "tabId": "t.tp47wqncwp94",
+      "title": "Thẻ 3",
+      "bodyUnchanged": true,
+      "propertiesUnchanged": true
+    },
+    {
+      "tabId": "t.z2vxki9p1hdu",
+      "title": "task LAN",
+      "bodyUnchanged": true,
+      "propertiesUnchanged": true
+    },
+    {
+      "tabId": "t.smgi9li6oqib",
+      "title": "Docker Compose plan",
+      "bodyUnchanged": true,
+      "propertiesUnchanged": true
+    },
+    {
+      "tabId": "t.bskjwjzb41bq",
+      "title": "Update NUMA",
+      "bodyUnchanged": true,
+      "propertiesUnchanged": true
+    },
+    {
+      "tabId": "t.m9mq874psso8",
+      "title": "NM-01 — Hợp đồng kiến trúc và tiêu chí đo",
+      "bodyUnchanged": true,
+      "propertiesUnchanged": true
+    },
+    {
+      "tabId": "t.pte5hi1m7lt0",
+      "title": "NM-02 — Phát hiện topology và kiểm tra tài nguyên",
+      "bodyUnchanged": true,
+      "propertiesUnchanged": true
+    },
+    {
+      "tabId": "t.boqulsoufewe",
+      "title": "NM-03 — Benchmark và baseline trước tối ưu",
+      "bodyUnchanged": true,
+      "propertiesUnchanged": true
+    },
+    {
+      "tabId": "t.h4ztyl55uk",
+      "title": "NM-04 — Affinity container và GHC runtime",
+      "bodyUnchanged": true,
+      "propertiesUnchanged": true
+    },
+    {
+      "tabId": "t.aexr75u196ee",
+      "title": "NM-05 — Worker sở hữu trận và locality",
+      "bodyUnchanged": true,
+      "propertiesUnchanged": true
+    },
+    {
+      "tabId": "t.hewrnqyatiai",
+      "title": "NM-06 — Fleet tính sẵn và thử bố trí cache",
+      "bodyUnchanged": true,
+      "propertiesUnchanged": true
+    }
+  ]
+}

@@ -1,0 +1,18 @@
+✔ same samples give zero change and reproducible CI (21.4865ms)
+✔ faster median retains sign but drift disqualifies timing (6.4016ms)
+✔ zero and missing/short groups cannot become formal measurements (13.1477ms)
+✔ historical baseline has four layers, current profile retains worker (3.7241ms)
+✔ JSON parser retains a 64-bit checksum as a string and marks optional metrics missing (1.5695ms)
+✔ unsupported, invalid and null metrics never become zero (0.5836ms)
+✔ invalid required metrics/schema/checksum fail instead of producing a baseline (4.1879ms)
+✔ RTS parser handles real machine-readable pairs, optional omissions and ordinary stderr (0.6377ms)
+✔ summary computes medians, response p95 and three-block noise using measured samples (16.4517ms)
+✔ summary preserves unknown metrics and insufficient blocks as null (0.8442ms)
+ℹ tests 10
+ℹ suites 0
+ℹ pass 10
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 211.9966

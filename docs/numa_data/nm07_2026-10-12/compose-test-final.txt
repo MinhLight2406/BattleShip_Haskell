@@ -1,0 +1,21 @@
+✔ NM-07 default cpuset: placement, readiness, privacy, complete game and cleanup (28690.2501ms)
+✔ NM-07 local cpuset: placement, readiness, privacy, complete game and cleanup (28680.0752ms)
+✔ NM-07 local membind: placement, readiness, privacy, complete game and cleanup (31510.6254ms)
+﹣ NM-07 remote cpuset: placement, readiness, privacy, complete game and cleanup (901.6628ms) # Chưa nghiệm thu remote: Linux chỉ cung cấp một node CPU/RAM được phép.
+✔ NM-07 wrapper is PID 1, SIGTERM closes active peers and restart creates fresh P1 (48147.8234ms)
+✔ NM-07 numactl failure never starts the requested program; no fallback (917.5883ms)
+﹣ NM-07 GHC NUMA is separately verified or explicitly unaccepted when permission/kernel is missing (4839.2508ms) # Chưa nghiệm thu GHC NUMA: grams/DockerDesktop/resources/bin/docker.exe run --rm --network none --cap-add SYS_NICE --cpuset-cpus 0 --cpuset-mems 0 --entrypoint /usr/local/bin/battleship-server battleship-haskell:local +RTS -N1 --numa=1 --info -RTS
+battleship-server: --numa=1: This GHC build was compiled without NUMA support.
+battleship-server: Internal error in the RTS options parser
+
+battleship-server: --numa=1: This GHC build was compiled without NUMA support.
+battleship-server: Internal error in the RTS options parser
+
+ℹ tests 7
+ℹ suites 0
+ℹ pass 5
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 2
+ℹ todo 0
+ℹ duration_ms 144055.1563

@@ -21,13 +21,16 @@ CMD ["stack", "test", "--ghc-options=-Werror"]
 FROM debian:bookworm-slim@sha256:7c7b2c966bc9ee8cedfeef67e0e279108992c77681fa595db4a9d65c06ccc587 AS runtime
 
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends libgmp10 libnuma1 libffi8 libtinfo6 zlib1g \
+    && apt-get install -y --no-install-recommends libgmp10 libnuma1 numactl libffi8 libtinfo6 zlib1g \
     && rm -rf /var/lib/apt/lists/* \
     && groupadd --gid 10001 battleship \
     && useradd --uid 10001 --gid 10001 --no-create-home --home-dir /nonexistent --shell /usr/sbin/nologin battleship
 
 # Depending on test makes the runtime build fail if the Linux suite fails.
 COPY --from=test /out/battleship-server /usr/local/bin/battleship-server
+COPY docker/numa-entrypoint.sh /usr/local/bin/battleship-numa-entrypoint
+RUN sed -i 's/\r$//' /usr/local/bin/battleship-numa-entrypoint \
+    && chmod 0555 /usr/local/bin/battleship-numa-entrypoint
 RUN ldd /usr/local/bin/battleship-server > /tmp/battleship-ldd \
     && cat /tmp/battleship-ldd \
     && ! grep -q 'not found' /tmp/battleship-ldd \

@@ -149,3 +149,17 @@ Mỗi lần nghiệm thu ghi SHA hoặc working-tree nền/diff, ngày/timezone,
 | Dockerfile/Compose | Config/build/test stage, runtime/lifecycle/Compose và demo |
 
 Docs-only không yêu cầu mặc định chạy lại mọi suite container nhiều phút khi source/config không đổi; ghi rõ gate mới chạy và viện dẫn các kết quả runtime có ngày trước. Khi gate mới phát hiện rủi ro thật, mở rộng kiểm tra đúng phần đó.
+
+## 9. Hồi quy runtime NM-08
+
+`node scripts/test-runtime-profiles.mjs` chạy toàn bộ gate theo ma trận;
+xem [hồ sơ NM-08](runtime_regression.md) về preflight, chọn browser, replay,
+100 vòng race và phân biệt pass/unaccepted. Profile JSON chỉ dành cho
+harness, không đổi luật hoặc cấu hình mặc định production. Mỗi profile
+khả dụng chạy full Haskell Linux và cùng các ca Compose, có kiểm chứng
+mask/capability/pages và đối chiếu toàn bộ transcript ba seed.
+
+Không nhận số example Hspec là số race: một example có thể lặp 100 vòng.
+Deadline cleanup chống treo khác với assertion benchmark latency. Các ca
+thiếu phần cứng, compiler support hoặc browser phải được ghi rõ; không
+âm thầm bỏ cờ để làm xanh. Log/ảnh chia sẻ không chứa token phiên.

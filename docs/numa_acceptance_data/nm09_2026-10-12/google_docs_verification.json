@@ -1,0 +1,86 @@
+{
+  "verifiedAt": "2026-10-12T04:39:24.997Z",
+  "documentId": "1-T7iROKnpNmbHCWr-XmAnOSihwIi-Y5PacRBFk4Xyhw",
+  "url": "https://docs.google.com/document/d/1-T7iROKnpNmbHCWr-XmAnOSihwIi-Y5PacRBFk4Xyhw",
+  "tabId": "t.up8izhcvekm3",
+  "title": "NM-09 — Kết quả và báo cáo kiến thức",
+  "parentTabId": "t.bskjwjzb41bq",
+  "index": 8,
+  "revision": "AHj4eMS3vFwPok2e9BtGSmCKppeoITNdnH83k7E6Jfqg0Rqk__MM-xJk4B20wRcUy-RDpRa1VvyMFGMs7gzKBjCYb-ndgk3JWtRbIVHFyHrk",
+  "textExact": true,
+  "characters": 48197,
+  "nativeHeadings": 31,
+  "nativeBullets": 123,
+  "existingTabsPreserved": [
+    {
+      "tabId": "t.0",
+      "title": "Plan Sprint",
+      "unchanged": true
+    },
+    {
+      "tabId": "t.3f8lnf480yal",
+      "title": "Plan Task",
+      "unchanged": true
+    },
+    {
+      "tabId": "t.tp47wqncwp94",
+      "title": "Thẻ 3",
+      "unchanged": true
+    },
+    {
+      "tabId": "t.z2vxki9p1hdu",
+      "title": "task LAN",
+      "unchanged": true
+    },
+    {
+      "tabId": "t.smgi9li6oqib",
+      "title": "Docker Compose plan",
+      "unchanged": true
+    },
+    {
+      "tabId": "t.bskjwjzb41bq",
+      "title": "Update NUMA",
+      "unchanged": true
+    },
+    {
+      "tabId": "t.m9mq874psso8",
+      "title": "NM-01 — Hợp đồng kiến trúc và tiêu chí đo",
+      "unchanged": true
+    },
+    {
+      "tabId": "t.pte5hi1m7lt0",
+      "title": "NM-02 — Phát hiện topology và kiểm tra tài nguyên",
+      "unchanged": true
+    },
+    {
+      "tabId": "t.boqulsoufewe",
+      "title": "NM-03 — Benchmark và baseline trước tối ưu",
+      "unchanged": true
+    },
+    {
+      "tabId": "t.h4ztyl55uk",
+      "title": "NM-04 — Affinity container và GHC runtime",
+      "unchanged": true
+    },
+    {
+      "tabId": "t.aexr75u196ee",
+      "title": "NM-05 — Worker sở hữu trận và locality",
+      "unchanged": true
+    },
+    {
+      "tabId": "t.hewrnqyatiai",
+      "title": "NM-06 — Fleet tính sẵn và thử bố trí cache",
+      "unchanged": true
+    },
+    {
+      "tabId": "t.9kdmgzitre9d",
+      "title": "NM-07 — CPU–RAM NUMA và kiểm chứng local/remote",
+      "unchanged": true
+    },
+    {
+      "tabId": "t.57eij5lypcfs",
+      "title": "NM-08 — Hồi quy các cấu hình runtime",
+      "unchanged": true
+    }
+  ]
+}

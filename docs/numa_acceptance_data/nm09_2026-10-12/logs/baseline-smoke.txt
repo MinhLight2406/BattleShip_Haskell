@@ -1,0 +1,11 @@
+core: sample 1/1
+coordinator: sample 1/1
+tcp: sample 1/1
+Error: PORT must be a decimal integer from 1 to 65535
+    at readPort (file:///app/bridge.mjs:29:13)
+    at readBridgeConfig (file:///app/bridge.mjs:32:16)
+    at createBridge (file:///app/bridge.mjs:113:18)
+    at networkSample (file:///probe/scripts/benchmark-runtime.mjs:162:16)
+    at async runBenchmark (file:///probe/scripts/benchmark-runtime.mjs:282:20)
+    at async main (file:///probe/scripts/benchmark-runtime.mjs:321:3)
+    at async file:///probe/scripts/benchmark-runtime.mjs:325:9

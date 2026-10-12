@@ -1,0 +1,7 @@
+{
+  "profile": "shutdown-restart",
+  "stopMs": 1127,
+  "closedPeers": 2,
+  "freshPlayer": "P1",
+  "pid1Executable": "/usr/local/bin/battleship-server"
+}

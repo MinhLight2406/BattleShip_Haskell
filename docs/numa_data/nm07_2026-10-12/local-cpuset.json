@@ -1,0 +1,1449 @@
+{
+  "profile": "local",
+  "evidence": {
+    "schemaVersion": 1,
+    "observedAt": "2026-10-12T00:34:13.998Z",
+    "config": {
+      "mode": "container",
+      "capabilities": 1,
+      "haskell": [
+        0
+      ],
+      "web": [
+        2
+      ],
+      "environment": {
+        "HASKELL_CPUSET": "0",
+        "WEB_CPUSET": "2",
+        "HASKELL_CAPABILITIES": "1",
+        "NUMA_MEMORY_POLICY": "cpuset",
+        "NUMA_SELECTED_MEMS": "0"
+      },
+      "profile": "local",
+      "cpuNode": 0,
+      "mems": [
+        0
+      ],
+      "policy": "cpuset",
+      "sysNice": false,
+      "minFreeBytes": 67108864,
+      "ghcNuma": null,
+      "gameCapability": 0
+    },
+    "topology": {
+      "schemaVersion": 1,
+      "observedAt": "2026-10-12T00:33:54.365Z",
+      "scope": "linux-visible-current-process",
+      "platform": "linux",
+      "inspectionOk": true,
+      "environment": {
+        "container": true,
+        "virtualMachine": true,
+        "evidence": [
+          {
+            "layer": "container",
+            "source": "/.dockerenv",
+            "detail": "marker tồn tại"
+          },
+          {
+            "layer": "vm",
+            "source": "/proc/sys/kernel/osrelease",
+            "detail": "Kernel WSL/Microsoft."
+          },
+          {
+            "layer": "vm",
+            "source": "/proc/cpuinfo",
+            "detail": "CPU có hypervisor flag."
+          }
+        ],
+        "physicalHostTopologyVerified": false,
+        "kernelRelease": "6.18.40.1-microsoft-standard-WSL2",
+        "interpretation": "Chỉ mô tả Linux nhìn thấy; không xác nhận topology máy vật lý bên ngoài VM/container."
+      },
+      "cpu": {
+        "online": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11
+        ],
+        "allowed": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11
+        ],
+        "effective": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11
+        ],
+        "details": [
+          {
+            "id": 0,
+            "allowed": true,
+            "coreId": 0,
+            "socketId": 0,
+            "threadSiblings": [
+              0,
+              1
+            ],
+            "effectiveThreadSiblings": [
+              0,
+              1
+            ],
+            "nodeIds": [
+              0
+            ]
+          },
+          {
+            "id": 1,
+            "allowed": true,
+            "coreId": 0,
+            "socketId": 0,
+            "threadSiblings": [
+              0,
+              1
+            ],
+            "effectiveThreadSiblings": [
+              0,
+              1
+            ],
+            "nodeIds": [
+              0
+            ]
+          },
+          {
+            "id": 2,
+            "allowed": true,
+            "coreId": 1,
+            "socketId": 0,
+            "threadSiblings": [
+              2,
+              3
+            ],
+            "effectiveThreadSiblings": [
+              2,
+              3
+            ],
+            "nodeIds": [
+              0
+            ]
+          },
+          {
+            "id": 3,
+            "allowed": true,
+            "coreId": 1,
+            "socketId": 0,
+            "threadSiblings": [
+              2,
+              3
+            ],
+            "effectiveThreadSiblings": [
+              2,
+              3
+            ],
+            "nodeIds": [
+              0
+            ]
+          },
+          {
+            "id": 4,
+            "allowed": true,
+            "coreId": 2,
+            "socketId": 0,
+            "threadSiblings": [
+              4,
+              5
+            ],
+            "effectiveThreadSiblings": [
+              4,
+              5
+            ],
+            "nodeIds": [
+              0
+            ]
+          },
+          {
+            "id": 5,
+            "allowed": true,
+            "coreId": 2,
+            "socketId": 0,
+            "threadSiblings": [
+              4,
+              5
+            ],
+            "effectiveThreadSiblings": [
+              4,
+              5
+            ],
+            "nodeIds": [
+              0
+            ]
+          },
+          {
+            "id": 6,
+            "allowed": true,
+            "coreId": 3,
+            "socketId": 0,
+            "threadSiblings": [
+              6,
+              7
+            ],
+            "effectiveThreadSiblings": [
+              6,
+              7
+            ],
+            "nodeIds": [
+              0
+            ]
+          },
+          {
+            "id": 7,
+            "allowed": true,
+            "coreId": 3,
+            "socketId": 0,
+            "threadSiblings": [
+              6,
+              7
+            ],
+            "effectiveThreadSiblings": [
+              6,
+              7
+            ],
+            "nodeIds": [
+              0
+            ]
+          },
+          {
+            "id": 8,
+            "allowed": true,
+            "coreId": 4,
+            "socketId": 0,
+            "threadSiblings": [
+              8,
+              9
+            ],
+            "effectiveThreadSiblings": [
+              8,
+              9
+            ],
+            "nodeIds": [
+              0
+            ]
+          },
+          {
+            "id": 9,
+            "allowed": true,
+            "coreId": 4,
+            "socketId": 0,
+            "threadSiblings": [
+              8,
+              9
+            ],
+            "effectiveThreadSiblings": [
+              8,
+              9
+            ],
+            "nodeIds": [
+              0
+            ]
+          },
+          {
+            "id": 10,
+            "allowed": true,
+            "coreId": 5,
+            "socketId": 0,
+            "threadSiblings": [
+              10,
+              11
+            ],
+            "effectiveThreadSiblings": [
+              10,
+              11
+            ],
+            "nodeIds": [
+              0
+            ]
+          },
+          {
+            "id": 11,
+            "allowed": true,
+            "coreId": 5,
+            "socketId": 0,
+            "threadSiblings": [
+              10,
+              11
+            ],
+            "effectiveThreadSiblings": [
+              10,
+              11
+            ],
+            "nodeIds": [
+              0
+            ]
+          }
+        ]
+      },
+      "memory": {
+        "onlineNodes": [
+          0
+        ],
+        "allowedNodes": [
+          0
+        ],
+        "effectiveNodes": [
+          0
+        ],
+        "nodes": [
+          {
+            "id": 0,
+            "cpus": [
+              0,
+              1,
+              2,
+              3,
+              4,
+              5,
+              6,
+              7,
+              8,
+              9,
+              10,
+              11
+            ],
+            "effectiveCpus": [
+              0,
+              1,
+              2,
+              3,
+              4,
+              5,
+              6,
+              7,
+              8,
+              9,
+              10,
+              11
+            ],
+            "allowed": true,
+            "memoryBytes": 8165761024
+          }
+        ]
+      },
+      "caches": [
+        {
+          "key": "1:Data:0:0,1",
+          "id": 0,
+          "level": 1,
+          "type": "Data",
+          "sizeBytes": 49152,
+          "lineBytes": 64,
+          "sharedCpus": [
+            0,
+            1
+          ],
+          "effectiveSharedCpus": [
+            0,
+            1
+          ],
+          "observedFromCpus": [
+            0,
+            1
+          ]
+        },
+        {
+          "key": "1:Instruction:0:0,1",
+          "id": 0,
+          "level": 1,
+          "type": "Instruction",
+          "sizeBytes": 32768,
+          "lineBytes": 64,
+          "sharedCpus": [
+            0,
+            1
+          ],
+          "effectiveSharedCpus": [
+            0,
+            1
+          ],
+          "observedFromCpus": [
+            0,
+            1
+          ]
+        },
+        {
+          "key": "2:Unified:0:0,1",
+          "id": 0,
+          "level": 2,
+          "type": "Unified",
+          "sizeBytes": 1310720,
+          "lineBytes": 64,
+          "sharedCpus": [
+            0,
+            1
+          ],
+          "effectiveSharedCpus": [
+            0,
+            1
+          ],
+          "observedFromCpus": [
+            0,
+            1
+          ]
+        },
+        {
+          "key": "3:Unified:0:0,1,2,3,4,5,6,7,8,9,10,11",
+          "id": 0,
+          "level": 3,
+          "type": "Unified",
+          "sizeBytes": 12582912,
+          "lineBytes": 64,
+          "sharedCpus": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11
+          ],
+          "effectiveSharedCpus": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11
+          ],
+          "observedFromCpus": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11
+          ]
+        },
+        {
+          "key": "1:Data:1:2,3",
+          "id": 1,
+          "level": 1,
+          "type": "Data",
+          "sizeBytes": 49152,
+          "lineBytes": 64,
+          "sharedCpus": [
+            2,
+            3
+          ],
+          "effectiveSharedCpus": [
+            2,
+            3
+          ],
+          "observedFromCpus": [
+            2,
+            3
+          ]
+        },
+        {
+          "key": "1:Instruction:1:2,3",
+          "id": 1,
+          "level": 1,
+          "type": "Instruction",
+          "sizeBytes": 32768,
+          "lineBytes": 64,
+          "sharedCpus": [
+            2,
+            3
+          ],
+          "effectiveSharedCpus": [
+            2,
+            3
+          ],
+          "observedFromCpus": [
+            2,
+            3
+          ]
+        },
+        {
+          "key": "2:Unified:1:2,3",
+          "id": 1,
+          "level": 2,
+          "type": "Unified",
+          "sizeBytes": 1310720,
+          "lineBytes": 64,
+          "sharedCpus": [
+            2,
+            3
+          ],
+          "effectiveSharedCpus": [
+            2,
+            3
+          ],
+          "observedFromCpus": [
+            2,
+            3
+          ]
+        },
+        {
+          "key": "1:Data:2:4,5",
+          "id": 2,
+          "level": 1,
+          "type": "Data",
+          "sizeBytes": 49152,
+          "lineBytes": 64,
+          "sharedCpus": [
+            4,
+            5
+          ],
+          "effectiveSharedCpus": [
+            4,
+            5
+          ],
+          "observedFromCpus": [
+            4,
+            5
+          ]
+        },
+        {
+          "key": "1:Instruction:2:4,5",
+          "id": 2,
+          "level": 1,
+          "type": "Instruction",
+          "sizeBytes": 32768,
+          "lineBytes": 64,
+          "sharedCpus": [
+            4,
+            5
+          ],
+          "effectiveSharedCpus": [
+            4,
+            5
+          ],
+          "observedFromCpus": [
+            4,
+            5
+          ]
+        },
+        {
+          "key": "2:Unified:2:4,5",
+          "id": 2,
+          "level": 2,
+          "type": "Unified",
+          "sizeBytes": 1310720,
+          "lineBytes": 64,
+          "sharedCpus": [
+            4,
+            5
+          ],
+          "effectiveSharedCpus": [
+            4,
+            5
+          ],
+          "observedFromCpus": [
+            4,
+            5
+          ]
+        },
+        {
+          "key": "1:Data:3:6,7",
+          "id": 3,
+          "level": 1,
+          "type": "Data",
+          "sizeBytes": 49152,
+          "lineBytes": 64,
+          "sharedCpus": [
+            6,
+            7
+          ],
+          "effectiveSharedCpus": [
+            6,
+            7
+          ],
+          "observedFromCpus": [
+            6,
+            7
+          ]
+        },
+        {
+          "key": "1:Instruction:3:6,7",
+          "id": 3,
+          "level": 1,
+          "type": "Instruction",
+          "sizeBytes": 32768,
+          "lineBytes": 64,
+          "sharedCpus": [
+            6,
+            7
+          ],
+          "effectiveSharedCpus": [
+            6,
+            7
+          ],
+          "observedFromCpus": [
+            6,
+            7
+          ]
+        },
+        {
+          "key": "2:Unified:3:6,7",
+          "id": 3,
+          "level": 2,
+          "type": "Unified",
+          "sizeBytes": 1310720,
+          "lineBytes": 64,
+          "sharedCpus": [
+            6,
+            7
+          ],
+          "effectiveSharedCpus": [
+            6,
+            7
+          ],
+          "observedFromCpus": [
+            6,
+            7
+          ]
+        },
+        {
+          "key": "1:Data:4:8,9",
+          "id": 4,
+          "level": 1,
+          "type": "Data",
+          "sizeBytes": 49152,
+          "lineBytes": 64,
+          "sharedCpus": [
+            8,
+            9
+          ],
+          "effectiveSharedCpus": [
+            8,
+            9
+          ],
+          "observedFromCpus": [
+            8,
+            9
+          ]
+        },
+        {
+          "key": "1:Instruction:4:8,9",
+          "id": 4,
+          "level": 1,
+          "type": "Instruction",
+          "sizeBytes": 32768,
+          "lineBytes": 64,
+          "sharedCpus": [
+            8,
+            9
+          ],
+          "effectiveSharedCpus": [
+            8,
+            9
+          ],
+          "observedFromCpus": [
+            8,
+            9
+          ]
+        },
+        {
+          "key": "2:Unified:4:8,9",
+          "id": 4,
+          "level": 2,
+          "type": "Unified",
+          "sizeBytes": 1310720,
+          "lineBytes": 64,
+          "sharedCpus": [
+            8,
+            9
+          ],
+          "effectiveSharedCpus": [
+            8,
+            9
+          ],
+          "observedFromCpus": [
+            8,
+            9
+          ]
+        },
+        {
+          "key": "1:Data:5:10,11",
+          "id": 5,
+          "level": 1,
+          "type": "Data",
+          "sizeBytes": 49152,
+          "lineBytes": 64,
+          "sharedCpus": [
+            10,
+            11
+          ],
+          "effectiveSharedCpus": [
+            10,
+            11
+          ],
+          "observedFromCpus": [
+            10,
+            11
+          ]
+        },
+        {
+          "key": "1:Instruction:5:10,11",
+          "id": 5,
+          "level": 1,
+          "type": "Instruction",
+          "sizeBytes": 32768,
+          "lineBytes": 64,
+          "sharedCpus": [
+            10,
+            11
+          ],
+          "effectiveSharedCpus": [
+            10,
+            11
+          ],
+          "observedFromCpus": [
+            10,
+            11
+          ]
+        },
+        {
+          "key": "2:Unified:5:10,11",
+          "id": 5,
+          "level": 2,
+          "type": "Unified",
+          "sizeBytes": 1310720,
+          "lineBytes": 64,
+          "sharedCpus": [
+            10,
+            11
+          ],
+          "effectiveSharedCpus": [
+            10,
+            11
+          ],
+          "observedFromCpus": [
+            10,
+            11
+          ]
+        }
+      ],
+      "capabilities": {
+        "affinity": {
+          "eligible": true,
+          "reason": "Có CPU online trong mask tiến trình; launcher còn phải áp dụng và kiểm tra affinity."
+        },
+        "multiNodeNuma": {
+          "eligible": false,
+          "usableNodes": [
+            0
+          ],
+          "reason": "Không xác nhận được ít nhất hai node có RAM và CPU được phép; chưa thể nghiệm thu local/remote."
+        },
+        "performanceCounters": {
+          "usable": null,
+          "events": [],
+          "reason": "Bỏ qua probe theo --no-perf; counter chưa được xác minh.",
+          "perfEventParanoid": 2,
+          "pmuDevices": [
+            "breakpoint",
+            "kprobe",
+            "msr",
+            "power",
+            "software",
+            "tracepoint",
+            "uprobe"
+          ]
+        }
+      },
+      "diagnostics": [],
+      "sources": {
+        "onlineCpus": "/sys/devices/system/cpu/online",
+        "allowedCpus": "/proc/self/status:Cpus_allowed_list",
+        "onlineMemoryNodes": "/sys/devices/system/node/online",
+        "allowedMemoryNodes": "/proc/self/status:Mems_allowed_list",
+        "cpuQuotaMeasured": false
+      },
+      "validation": {
+        "ok": true,
+        "requested": {
+          "cpus": null,
+          "mems": null,
+          "requireNuma": false
+        },
+        "errors": []
+      }
+    },
+    "placement": {
+      "tasks": [
+        {
+          "tid": 1,
+          "name": "battleship-serv",
+          "allowed": [
+            0
+          ]
+        },
+        {
+          "tid": 10,
+          "name": "ghc_worker",
+          "allowed": [
+            0
+          ]
+        },
+        {
+          "tid": 11,
+          "name": "ghc_worker",
+          "allowed": [
+            0
+          ]
+        },
+        {
+          "tid": 7,
+          "name": "ghc_ticker",
+          "allowed": [
+            0
+          ]
+        },
+        {
+          "tid": 8,
+          "name": "ghc_worker",
+          "allowed": [
+            0
+          ]
+        },
+        {
+          "tid": 9,
+          "name": "ghc_worker",
+          "allowed": [
+            0
+          ]
+        }
+      ],
+      "cpuSamples": [
+        {
+          "tid": 1,
+          "lastCpu": 0
+        },
+        {
+          "tid": 10,
+          "lastCpu": 0
+        },
+        {
+          "tid": 11,
+          "lastCpu": 0
+        },
+        {
+          "tid": 7,
+          "lastCpu": 0
+        },
+        {
+          "tid": 8,
+          "lastCpu": 0
+        },
+        {
+          "tid": 9,
+          "lastCpu": 0
+        }
+      ],
+      "memory": {
+        "rows": [
+          {
+            "address": "00400000",
+            "policy": "default",
+            "privateAnonymous": false,
+            "pages": {
+              "0": 496
+            }
+          },
+          {
+            "address": "00721000",
+            "policy": "default",
+            "privateAnonymous": false,
+            "pages": {
+              "0": 1
+            }
+          },
+          {
+            "address": "00722000",
+            "policy": "default",
+            "privateAnonymous": false,
+            "pages": {
+              "0": 56
+            }
+          },
+          {
+            "address": "0075a000",
+            "policy": "default",
+            "privateAnonymous": true,
+            "pages": {
+              "0": 3
+            }
+          },
+          {
+            "address": "1f568000",
+            "policy": "default",
+            "privateAnonymous": true,
+            "pages": {
+              "0": 14
+            }
+          },
+          {
+            "address": "4200000000",
+            "policy": "default",
+            "privateAnonymous": true,
+            "pages": {
+              "0": 98
+            }
+          },
+          {
+            "address": "4200600000",
+            "policy": "default",
+            "privateAnonymous": false,
+            "pages": {}
+          },
+          {
+            "address": "7cb1c0000000",
+            "policy": "default",
+            "privateAnonymous": true,
+            "pages": {
+              "0": 1
+            }
+          },
+          {
+            "address": "7cb1c0021000",
+            "policy": "default",
+            "privateAnonymous": false,
+            "pages": {}
+          },
+          {
+            "address": "7cb1c4000000",
+            "policy": "default",
+            "privateAnonymous": true,
+            "pages": {
+              "0": 5
+            }
+          },
+          {
+            "address": "7cb1c4021000",
+            "policy": "default",
+            "privateAnonymous": false,
+            "pages": {}
+          },
+          {
+            "address": "7cb1cb7ff000",
+            "policy": "default",
+            "privateAnonymous": false,
+            "pages": {}
+          },
+          {
+            "address": "7cb1cb800000",
+            "policy": "default",
+            "privateAnonymous": true,
+            "pages": {
+              "0": 2
+            }
+          },
+          {
+            "address": "7cb1cc000000",
+            "policy": "default",
+            "privateAnonymous": true,
+            "pages": {
+              "0": 1
+            }
+          },
+          {
+            "address": "7cb1cc021000",
+            "policy": "default",
+            "privateAnonymous": false,
+            "pages": {}
+          },
+          {
+            "address": "7cb1d0000000",
+            "policy": "default",
+            "privateAnonymous": true,
+            "pages": {
+              "0": 1
+            }
+          },
+          {
+            "address": "7cb1d0021000",
+            "policy": "default",
+            "privateAnonymous": false,
+            "pages": {}
+          },
+          {
+            "address": "7cb1d4000000",
+            "policy": "default",
+            "privateAnonymous": true,
+            "pages": {
+              "0": 1
+            }
+          },
+          {
+            "address": "7cb1d4021000",
+            "policy": "default",
+            "privateAnonymous": false,
+            "pages": {}
+          },
+          {
+            "address": "7cb1d8513000",
+            "policy": "default",
+            "privateAnonymous": false,
+            "pages": {}
+          },
+          {
+            "address": "7cb1d8514000",
+            "policy": "default",
+            "privateAnonymous": true,
+            "pages": {
+              "0": 3
+            }
+          },
+          {
+            "address": "7cb1d8d14000",
+            "policy": "default",
+            "privateAnonymous": false,
+            "pages": {}
+          },
+          {
+            "address": "7cb1d8d15000",
+            "policy": "default",
+            "privateAnonymous": true,
+            "pages": {
+              "0": 3
+            }
+          },
+          {
+            "address": "7cb1d9515000",
+            "policy": "default",
+            "privateAnonymous": false,
+            "pages": {}
+          },
+          {
+            "address": "7cb1d9516000",
+            "policy": "default",
+            "privateAnonymous": true,
+            "pages": {
+              "0": 3
+            }
+          },
+          {
+            "address": "7cb1d9d16000",
+            "policy": "default",
+            "privateAnonymous": true,
+            "pages": {
+              "0": 1
+            }
+          },
+          {
+            "address": "7cb1d9d6f000",
+            "policy": "default",
+            "privateAnonymous": false,
+            "pages": {}
+          },
+          {
+            "address": "7cb1d9d70000",
+            "policy": "default",
+            "privateAnonymous": true,
+            "pages": {
+              "0": 2
+            }
+          },
+          {
+            "address": "7cb1da570000",
+            "policy": "default",
+            "privateAnonymous": true,
+            "pages": {
+              "0": 2
+            }
+          },
+          {
+            "address": "7cb1da972000",
+            "policy": "default",
+            "privateAnonymous": false,
+            "pages": {
+              "0": 7
+            }
+          },
+          {
+            "address": "7cb1da979000",
+            "policy": "default",
+            "privateAnonymous": false,
+            "pages": {
+              "0": 32
+            }
+          },
+          {
+            "address": "7cb1da9d0000",
+            "policy": "default",
+            "privateAnonymous": true,
+            "pages": {
+              "0": 2
+            }
+          },
+          {
+            "address": "7cb1da9d3000",
+            "policy": "default",
+            "privateAnonymous": false,
+            "pages": {
+              "0": 37
+            }
+          },
+          {
+            "address": "7cb1da9f9000",
+            "policy": "default",
+            "privateAnonymous": false,
+            "pages": {
+              "0": 215
+            }
+          },
+          {
+            "address": "7cb1dab4f000",
+            "policy": "default",
+            "privateAnonymous": false,
+            "pages": {
+              "0": 49
+            }
+          },
+          {
+            "address": "7cb1daba2000",
+            "policy": "default",
+            "privateAnonymous": false,
+            "pages": {
+              "0": 4
+            }
+          },
+          {
+            "address": "7cb1daba6000",
+            "policy": "default",
+            "privateAnonymous": false,
+            "pages": {
+              "0": 2
+            }
+          },
+          {
+            "address": "7cb1daba8000",
+            "policy": "default",
+            "privateAnonymous": true,
+            "pages": {
+              "0": 5
+            }
+          },
+          {
+            "address": "7cb1dabb5000",
+            "policy": "default",
+            "privateAnonymous": false,
+            "pages": {
+              "0": 11
+            }
+          },
+          {
+            "address": "7cb1dabc0000",
+            "policy": "default",
+            "privateAnonymous": false,
+            "pages": {
+              "0": 16
+            }
+          },
+          {
+            "address": "7cb1dac1d000",
+            "policy": "default",
+            "privateAnonymous": false,
+            "pages": {}
+          },
+          {
+            "address": "7cb1dac34000",
+            "policy": "default",
+            "privateAnonymous": false,
+            "pages": {
+              "0": 1
+            }
+          },
+          {
+            "address": "7cb1dac35000",
+            "policy": "default",
+            "privateAnonymous": false,
+            "pages": {
+              "0": 1
+            }
+          },
+          {
+            "address": "7cb1dac36000",
+            "policy": "default",
+            "privateAnonymous": false,
+            "pages": {
+              "0": 15
+            }
+          },
+          {
+            "address": "7cb1dac46000",
+            "policy": "default",
+            "privateAnonymous": false,
+            "pages": {
+              "0": 74
+            }
+          },
+          {
+            "address": "7cb1dacba000",
+            "policy": "default",
+            "privateAnonymous": false,
+            "pages": {
+              "0": 38
+            }
+          },
+          {
+            "address": "7cb1dad14000",
+            "policy": "default",
+            "privateAnonymous": false,
+            "pages": {
+              "0": 1
+            }
+          },
+          {
+            "address": "7cb1dad15000",
+            "policy": "default",
+            "privateAnonymous": false,
+            "pages": {
+              "0": 1
+            }
+          },
+          {
+            "address": "7cb1dad18000",
+            "policy": "default",
+            "privateAnonymous": true,
+            "pages": {
+              "0": 2
+            }
+          },
+          {
+            "address": "7cb1dad1a000",
+            "policy": "default",
+            "privateAnonymous": false,
+            "pages": {}
+          },
+          {
+            "address": "7cb1dad1e000",
+            "policy": "default",
+            "privateAnonymous": false,
+            "pages": {}
+          },
+          {
+            "address": "7cb1dad20000",
+            "policy": "default",
+            "privateAnonymous": false,
+            "pages": {}
+          },
+          {
+            "address": "7cb1dad22000",
+            "policy": "default",
+            "privateAnonymous": false,
+            "pages": {
+              "0": 1
+            }
+          },
+          {
+            "address": "7cb1dad23000",
+            "policy": "default",
+            "privateAnonymous": false,
+            "pages": {
+              "0": 38
+            }
+          },
+          {
+            "address": "7cb1dad49000",
+            "policy": "default",
+            "privateAnonymous": false,
+            "pages": {
+              "0": 10
+            }
+          },
+          {
+            "address": "7cb1dad53000",
+            "policy": "default",
+            "privateAnonymous": false,
+            "pages": {
+              "0": 2
+            }
+          },
+          {
+            "address": "7cb1dad55000",
+            "policy": "default",
+            "privateAnonymous": false,
+            "pages": {
+              "0": 2
+            }
+          },
+          {
+            "address": "7fff26bc0000",
+            "policy": "default",
+            "privateAnonymous": true,
+            "pages": {
+              "0": 4
+            }
+          }
+        ],
+        "privateAnonymousPages": {
+          "0": 153
+        },
+        "boundPrivatePages": 0
+      },
+      "scope": "snapshot of last CPU and private anonymous resident pages; not all future pages or physical host topology"
+    },
+    "haskell": {
+      "id": "fbd49babb2c98f0668de89481e39a5b0d44f31283e54b25326b032a807e7cd74",
+      "image": "sha256:281c29a57fae615c085a3f7bcd8f49943e388aac49c003af5add6f76f526bc96",
+      "healthy": "healthy"
+    },
+    "web": {
+      "id": "60d99a6f980bc19c3a6b08464d5c01cf3b679b0222a7569ec36984e90bdef535",
+      "image": "sha256:b01ac11fc67f9725546fe9969a9a070b532fe76f30501bab834a3e781bddf949",
+      "ports": [
+        {
+          "mode": "ingress",
+          "target": 8080,
+          "published": "56159",
+          "protocol": "tcp"
+        }
+      ]
+    },
+    "measurement": "placement verification; no latency/cache-speedup conclusion"
+  },
+  "frames": [
+    [
+      "WELCOME 1 P1",
+      "ERROR FLEETS_NOT_READY",
+      "OK PLACE",
+      "WAITING OPPONENT",
+      "ERROR FLEET_ALREADY_PLACED",
+      "START P1",
+      "TURN P1",
+      "SHOT A1 MISS",
+      "TURN P2",
+      "INCOMING A1 MISS",
+      "TURN P1",
+      "ERROR ALREADY_FIRED A1",
+      "SHOT A3 HIT",
+      "TURN P1",
+      "SHOT C3 HIT",
+      "TURN P1",
+      "SHOT B3 SUNK SB",
+      "TURN P1",
+      "SHOT J3 HIT",
+      "TURN P1",
+      "SHOT J4 HIT",
+      "TURN P1",
+      "SHOT J5 SUNK CR",
+      "TURN P1",
+      "SHOT B1 HIT",
+      "TURN P1",
+      "SHOT B2 SUNK DD",
+      "TURN P1",
+      "SHOT C5 HIT",
+      "TURN P1",
+      "SHOT E5 HIT",
+      "TURN P1",
+      "SHOT D5 HIT",
+      "TURN P1",
+      "SHOT G5 HIT",
+      "TURN P1",
+      "SHOT F5 SUNK CV",
+      "TURN P1",
+      "SHOT A6 HIT",
+      "TURN P1",
+      "SHOT A7 HIT",
+      "TURN P1",
+      "SHOT A5 HIT",
+      "TURN P1",
+      "SHOT A8 WIN",
+      "GAME_OVER P1 ALL_SHIPS_SUNK"
+    ],
+    [
+      "WELCOME 1 P2",
+      "OK PLACE",
+      "START P1",
+      "TURN P1",
+      "ERROR NOT_YOUR_TURN P1",
+      "INCOMING A1 MISS",
+      "TURN P2",
+      "SHOT A1 MISS",
+      "TURN P1",
+      "INCOMING A3 HIT",
+      "TURN P1",
+      "INCOMING C3 HIT",
+      "TURN P1",
+      "INCOMING B3 SUNK SB",
+      "TURN P1",
+      "INCOMING J3 HIT",
+      "TURN P1",
+      "INCOMING J4 HIT",
+      "TURN P1",
+      "INCOMING J5 SUNK CR",
+      "TURN P1",
+      "INCOMING B1 HIT",
+      "TURN P1",
+      "INCOMING B2 SUNK DD",
+      "TURN P1",
+      "INCOMING C5 HIT",
+      "TURN P1",
+      "INCOMING E5 HIT",
+      "TURN P1",
+      "INCOMING D5 HIT",
+      "TURN P1",
+      "INCOMING G5 HIT",
+      "TURN P1",
+      "INCOMING F5 SUNK CV",
+      "TURN P1",
+      "INCOMING A6 HIT",
+      "TURN P1",
+      "INCOMING A7 HIT",
+      "TURN P1",
+      "INCOMING A5 HIT",
+      "TURN P1",
+      "INCOMING A8 WIN",
+      "GAME_OVER P1 ALL_SHIPS_SUNK"
+    ]
+  ],
+  "seed": 424242,
+  "stopMs": 1103,
+  "removed": true
+}

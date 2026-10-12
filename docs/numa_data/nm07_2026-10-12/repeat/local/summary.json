@@ -1,0 +1,41 @@
+{
+  "samples": 30,
+  "medianUsPerCommand": 5.4369779947916665,
+  "median95CI": [
+    5.3432210091145835,
+    5.53991107421875
+  ],
+  "p95SampleUsPerCommand": 5.836534692057291,
+  "p95ResponseUs": null,
+  "blockMedians": [
+    5.3241928450520835,
+    5.441171315104167,
+    5.548390078124999
+  ],
+  "stabilitySpread": 0.04123563370822629,
+  "stable": true,
+  "allocatedBytesPerCommand": {
+    "median": 51082.0440625,
+    "availableSamples": 30
+  },
+  "cpuSeconds": {
+    "median": 0.417326866,
+    "availableSamples": 30
+  },
+  "gcCpuSecondsAccounting": {
+    "median": 0.0085561445,
+    "availableSamples": 30
+  },
+  "gcCpuSecondsProcess": {
+    "median": null,
+    "availableSamples": 0
+  },
+  "maxLiveBytesProcess": {
+    "median": 83368,
+    "availableSamples": 30
+  },
+  "maxMemoryBytesProcess": {
+    "median": 6291456,
+    "availableSamples": 30
+  }
+}

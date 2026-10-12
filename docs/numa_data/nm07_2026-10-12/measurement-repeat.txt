@@ -1,0 +1,3 @@
+NUMA default: measured
+NUMA local: measured
+NUMA ghc: unaccepted
