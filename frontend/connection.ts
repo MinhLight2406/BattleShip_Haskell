@@ -2,6 +2,8 @@ import { createFleet, encodeFleet, parseFrame, applyFrame, emptyView, type ShipS
 
 export type BridgeMessage =
   | { type: 'SESSION'; token: string; fleet: string | null; frames: string[] | null }
+  | { type: 'ROOM_SESSION'; roomId: string; roomName: string; seat: 'P1' | 'P2'; displayName: string; opponentName: string | null }
+  | { type: 'ROOM_ERROR'; message: string }
   | { type: 'CONNECTION'; missing: { player: 'P1' | 'P2'; deadline: number }[] }
   | { type: 'RESUME_ERROR'; code: 'INVALID_SESSION' | 'SESSION_ACTIVE'; message: string }
 
@@ -11,6 +13,11 @@ export function parseBridgeMessage(text: string): BridgeMessage {
       (value.fleet === null || typeof value.fleet === 'string') &&
       (value.frames === null || (Array.isArray(value.frames) && value.frames.length <= 4096 &&
         value.frames.every((line: unknown) => typeof line === 'string' && parseFrame(line))))) return value
+  if (value?.type === 'ROOM_SESSION' && /^[A-F0-9]{24}$/.test(value.roomId) &&
+      typeof value.roomName === 'string' && value.roomName.length <= 48 && ['P1', 'P2'].includes(value.seat) &&
+      typeof value.displayName === 'string' && value.displayName.length <= 24 &&
+      (value.opponentName === null || (typeof value.opponentName === 'string' && value.opponentName.length <= 24))) return value
+  if (value?.type === 'ROOM_ERROR' && typeof value.message === 'string') return value
   if (value?.type === 'CONNECTION' && Array.isArray(value.missing) && value.missing.length <= 2 &&
       value.missing.every((entry: { player: string; deadline: number }) =>
         ['P1', 'P2'].includes(entry.player) && Number.isSafeInteger(entry.deadline) && entry.deadline > 0)) return value

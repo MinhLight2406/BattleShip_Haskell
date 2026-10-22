@@ -39,7 +39,7 @@ spec = do
   describe "C-01 executable smoke tests" $ do
     it "server --help starts and exits successfully" $
       checkExecutable "battleship-server" ["--help"]
-        "Usage: battleship-server [PORT] (default 4000; 0 selects a free port)"
+        "Usage: battleship-server [PORT] | --rooms [PORT] (default PORT 4000; 0 selects a free port)"
     it "client --help starts and exits successfully" $
       checkExecutable "battleship-client" ["--help"]
         "Usage: battleship-client [PORT] | --play [PORT] | --place [PORT] | [PORT] \"COMMAND\" (default 4000; no arguments: guided placement and play)"

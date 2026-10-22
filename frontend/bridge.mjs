@@ -5,13 +5,16 @@ import { openSync, readSync, closeSync, fstatSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { networkInterfaces } from 'node:os'
-import { randomBytes } from 'node:crypto'
+import { createHash, randomBytes, timingSafeEqual } from 'node:crypto'
 import { WebSocketServer, WebSocket } from 'ws'
 
 const root = path.join(path.dirname(fileURLToPath(import.meta.url)), 'dist')
-const mime = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.png': 'image/png' }
+const mime = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.png': 'image/png', '.webp': 'image/webp', '.gif': 'image/gif' }
 
 export const RECONNECT_GRACE_MS = 5 * 60 * 1000
+export const ROOM_WAIT_MS = 5 * 60 * 1000
+const ROOM_BODY_LIMIT = 8192
+const ROOM_CAPACITY = 2
 export function lanAddresses(interfaces = networkInterfaces(), selected) {
   return [...new Set(Object.entries(interfaces)
     .filter(([name]) => !selected || name === selected)
@@ -106,22 +109,142 @@ function readLanOriginsFile(filename, publicPort) {
   } finally { closeSync(descriptor) }
 }
 
+async function readJsonBody(request) {
+  const chunks = []
+  let size = 0
+  for await (const chunk of request) {
+    size += chunk.length
+    if (size > ROOM_BODY_LIMIT) throw Object.assign(new Error('Nội dung yêu cầu quá lớn.'), { status: 413 })
+    chunks.push(chunk)
+  }
+  try {
+    const value = JSON.parse(Buffer.concat(chunks).toString('utf8'))
+    if (!value || Array.isArray(value) || typeof value !== 'object') throw new Error()
+    return value
+  } catch { throw Object.assign(new Error('Dữ liệu yêu cầu không hợp lệ.'), { status: 400 }) }
+}
+
+function validRoomText(value, min, max) {
+  return typeof value === 'string' && value.trim().length >= min && [...value.trim()].length <= max &&
+    !/[\u0000-\u001f\u007f]/.test(value)
+}
+
+function passwordDigest(salt, password) {
+  return createHash('sha256').update(salt).update(password, 'utf8').digest()
+}
+
 // One resumable browser session = one TCP player. Haskell owns every game rule.
 export function createBridge({ tcpHost = '127.0.0.1', tcpPort = 4000, devOrigin = 'http://127.0.0.1:5173', host = '127.0.0.1', port = 8080,
-  publicPort, publicOrigin, lanOriginsFile, autoLan = false, lanInterface, reconnectGraceMs = RECONNECT_GRACE_MS, heartbeatMs = 10000,
+  publicPort, publicOrigin, lanOriginsFile, autoLan = false, lanInterface, reconnectGraceMs = RECONNECT_GRACE_MS,
+  roomWaitMs = ROOM_WAIT_MS, heartbeatMs = 10000,
   addresses = () => lanAddresses(networkInterfaces(), lanInterface) } = {}) {
   const config = readBridgeConfig({ HOST: autoLan ? undefined : host, PORT: String(port),
     BATTLESHIP_TCP_HOST: tcpHost, BATTLESHIP_TCP_PORT: String(tcpPort), PUBLIC_ORIGIN: publicOrigin,
     WEB_PUBLIC_PORT: publicPort === undefined ? undefined : String(publicPort), LAN_ORIGINS_FILE: lanOriginsFile })
   let lanOrigins = config.lanOriginsFile ? readLanOriginsFile(config.lanOriginsFile, config.publicPort ?? config.port) : []
   const sessions = new Map()
+  const roomsById = new Map()
+  const roomsByName = new Map()
+  const roomTickets = new Map()
   let stopping = false
+  const forgetRoom = (room) => {
+    clearTimeout(room.expiry)
+    roomsById.delete(room.id)
+    roomsByName.delete(room.nameKey)
+    for (const player of room.players) roomTickets.delete(player.ticket)
+  }
+  const issueRoomTicket = (room, seat, displayName) => {
+    const ticket = randomBytes(32).toString('hex')
+    roomTickets.set(ticket, { room, seat, displayName, used: false })
+    return ticket
+  }
+  const respondJson = (response, status, value) => {
+    response.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' })
+    response.end(JSON.stringify(value))
+  }
+  const apiError = (status, message) => Object.assign(new Error(message), { status })
+  const validateRoomInput = (body, joining = false) => {
+    if (body.displayName !== undefined && !validRoomText(body.displayName, 1, 24))
+      throw apiError(400, 'Tên người chơi cần từ 1 đến 24 ký tự.')
+    if (!validRoomText(body.password, 1, 128)) throw apiError(400, 'Mật khẩu phòng cần từ 1 đến 128 ký tự.')
+    if (!validRoomText(joining ? body.room : body.roomName, 1, 48))
+      throw apiError(400, joining ? 'Nhập tên hoặc ID phòng.' : 'Tên phòng cần từ 1 đến 48 ký tự.')
+  }
+  const createRoom = (body) => {
+    validateRoomInput(body)
+    const roomName = body.roomName.trim().normalize('NFC')
+    const nameKey = roomName.toLocaleLowerCase('vi')
+    const existing = roomsByName.get(nameKey)
+    if (existing?.status === 'waiting' && Date.now() >= existing.expiresAt) {
+      existing.status = 'expired'
+      forgetRoom(existing)
+    }
+    if (roomsByName.has(nameKey)) throw apiError(409, 'Tên phòng đang được sử dụng.')
+    let id
+    do { id = randomBytes(12).toString('hex').toUpperCase() } while (roomsById.has(id))
+    const salt = randomBytes(16)
+    const room = {
+      id, name: roomName, nameKey, salt, passwordHash: passwordDigest(salt, body.password),
+      players: [], status: 'waiting', createdAt: Date.now(), expiresAt: Date.now() + roomWaitMs,
+      sessions: new Set(), expiry: undefined,
+    }
+    const displayName = (body.displayName ?? 'Player1').trim().normalize('NFC')
+    const player = { seat: 'P1', displayName, ticket: '' }
+    player.ticket = issueRoomTicket(room, player.seat, displayName)
+    room.players.push(player)
+    room.expiry = setTimeout(() => {
+      if (room.status !== 'waiting') return
+      room.status = 'expired'
+      forgetRoom(room)
+      for (const session of room.sessions) expire(session)
+    }, Math.max(1, roomWaitMs))
+    room.expiry.unref?.()
+    roomsById.set(id, room)
+    roomsByName.set(nameKey, room)
+    return { roomId: id, roomName, seat: 'P1', displayName, ticket: player.ticket, expiresAt: room.expiresAt }
+  }
+  const joinRoom = (body) => {
+    validateRoomInput(body, true)
+    const lookup = body.room.trim().normalize('NFC')
+    const room = roomsById.get(lookup.toUpperCase()) ?? roomsByName.get(lookup.toLocaleLowerCase('vi'))
+    if (!room || room.status !== 'waiting' || Date.now() >= room.expiresAt) {
+      if (room?.status === 'waiting') { room.status = 'expired'; forgetRoom(room) }
+      throw apiError(404, 'Không tìm thấy phòng đang chờ.')
+    }
+    const actual = passwordDigest(room.salt, body.password)
+    if (!timingSafeEqual(actual, room.passwordHash)) throw apiError(403, 'Mật khẩu phòng không đúng.')
+    if (room.players.length >= ROOM_CAPACITY) throw apiError(409, 'Phòng đã đủ người.')
+    const displayName = (body.displayName ?? 'Player2').trim().normalize('NFC')
+    const player = { seat: 'P2', displayName, ticket: '' }
+    player.ticket = issueRoomTicket(room, player.seat, displayName)
+    room.players.push(player)
+    room.status = 'paired'
+    room.expiresAt = null
+    clearTimeout(room.expiry)
+    room.expiry = undefined
+    notifyRoom(room)
+    return { roomId: room.id, roomName: room.name, seat: 'P2', displayName, opponentName: room.players[0].displayName, ticket: player.ticket, expiresAt: null }
+  }
   const server = http.createServer(async (request, response) => {
     try {
       const pathname = decodeURIComponent(new URL(request.url, 'http://localhost').pathname)
       if (pathname === '/healthz') {
         if (request.method !== 'GET') { response.writeHead(405, { Allow: 'GET' }).end(); return }
         response.writeHead(200, { 'Content-Type': 'application/json' }).end('{"status":"ok"}')
+        return
+      }
+      if (pathname === '/api/rooms/create' || pathname === '/api/rooms/join') {
+        if (request.method !== 'POST') { response.writeHead(405, { Allow: 'POST' }).end(); return }
+        if (!/^application\/json(?:\s*;|$)/i.test(request.headers['content-type'] ?? '')) {
+          respondJson(response, 415, { error: 'Gửi thông tin phòng dưới dạng JSON.' }); return
+        }
+        try {
+          const body = await readJsonBody(request)
+          const result = pathname.endsWith('/create') ? createRoom(body) : joinRoom(body)
+          respondJson(response, 201, result)
+        } catch (error) {
+          respondJson(response, error.status ?? 400, { error: error.message ?? 'Yêu cầu không hợp lệ.' })
+        }
         return
       }
       if (!['GET', 'HEAD'].includes(request.method)) { response.writeHead(405).end(); return }
@@ -183,14 +306,29 @@ export function createBridge({ tcpHost = '127.0.0.1', tcpPort = 4000, devOrigin 
   const connectionState = () => ({ type: 'CONNECTION', missing: [...sessions.values()]
     .filter((session) => session.deadline && !session.ended)
     .map(({ player, deadline }) => ({ player, deadline })) })
+  const roomState = (session) => session.room ? ({
+    type: 'ROOM_SESSION', roomId: session.room.id, roomName: session.room.name,
+    seat: session.roomSeat, displayName: session.displayName,
+    opponentName: session.room.players.find((player) => player.seat !== session.roomSeat)?.displayName ?? null,
+  }) : null
+  const notifyRoom = (room) => {
+    for (const session of room.sessions) {
+      if (session.ws) send(session.ws, roomState(session))
+    }
+  }
   const notify = () => { for (const session of sessions.values()) send(session.ws, connectionState()) }
   const expire = (session) => {
     if (session.ended) return
     session.ended = true
     clearTimeout(session.grace)
     // Only Haskell decides the winner. Expiry is exactly the existing Quit command.
+    if (session.room && !session.roomHandshakeSent) { session.tcp.destroy(); return }
     if (session.tcp.writable) session.tcp.end('QUIT\n')
     else session.tcp.destroy()
+  }
+  const rejectRoomTicket = (ws, message) => {
+    send(ws, { type: 'ROOM_ERROR', message })
+    ws.close(1008, 'Invalid room ticket')
   }
   const attach = (session, ws) => {
     session.ws = ws
@@ -248,19 +386,43 @@ export function createBridge({ tcpHost = '127.0.0.1', tcpPort = 4000, devOrigin 
       session.deadline = null
       attach(session, ws)
       send(ws, { type: 'SESSION', token, fleet: session.fleet, frames: session.frames })
+      if (roomState(session)) send(ws, roomState(session))
       notify()
       if (session.ended) ws.close(1000, 'Match closed')
       return
     }
+    let roomTicket
+    if (url.searchParams.has('ticket')) {
+      const value = url.searchParams.get('ticket')
+      roomTicket = roomTickets.get(value)
+      if (!roomTicket || roomTicket.used || roomTicket.room.status === 'expired' || roomTicket.room.status === 'finished' ||
+          (roomTicket.room.status === 'waiting' && Date.now() >= roomTicket.room.expiresAt)) {
+        rejectRoomTicket(ws, 'Vé vào phòng không hợp lệ hoặc đã hết hạn.')
+        return
+      }
+      roomTicket.used = true
+    }
     const tcp = net.createConnection({ host: config.tcpHost, port: config.tcpPort })
     sockets.add(tcp)
     const token = randomBytes(32).toString('hex')
-    const session = { tcp, token, ws: null, player: null, fleet: null, frames: [], commands: [], deadline: null, ended: false }
+    const session = {
+      tcp, token, ws: null, player: null, fleet: null, frames: [], commands: [], deadline: null, ended: false,
+      room: roomTicket?.room ?? null, roomSeat: roomTicket?.seat ?? null, displayName: roomTicket?.displayName ?? null,
+      roomHandshakeSent: false,
+    }
+    session.room?.sessions.add(session)
     attach(session, ws)
     let buffer = Buffer.alloc(0)
     const timer = setTimeout(() => tcp.destroy(new Error('TCP connect timeout')), 5000)
     timer.unref()
-    tcp.on('connect', () => clearTimeout(timer))
+    tcp.on('connect', () => {
+      clearTimeout(timer)
+      if (session.room) {
+        if (session.ended || session.room.status === 'expired') { tcp.destroy(); return }
+        session.roomHandshakeSent = true
+        tcp.write(`ROOM ${session.room.id} ${session.roomSeat}\n`)
+      }
+    })
     let cleaned = false
     const cleanup = () => {
       if (cleaned) return
@@ -287,12 +449,23 @@ export function createBridge({ tcpHost = '127.0.0.1', tcpPort = 4000, devOrigin 
         }
         if (text.startsWith('WELCOME 1 ')) {
           session.player = text.slice(-2)
+          if (session.room && session.player !== session.roomSeat) {
+            tcp.destroy(new Error('Room seat assignment did not match the ticket'))
+            return
+          }
           sessions.set(token, session)
           send(session.ws, { type: 'SESSION', token, fleet: null, frames: null })
+          if (roomState(session)) notifyRoom(session.room)
         }
         session.frames.push(text)
         if (session.frames.length > 4096) { tcp.destroy(new Error('Too many session frames')); return }
         if (text === 'OK PLACE') send(session.ws, { type: 'SESSION', token, fleet: session.fleet, frames: null })
+        if (text.startsWith('GAME_OVER ')) {
+          if (session.room) {
+            session.room.status = 'finished'
+            forgetRoom(session.room)
+          }
+        }
         send(session.ws, text)
         buffer = buffer.subarray(end + 1)
       }
@@ -312,6 +485,8 @@ export function createBridge({ tcpHost = '127.0.0.1', tcpPort = 4000, devOrigin 
       stopping = true
       clearInterval(heartbeat)
       clearInterval(lanMonitor)
+      for (const room of roomsById.values()) clearTimeout(room.expiry)
+      roomsById.clear(); roomsByName.clear(); roomTickets.clear()
       for (const session of sessions.values()) clearTimeout(session.grace)
       for (const ws of websocket.clients) ws.terminate()
       for (const socket of sockets) socket.destroy()

@@ -9,7 +9,7 @@ services:
       BATTLESHIP_BIND_HOST: ${BATTLESHIP_BIND_HOST:?Set BATTLESHIP_BIND_HOST in the env file}
       BATTLESHIP_READY_FILE: ${BATTLESHIP_READY_FILE:?Set BATTLESHIP_READY_FILE in the env file}
       BATTLESHIP_GAME_CAPABILITY: ${BATTLESHIP_GAME_CAPABILITY:-0}
-    command: ["${BATTLESHIP_TCP_PORT:?Set BATTLESHIP_TCP_PORT in the env file}"]
+    command: ["--rooms", "${BATTLESHIP_TCP_PORT:?Set BATTLESHIP_TCP_PORT in the env file}"]
     expose:
       - "${BATTLESHIP_TCP_PORT:?Set BATTLESHIP_TCP_PORT in the env file}"
     healthcheck:
@@ -19,7 +19,7 @@ services:
       timeout: 1s
       start_period: 10s
       retries: 5
-    restart: "no"
+    restart: unless-stopped
     stop_signal: SIGTERM
     stop_grace_period: 10s
 

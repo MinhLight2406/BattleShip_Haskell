@@ -8,7 +8,7 @@ import qualified Data.ByteString as BS
 import qualified Data.ByteString.Char8 as BSC
 import Data.Char (chr, ord)
 import Data.Either (isRight)
-import Data.List (isInfixOf, permutations, sortOn, stripPrefix)
+import Data.List (dropWhileEnd, isInfixOf, permutations, sortOn, stripPrefix)
 import Paths_battleship_haskell (getDataFileName)
 import Test.Hspec
   ( Spec, beforeAll, describe, expectationFailure, it, shouldBe, shouldSatisfy )
@@ -371,11 +371,12 @@ isInvalidCommand (Left InvalidMessage) = True
 isInvalidCommand _ = False
 
 checkBlock :: String -> String -> ([String] -> IO ()) -> IO ()
-checkBlock document marker check = case dropWhile (/= "<!-- " ++ marker ++ " -->") (lines document) of
+checkBlock document marker check = case dropWhile (/= "<!-- " ++ marker ++ " -->") normalizedLines of
   _ : "```text" : rest -> case break (== "```") rest of
     (payloads, _ : _) -> check payloads
     _ -> expectationFailure ("Unclosed fixture: " ++ marker)
   _ -> expectationFailure ("Missing fixture: " ++ marker)
+  where normalizedLines = map (dropWhileEnd (== '\r')) (lines document)
 
 checkTranscriptRow :: String -> IO ()
 checkTranscriptRow row = case stripPrefix "C1 -> S: " row of

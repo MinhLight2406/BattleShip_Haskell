@@ -3,6 +3,7 @@ module Battleship.Server
   ( ServerConfig, defaultServerConfig, parseServerConfig, serverBindHost, serverReadyFile
   , runServer, runServerWith, runServerConfigured
   , GameRuntimeConfig, defaultGameRuntimeConfig, parseGameRuntimeConfig, gameCapability, runServerWithRuntime
+  , runRoomServerWithRuntime
   ) where
 
 import Battleship.GameWorker
@@ -10,16 +11,17 @@ import Battleship.Types
 import Battleship.Protocol
 import qualified Battleship.Rules as Rules
 import Control.Concurrent (getNumCapabilities, threadDelay)
-import Control.Concurrent.Async (link, race_, wait, withAsync)
+import Control.Concurrent.Async (Async, async, cancel, link, poll, race_, wait, withAsync)
 import Control.Concurrent.STM (atomically, check)
 import Control.Concurrent.MVar
-  ( MVar, modifyMVar, modifyMVar_, newEmptyMVar, newMVar, readMVar,
-    tryPutMVar )
+  ( MVar, modifyMVar, modifyMVar_, newEmptyMVar, newMVar, putMVar, readMVar,
+    tryPutMVar, tryReadMVar )
 import Control.Exception (AssertionFailed (..), IOException, SomeException, bracket, bracket_, bracketOnError, catch, finally, throwIO)
-import Control.Monad (forM_, forever, void, when)
+import Control.Monad (filterM, forM_, forever, void, when)
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Char8 as BSC
 import Data.Bits (complement)
+import qualified Data.Map.Strict as Map
 import Network.Socket
   ( Family (AF_INET), HostAddress, PortNumber, ShutdownCmd (ShutdownBoth, ShutdownSend), SockAddr (SockAddrInet), Socket,
     SocketOption (SockOpt, ReuseAddr, SendBuffer), SocketType (Stream), accept, bind, close,
@@ -92,6 +94,19 @@ data Lobby = Lobby
   , drained :: [PlayerId]
   }
 
+-- Each room owns an independent coordinator, worker and pair of TCP seats.
+-- The bridge supplies a short opaque room key before the normal game frames.
+data RoomSession = RoomSession
+  { roomWorker :: GameWorker
+  , roomLobby :: MVar Lobby
+  , roomFinished :: MVar (Either SomeException ())
+  , roomSeats :: MVar [PlayerId]
+  , roomTask :: Async ()
+  }
+
+type RoomRegistry = MVar (Map.Map String RoomSession)
+type ConnectionTasks = MVar [Async ()]
+
 -- | Bind IPv4 loopback only. Port 0 lets the OS choose an unused port.
 -- The callback runs after listen and receives the actual port (also for tests).
 -- Return on QUIT/EOF/socket failure; exceptions/cancellation clean up all
@@ -137,6 +152,135 @@ runServerWithRuntime runtime config core initial port onListening = withSocketsD
             pure state { stopped = True })
   where
     clearMarker = forM_ (serverReadyFile config) removeIfPresent
+
+-- | Internet-room transport mode. Every TCP peer starts with "ROOM <key> P1\n"
+-- or "ROOM <key> P2\n";
+-- all subsequent frames use the unchanged D-01 game protocol. Workers are
+-- created lazily and isolated by room key, so different pairs never share a
+-- GameState or coordinator.
+runRoomServerWithRuntime :: GameRuntimeConfig -> ServerConfig -> Step -> GameState
+  -> PortNumber -> (PortNumber -> IO ()) -> IO ()
+runRoomServerWithRuntime runtime config core initial port onListening = withSocketsDo $ do
+  count <- getNumCapabilities
+  _ <- either (ioError . userError) pure (parseGameRuntimeConfig count (Just (show (gameCapability runtime))))
+  bracket_ clearMarker clearMarker $ do
+    rooms <- newMVar Map.empty
+    tasks <- newMVar []
+    bracket (openListener config port) close $ \listener -> do
+      actual <- socketPort listener
+      forM_ (serverReadyFile config) writeReadyMarker
+      onListening actual
+      withAsync (acceptRoomConnections runtime core initial rooms tasks listener) $ \acceptor ->
+        withAsync (forever (threadDelay 30000000 >> pruneRooms rooms)) $ \sweeper ->
+          (race_ (wait acceptor) (wait sweeper)) `finally` (do
+            close listener
+            cancel sweeper
+            cancel acceptor
+            roomEntries <- modifyMVar rooms (\current -> pure (Map.empty, Map.elems current))
+            forM_ roomEntries $ \room -> do
+              modifyMVar_ (roomLobby room) $ \state -> do
+                forM_ (clients state) (closeConnection . snd)
+                pure state { stopped = True }
+              cancel (roomTask room)
+            connectionEntries <- modifyMVar tasks (\current -> pure ([], current))
+            mapM_ cancel connectionEntries)
+  where
+    clearMarker = forM_ (serverReadyFile config) removeIfPresent
+
+acceptRoomConnections :: GameRuntimeConfig -> Step -> GameState -> RoomRegistry -> ConnectionTasks -> Socket -> IO ()
+acceptRoomConnections runtime core initial rooms tasks listener = forever $ do
+  (connection, _) <- accept listener
+  setSocketOption connection SendBuffer 65536
+  modifyMVar_ tasks $ \current -> do
+    active <- filterM (fmap (maybe True (const False)) . poll) current
+    task <- async (handleRoomConnection runtime core initial rooms connection `catch` ignoreIOException)
+    pure (task : active)
+
+handleRoomConnection :: GameRuntimeConfig -> Step -> GameState -> RoomRegistry -> Socket -> IO ()
+handleRoomConnection runtime core initial rooms connection = bracket_ (pure ()) (closeConnection connection) $ do
+  handshake <- timeout 10000000 (readRoomHandshake connection)
+  case handshake of
+    Just (Just (key, player)) -> do
+      room <- getOrCreateRoom runtime core initial rooms key
+      case room of
+        Nothing -> reject
+        Just session -> do
+          actor <- modifyMVar (roomSeats session) $ \seats ->
+            if player `elem` seats then pure (seats, Nothing)
+            else pure (player : seats, Just player)
+          case actor of
+            Nothing -> reject
+            Just admittedPlayer -> do
+              admitted <- submitRequest (roomWorker session) (Admit admittedPlayer) >>= requireEncoded
+              if not admitted then reject else do
+                modifyMVar_ (roomLobby session) $ \state ->
+                  pure state { clients = clients state ++ [(admittedPlayer, connection)] }
+                serveRoomClient (roomWorker session) (roomLobby session) (roomFinished session) admittedPlayer connection
+    _ -> reject
+  where
+    reject = void (sendResponse connection (Rejected ServerFull))
+
+readRoomHandshake :: Socket -> IO (Maybe (String, PlayerId))
+readRoomHandshake connection = go BS.empty
+  where
+    go pending = do
+      chunk <- recv connection 1
+      if BS.null chunk then pure Nothing
+      else if chunk == BS.singleton 10 then pure (parseKey (stripCR pending))
+      else if BS.length pending >= 72 then pure Nothing
+      else go (pending <> chunk)
+    stripCR bytes = if not (BS.null bytes) && BS.last bytes == 13 then BS.init bytes else bytes
+    parseKey bytes = case words (BSC.unpack bytes) of
+      ["ROOM", key, "P1"] | validKey key -> Just (key, P1)
+      ["ROOM", key, "P2"] | validKey key -> Just (key, P2)
+      _ -> Nothing
+    validKey key = not (null key) && length key <= 64 && all validKeyChar key
+    validKeyChar char = char `elem` ['a'..'z'] || char `elem` ['A'..'Z'] ||
+      char `elem` ['0'..'9'] || char == '-' || char == '_'
+
+getOrCreateRoom :: GameRuntimeConfig -> Step -> GameState -> RoomRegistry -> String -> IO (Maybe RoomSession)
+getOrCreateRoom runtime core initial registry key = do
+  pruneRooms registry
+  modifyMVar registry $ \rooms -> case Map.lookup key rooms of
+    Just room -> pure (rooms, Just room)
+    Nothing | Map.size rooms >= 512 -> pure (rooms, Nothing)
+    Nothing -> do
+      room <- startRoom runtime core initial
+      pure (Map.insert key room rooms, Just room)
+
+startRoom :: GameRuntimeConfig -> Step -> GameState -> IO RoomSession
+startRoom runtime core initial = do
+  ready <- newEmptyMVar
+  finished <- newEmptyMVar
+  task <- async $ withGameWorker (gameCapability runtime) core initial $ \worker -> do
+    putMVar ready worker
+    readMVar finished >>= either throwIO pure
+  worker <- readMVar ready
+  RoomSession worker <$> newMVar (Lobby [] False []) <*> pure finished <*> newMVar [] <*> pure task
+
+pruneRooms :: RoomRegistry -> IO ()
+pruneRooms registry = modifyMVar_ registry $ \rooms -> do
+  live <- filterM (fmap (maybe True (const False)) . tryReadMVar . roomFinished . snd) (Map.toList rooms)
+  let retained = Map.fromList live
+      expired = Map.elems (Map.difference rooms retained)
+  forM_ expired (cancel . roomTask)
+  pure retained
+
+serveRoomClient :: GameWorker -> MVar Lobby -> MVar (Either SomeException ()) -> PlayerId -> Socket -> IO ()
+serveRoomClient worker lobby finished actor connection = do
+  readerDone <- newEmptyMVar
+  withAsync (closeSlowClient worker actor connection) $ \_ -> withAsync
+    (writeFrames worker lobby finished actor connection readerDone
+      `catch` reportFailure lobby finished) $ \writer -> do
+    link writer
+    withAsync
+      ((readFrames connection BS.empty (handleFrame worker actor)
+        `catch` ignoreIOException
+        `catch` reportFailure lobby finished)
+        `finally` ((clientLeft worker lobby actor >> discardInput connection)
+          `finally` void (tryPutMVar readerDone ()))) $ \reader -> do
+      link reader
+      wait reader
 
 openListener :: ServerConfig -> PortNumber -> IO Socket
 openListener config port = open `catch` report
