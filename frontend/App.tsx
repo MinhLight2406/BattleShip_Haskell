@@ -231,9 +231,6 @@ function Landing({ onStart, onHelp }: { onStart: () => void; onHelp: () => void 
           Làm chủ
           <span>đại dương</span>
         </h1>
-        <p className="hero-copy">
-          Mất liên lạc với tiền đồn ngoài khơi. Triển khai hạm đội và dò tìm thứ đang ẩn dưới mặt nước.
-        </p>
         <div className="hero-actions">
           <button className="primary-button hero-cta" onClick={onStart} type="button">
             Vào phòng tác chiến <Icon name="arrow-right" />
@@ -332,7 +329,7 @@ function Board({
                 {occupied && <span className="ship-segment" aria-hidden="true" />}
                 {enemy && !result && <span className="enemy-dot" aria-hidden="true" />}
                 {result && <span className="shot-marker" aria-hidden="true">{result === 'MISS' ? '•' : '×'}</span>}
-                {shotEffects[coord] && <img className="shot-effect" src={`/effects/${shotEffects[coord] === 'hit' ? 'bantrung' : 'banhut'}.gif`} alt="" aria-hidden="true" />}
+                {shotEffects[coord] && <img className="shot-effect" src={`/effects/${shotEffects[coord] === 'hit' ? 'bantrung' : 'banhut'}.gif?v=2`} alt="" aria-hidden="true" />}
               </button>
             )
           })}
@@ -452,7 +449,6 @@ function Placement({
             <Icon name="back" /> Về sảnh
           </button>
           <div>
-            <p className="eyebrow"><span /> BƯỚC 01 / 02 • CỔ ĐIỂN</p>
             <h1>Bố trí hạm đội</h1>
           </div>
           <div className="fleet-progress" aria-label={`Đã bố trí ${placedCount} trên ${fleet.length} tàu`}>
@@ -609,7 +605,7 @@ function Battle({ fleet, view, pending, room, shotEffects, onFire, onHome }: {
       {view.phase === 'finished' && view.winner && <div className="match-result-backdrop">
         <section aria-labelledby="match-result-title" aria-modal="true" className="match-result" role="dialog">
           <h2 id="match-result-title">{won ? 'BẠN ĐÃ THẮNG' : 'BẠN ĐÃ THUA'}</h2>
-          <img src={`/effects/${won ? 'thangcuoc' : 'thuacuoc'}.gif`} alt={won ? 'GIF ăn mừng chiến thắng' : 'GIF tiếc nuối khi thua cuộc'} />
+          <img src={`/effects/${won ? 'thangcuoc' : 'thuacuoc'}.gif?v=2`} alt={won ? 'GIF ăn mừng chiến thắng' : 'GIF tiếc nuối khi thua cuộc'} />
           <button className="primary-button" onClick={onHome} type="button">Về trang đầu</button>
         </section>
       </div>}
@@ -656,9 +652,7 @@ function RoomSetup({ onBack, onReady }: { onBack: () => void; onReady: (room: Ro
       <div className="page-container room-container">
         <button className="back-button" onClick={onBack} type="button"><Icon name="back" /> Quay lại</button>
         <div className="section-heading">
-          <p className="eyebrow"><span /> KẾT NỐI QUA INTERNET</p>
           <h1>Phòng tác chiến</h1>
-          <p>Tạo phòng riêng hoặc nhập tên/ID phòng bạn bè gửi. Mật khẩu được nhập dạng chữ thường.</p>
         </div>
         <div className="room-panel">
           <div className="room-tabs" role="tablist" aria-label="Thao tác phòng">
@@ -821,7 +815,7 @@ export default function App() {
     const audio = effectAudioRef.current[sound] ?? new Audio(`/audio/${files[sound]}`)
     effectAudioRef.current[sound] = audio
     audio.preload = 'auto'
-    audio.volume = sound === 'start-match' ? 0.85 : 0.8
+    audio.volume = sound === 'start-match' ? 0.85 : sound === 'hit' || sound === 'miss' ? 0.48 : 0.8
     audio.currentTime = 0
     if (sound === 'sunk') {
       clearTimeout(sunkAudioTimerRef.current)
@@ -884,6 +878,14 @@ export default function App() {
       shotEffectTimersRef.current.clear()
     }
   }, [])
+  useEffect(() => {
+    if (screen !== 'placement') return
+    for (const src of ['/effects/bantrung.gif?v=2', '/effects/banhut.gif?v=2']) {
+      const image = new Image()
+      image.decoding = 'async'
+      image.src = src
+    }
+  }, [screen])
   useEffect(() => {
     preloadAudio()
     playMusic('lobby')

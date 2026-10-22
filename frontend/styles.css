@@ -305,7 +305,7 @@ a:focus-visible {
 
 .hero-image {
   z-index: -3;
-  background-image: url('./naval-hero.png');
+  background-image: url('./naval-hero.webp');
   background-position: center;
   background-size: cover;
   transform: scale(1.01);
@@ -475,6 +475,15 @@ a:focus-visible {
   letter-spacing: -0.025em;
   line-height: 1;
   text-transform: uppercase;
+}
+
+.room-screen .section-heading h1 {
+  font-family: "SVN Another Danger", Impact, sans-serif;
+  font-size: clamp(42px, 4.4vw, 64px);
+  font-weight: 400;
+  letter-spacing: 0.015em;
+  line-height: 1.12;
+  text-shadow: 2px 0 rgba(255, 75, 92, 0.24), -2px 0 rgba(57, 255, 211, 0.18), 0 8px 30px rgba(0, 0, 0, 0.65);
 }
 
 .section-heading > p:last-child {
@@ -678,6 +687,15 @@ a:focus-visible {
 
 .placement-heading .eyebrow {
   justify-content: center;
+}
+
+.placement-heading h1 {
+  font-family: "SVN Another Danger", Impact, sans-serif;
+  font-size: clamp(42px, 4.4vw, 64px);
+  font-weight: 400;
+  letter-spacing: 0.015em;
+  line-height: 1.12;
+  text-shadow: 2px 0 rgba(255, 75, 92, 0.24), -2px 0 rgba(57, 255, 211, 0.18), 0 8px 30px rgba(0, 0, 0, 0.65);
 }
 
 .placement-heading .back-button {
