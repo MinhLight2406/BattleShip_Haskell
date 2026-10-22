@@ -1,3 +1,11 @@
+@font-face {
+  font-family: "SVN Another Danger";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fonts/SVN-AnotherDanger.ttf") format("truetype");
+}
+
 :root {
   color-scheme: dark;
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
@@ -330,20 +338,26 @@ a:focus-visible {
 .hero-content h1 {
   max-width: 620px;
   margin: 0;
-  font-family: Impact, "Arial Black", sans-serif;
-  font-size: clamp(62px, 8.6vw, 138px);
-  font-weight: 900;
-  line-height: 0.82;
-  letter-spacing: -0.045em;
+  font-family: "SVN Another Danger", Impact, sans-serif;
+  font-size: clamp(86px, calc(10vw + 4px), 136px);
+  font-weight: 400;
+  line-height: 1.02;
+  letter-spacing: 0.015em;
   text-transform: uppercase;
-  text-shadow: 0 8px 30px rgba(0, 0, 0, 0.48);
+  text-shadow: 2px 0 rgba(255, 75, 92, 0.24), -2px 0 rgba(57, 255, 211, 0.18), 0 8px 30px rgba(0, 0, 0, 0.65);
 }
 
 .hero-content h1 span {
   display: block;
-  color: transparent;
-  -webkit-text-stroke: 1.5px rgba(120, 255, 220, 0.88);
-  text-shadow: 0 0 28px rgba(52, 229, 190, 0.12);
+  width: fit-content;
+  max-width: 100%;
+  margin-top: 0.2em;
+  font-size: calc(0.78em + 1px);
+  line-height: 1.08;
+  white-space: nowrap;
+  color: var(--primary-bright);
+  -webkit-text-stroke: 0.65px rgba(120, 255, 220, 0.9);
+  text-shadow: 0 0 10px rgba(52, 229, 190, 0.82), 0 0 30px rgba(52, 229, 190, 0.48);
 }
 
 .hero-copy {
@@ -1552,7 +1566,7 @@ a:focus-visible {
   }
 
   .hero-content h1 {
-    font-size: clamp(54px, 21vw, 84px);
+    font-size: clamp(64px, calc(19vw + 4px), 88px);
   }
 
   .hero-copy {
@@ -1679,11 +1693,16 @@ a:focus-visible {
 .board-cell.shot-miss { background: #193944; }
 .board-cell.shot-hit, .board-cell.shot-sunk, .board-cell.shot-win { background: #813641; }
 .shot-marker { position: absolute; inset: 0; display: grid; place-items: center; z-index: 2; color: #fff; font-size: 1.5rem; font-weight: 800; }
+.shot-effect { position: absolute; z-index: 3; inset: 0; width: 100%; height: 100%; object-fit: cover; pointer-events: none; }
 .shot-log { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: .6rem; padding: 0; list-style: none; max-height: 9rem; overflow-y: auto; color: #d6e9ec; }
 .battle-screen .ready-banner { grid-template-columns: minmax(0, 1fr) auto; }
 .battle-screen .ready-banner > button { white-space: nowrap; }
 .enemy-card .board { filter: none; }
 .primary-button:disabled { opacity: .5; cursor: not-allowed; }
+.match-result-backdrop { position: fixed; z-index: 1000; inset: 0; display: grid; place-items: center; padding: 1rem; background: rgba(2, 10, 15, .88); backdrop-filter: blur(8px); }
+.match-result { display: flex; width: min(620px, 84vw, 68vh); max-height: 94vh; flex-direction: column; align-items: center; gap: 1rem; }
+.match-result h2 { margin: 0; color: #bafbf0; font-size: clamp(1.5rem, 4vw, 2.5rem); text-align: center; text-shadow: 0 0 24px rgba(52, 229, 190, .55); }
+.match-result img { display: block; width: 100%; aspect-ratio: 1; border: 1px solid rgba(52, 229, 190, .55); border-radius: 12px; object-fit: cover; box-shadow: 0 20px 80px rgba(0, 0, 0, .5); }
 @media (max-width: 640px) { .battle-screen .ready-banner { grid-template-columns: minmax(0, 1fr); } }
 .recovery-panel {
   margin: 1rem auto;

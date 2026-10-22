@@ -16,8 +16,9 @@ import {
 } from './game.ts'
 import { parseBridgeMessage, decodeOwnFleet, replayView, recoveryURL } from './connection.ts'
 
-type Screen = 'landing' | 'mode' | 'placement' | 'battle'
-type GameMode = 'classic' | 'advanced'
+type Screen = 'landing' | 'placement' | 'battle'
+type MusicTrack = 'lobby' | 'placement' | 'battle'
+type SoundEffect = 'enter-room' | 'start-match' | 'pickup' | 'place' | 'hit' | 'miss' | 'sunk'
 type IconName =
   | 'anchor'
   | 'arrow-right'
@@ -180,15 +181,25 @@ function Header({
   onHelp,
   onFullscreen,
   onHome,
+  onSoundToggle,
+  soundEnabled,
 }: {
   onHelp: () => void
   onFullscreen: () => void
   onHome: () => void
+  onSoundToggle: () => void
+  soundEnabled: boolean
 }) {
   return (
     <header className="topbar">
       <Brand onClick={onHome} />
       <nav aria-label="Công cụ trò chơi" className="topbar-actions">
+        <IconButton
+          icon={soundEnabled ? 'sound-on' : 'sound-off'}
+          label={soundEnabled ? 'Tắt âm thanh' : 'Bật âm thanh'}
+          onClick={onSoundToggle}
+          pressed={soundEnabled}
+        />
         <IconButton icon="help" label="Mở hướng dẫn" onClick={onHelp} />
         <IconButton
           icon="fullscreen"
@@ -206,14 +217,12 @@ function Landing({ onStart, onHelp }: { onStart: () => void; onHelp: () => void 
       <div className="hero-image" aria-hidden="true" />
       <div className="hero-shade" aria-hidden="true" />
       <div className="hero-content">
-        <p className="eyebrow"><span /> MÔ PHỎNG CHIẾN THUẬT HẢI QUÂN</p>
         <h1>
           Làm chủ
-          <span>đại dương.</span>
+          <span>đại dương</span>
         </h1>
         <p className="hero-copy">
-          Bố trí hạm đội, khóa tọa độ và chuẩn bị cho cuộc đấu trí trên biển.
-          Mỗi quyết định đều để lại dấu vết.
+          Mất liên lạc với tiền đồn ngoài khơi. Triển khai hạm đội và dò tìm thứ đang ẩn dưới mặt nước.
         </p>
         <div className="hero-actions">
           <button className="primary-button hero-cta" onClick={onStart} type="button">
@@ -234,79 +243,6 @@ function Landing({ onStart, onHelp }: { onStart: () => void; onHelp: () => void 
   )
 }
 
-function ModeVisual({ advanced }: { advanced?: boolean }) {
-  return (
-    <div className={`mode-visual ${advanced ? 'advanced' : ''}`} aria-hidden="true">
-      <div className="mode-radar">
-        <span className="radar-sweep" />
-        <span className="radar-ping ping-one" />
-        {advanced && <span className="radar-ping ping-two" />}
-      </div>
-      <ShipGlyph length={advanced ? 3 : 5} />
-      {advanced && <div className="scan-beam" />}
-    </div>
-  )
-}
-
-function ModeSelect({
-  onSelect,
-  onBack,
-}: {
-  onSelect: (mode: GameMode) => void
-  onBack: () => void
-}) {
-  return (
-    <section className="screen mode-screen">
-      <div className="radar-backdrop" aria-hidden="true" />
-      <div className="page-container mode-container">
-        <button className="back-button" onClick={onBack} type="button">
-          <Icon name="back" /> Quay lại
-        </button>
-        <div className="section-heading">
-          <p className="eyebrow"><span /> BƯỚC 01 / 03</p>
-          <h1>Chọn chế độ tác chiến</h1>
-          <p>Chế độ Cổ điển: hai người chơi trên cùng một máy chủ.</p>
-        </div>
-        <div className="mode-grid">
-          <article className="mode-card">
-            <ModeVisual />
-            <div className="mode-card-body">
-              <span className="mode-index">01</span>
-              <p className="mode-kicker">ĐỐI ĐẦU TIÊU CHUẨN</p>
-              <h2>Cổ điển</h2>
-              <p>Năm chiến hạm, lưới 10 × 10 và luật tác chiến nguyên bản.</p>
-              <ul>
-                <li><Icon name="check" size={18} /> Bố trí thủ công hoặc tự động</li>
-                <li><Icon name="check" size={18} /> Phù hợp để trình diễn luồng chính</li>
-              </ul>
-              <button className="primary-button" onClick={() => onSelect('classic')} type="button">
-                Chọn Cổ điển <Icon name="arrow-right" />
-              </button>
-            </div>
-          </article>
-          <article className="mode-card featured">
-            <span className="mode-badge">CHƯA HỖ TRỢ</span>
-            <ModeVisual advanced />
-            <div className="mode-card-body">
-              <span className="mode-index">02</span>
-              <p className="mode-kicker">TÁC CHIẾN NÂNG CAO</p>
-              <h2>Trinh sát</h2>
-              <p>Chế độ này chưa có trong luật chơi hiện tại.</p>
-              <ul>
-                <li><Icon name="check" size={18} /> Chưa mở để chơi</li>
-                <li><Icon name="check" size={18} /> Chọn Cổ điển để vào trận</li>
-              </ul>
-              <button className="primary-button" disabled type="button">
-                Chọn Trinh sát <Icon name="arrow-right" />
-              </button>
-            </div>
-          </article>
-        </div>
-      </div>
-    </section>
-  )
-}
-
 type BoardPreview = { cells: Coordinate[]; valid: boolean }
 
 function Board({
@@ -316,6 +252,7 @@ function Board({
   preview,
   enemy = false,
   shots = {},
+  shotEffects = {},
   onCellClick,
   onCellDrop,
   onCellHover,
@@ -327,6 +264,7 @@ function Board({
   preview?: BoardPreview
   enemy?: boolean
   shots?: Record<string, Outcome>
+  shotEffects?: Record<string, 'hit' | 'miss'>
   onCellClick?: (row: number, col: number) => void
   onCellDrop?: (shipId: ShipId, row: number, col: number) => void
   onCellHover?: (row: number, col: number) => void
@@ -384,6 +322,7 @@ function Board({
                 {occupied && <span className="ship-segment" aria-hidden="true" />}
                 {enemy && !result && <span className="enemy-dot" aria-hidden="true" />}
                 {result && <span className="shot-marker" aria-hidden="true">{result === 'MISS' ? '•' : '×'}</span>}
+                {shotEffects[coord] && <img className="shot-effect" src={`/effects/${shotEffects[coord] === 'hit' ? 'bantrung' : 'banhut'}.gif`} alt="" aria-hidden="true" />}
               </button>
             )
           })}
@@ -394,17 +333,21 @@ function Board({
 }
 
 function Placement({
-  mode,
   fleet,
   setFleet,
   onBack,
   onStart,
+  onPickup,
+  onPlace,
+  onStartSound,
 }: {
-  mode: GameMode
   fleet: ShipState[]
   setFleet: (fleet: ShipState[]) => void
   onBack: () => void
   onStart: () => void
+  onPickup: () => void
+  onPlace: () => void
+  onStartSound: () => void
 }) {
   const [selectedId, setSelectedId] = useState<ShipId>(fleet[0].id)
   const [hoveredCell, setHoveredCell] = useState<Coordinate | null>(null)
@@ -432,6 +375,7 @@ function Placement({
       return
     }
     setFleet(next)
+    onPlace()
     setStatus(`${ship.name} đã vào vị trí ${wireCoord({ row, col })}.`)
   }
 
@@ -439,6 +383,7 @@ function Placement({
     const occupied = shipAt(fleet, row, col)
     if (occupied && occupied.ship.id !== selectedId) {
       setSelectedId(occupied.ship.id)
+      onPickup()
       setStatus(`Đã chọn ${occupied.ship.name}.`)
       return
     }
@@ -468,6 +413,7 @@ function Placement({
   }
 
   const removeSelected = () => {
+    onPickup()
     setFleet(
       fleet.map((ship) =>
         ship.id === selectedId ? { ...ship, placement: undefined } : ship,
@@ -478,6 +424,7 @@ function Placement({
 
   const randomize = () => {
     setFleet(autoPlaceFleet(fleet))
+    onPlace()
     setStatus('Bộ chỉ huy đã đề xuất một đội hình ngẫu nhiên.')
   }
 
@@ -492,10 +439,10 @@ function Placement({
       <div className="page-container placement-container">
         <div className="placement-heading">
           <button className="back-button" onClick={onBack} type="button">
-            <Icon name="back" /> Đổi chế độ
+            <Icon name="back" /> Về sảnh
           </button>
           <div>
-            <p className="eyebrow"><span /> BƯỚC 02 / 03 • {mode === 'classic' ? 'CỔ ĐIỂN' : 'TRINH SÁT'}</p>
+            <p className="eyebrow"><span /> BƯỚC 01 / 02 • CỔ ĐIỂN</p>
             <h1>Bố trí hạm đội</h1>
           </div>
           <div className="fleet-progress" aria-label={`Đã bố trí ${placedCount} trên ${fleet.length} tàu`}>
@@ -519,12 +466,14 @@ function Placement({
                   key={ship.id}
                   onClick={() => {
                     setSelectedId(ship.id)
+                    onPickup()
                     setStatus(`Đã chọn ${ship.name}.`)
                   }}
                   onDragStart={(event: DragEvent<HTMLButtonElement>) => {
                     event.dataTransfer.setData('ship-id', ship.id)
                     event.dataTransfer.effectAllowed = 'move'
                     setSelectedId(ship.id)
+                    onPickup()
                   }}
                   type="button"
                 >
@@ -594,6 +543,10 @@ function Placement({
               className="primary-button deploy-button"
               disabled={!allPlaced}
               onClick={onStart}
+              onPointerDown={onStartSound}
+              onKeyDown={(event) => {
+                if (!event.repeat && (event.key === 'Enter' || event.key === ' ')) onStartSound()
+              }}
               type="button"
             >
               <Icon name="play" /> Bắt đầu trận
@@ -606,11 +559,13 @@ function Placement({
   )
 }
 
-function Battle({ fleet, view, pending, onFire, onHome }: {
+function Battle({ fleet, view, pending, shotEffects, onFire, onHome }: {
   fleet: ShipState[]; view: PlayerView; pending: boolean
+  shotEffects: Record<string, 'hit' | 'miss'>
   onFire: (row: number, col: number) => void; onHome: () => void
 }) {
   const ready = view.phase === 'playing' && view.player === view.turn && !pending && !view.missing?.length
+  const won = view.winner === view.player
   return (
     <section className="screen battle-screen">
       <div className="tactical-backdrop battle-backdrop" aria-hidden="true" />
@@ -628,7 +583,7 @@ function Battle({ fleet, view, pending, onFire, onHome }: {
           </article>
           <article className="battle-board-card enemy-card" aria-label="Bàn mục tiêu">
             <div className="battle-board-title"><div><small>LƯỚI TẤN CÔNG</small><h2>Vùng biển đối phương</h2></div><span>{ready ? 'CHỌN Ô BẮN' : 'CHỜ'}</span></div>
-            <Board enemy fleet={[]} interactive={ready} shots={view.outgoing} onCellClick={onFire} />
+            <Board enemy fleet={[]} interactive={ready} shots={view.outgoing} shotEffects={shotEffects} onCellClick={onFire} />
           </article>
         </div>
         <div className="ready-banner">
@@ -640,6 +595,13 @@ function Battle({ fleet, view, pending, onFire, onHome }: {
           <button className="secondary-button" onClick={onHome} type="button">{['finished', 'disconnected'].includes(view.phase) ? 'Về trang đầu' : 'Rời trận (bỏ cuộc)'}</button>
         </div>
       </div>
+      {view.phase === 'finished' && view.winner && <div className="match-result-backdrop">
+        <section aria-labelledby="match-result-title" aria-modal="true" className="match-result" role="dialog">
+          <h2 id="match-result-title">{won ? 'BẠN ĐÃ THẮNG' : 'BẠN ĐÃ THUA'}</h2>
+          <img src={`/effects/${won ? 'thangcuoc' : 'thuacuoc'}.gif`} alt={won ? 'GIF ăn mừng chiến thắng' : 'GIF tiếc nuối khi thua cuộc'} />
+          <button className="primary-button" onClick={onHome} type="button">Về trang đầu</button>
+        </section>
+      </div>}
     </section>
   )
 }
@@ -689,10 +651,11 @@ function HelpDialog({ onClose }: { onClose: () => void }) {
 
 export default function App() {
   const [screen, setScreen] = useState<Screen>('landing')
-  const [mode, setMode] = useState<GameMode>('classic')
+  const [soundEnabled, setSoundEnabled] = useState(true)
   const [fleet, setFleet] = useState<ShipState[]>(createFleet)
   const [helpOpen, setHelpOpen] = useState(false)
   const [view, setView] = useState<PlayerView>(emptyView)
+  const [shotEffects, setShotEffects] = useState<Record<string, 'hit' | 'miss'>>({})
   const [pending, setPending] = useState(false)
   const [notice, setNotice] = useState('')
   const [token, setToken] = useState('')
@@ -708,8 +671,101 @@ export default function App() {
   const socketRef = useRef<WebSocket | null>(null)
   const timerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
   const mainRef = useRef<HTMLDivElement>(null)
+  const lobbyMusicRef = useRef<HTMLAudioElement | null>(null)
+  const placementMusicRef = useRef<HTMLAudioElement | null>(null)
+  const battleMusicRef = useRef<HTMLAudioElement | null>(null)
+  const effectAudioRef = useRef<Partial<Record<SoundEffect, HTMLAudioElement>>>({})
+  const sunkAudioTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+  const activeMusicRef = useRef<MusicTrack>('lobby')
+  const musicStoppedAtEndRef = useRef(false)
+  const soundEnabledRef = useRef(true)
+  const shotEffectTimersRef = useRef(new Map<string, ReturnType<typeof setTimeout>>())
 
   const updateView = (next: PlayerView) => { viewRef.current = next; setView(next) }
+  const showShotEffect = (coord: string, effect: 'hit' | 'miss') => {
+    clearTimeout(shotEffectTimersRef.current.get(coord))
+    setShotEffects((current) => ({ ...current, [coord]: effect }))
+    shotEffectTimersRef.current.set(coord, setTimeout(() => {
+      setShotEffects((current) => {
+        const next = { ...current }
+        delete next[coord]
+        return next
+      })
+      shotEffectTimersRef.current.delete(coord)
+    }, effect === 'hit' ? 860 : 3500))
+  }
+  const musicAudio = (track: MusicTrack) => {
+    lobbyMusicRef.current ??= new Audio('/audio/freefire-lobby.mp3')
+    placementMusicRef.current ??= new Audio('/audio/amthanhchontau.m4a')
+    battleMusicRef.current ??= new Audio('/audio/amthanhtrandau.mp3')
+    return track === 'lobby' ? lobbyMusicRef.current : track === 'placement' ? placementMusicRef.current : battleMusicRef.current
+  }
+  const playMusic = (track: MusicTrack) => {
+    const next = musicAudio(track)
+    musicStoppedAtEndRef.current = false
+    for (const audio of [lobbyMusicRef.current, placementMusicRef.current, battleMusicRef.current]) {
+      if (audio && audio !== next) audio.pause()
+    }
+    if (activeMusicRef.current !== track) {
+      next.currentTime = 0
+      activeMusicRef.current = track
+    }
+    next.loop = true
+    next.volume = track === 'lobby' ? 0.24 : 0.6
+    if (!soundEnabledRef.current) return
+    void next.play().catch(() => {})
+  }
+  const playSound = (sound: SoundEffect) => {
+    if (!soundEnabledRef.current) return
+    const files = {
+      'enter-room': 'vaophongtacchien.mp3',
+      'start-match': 'batdau.mp3',
+      pickup: 'nhatlen.mp3',
+      place: 'datxuong.mp3',
+      hit: 'trungtau.mp3',
+      miss: 'trungnuoc.mp3',
+      sunk: 'tauchim.mp3',
+    } satisfies Record<SoundEffect, string>
+    const audio = effectAudioRef.current[sound] ?? new Audio(`/audio/${files[sound]}`)
+    effectAudioRef.current[sound] = audio
+    audio.preload = 'auto'
+    audio.volume = sound === 'start-match' ? 0.85 : 0.8
+    audio.currentTime = 0
+    if (sound === 'sunk') {
+      clearTimeout(sunkAudioTimerRef.current)
+      sunkAudioTimerRef.current = setTimeout(() => {
+        audio.pause()
+        audio.currentTime = 0
+      }, 4000)
+    }
+    void audio.play().catch(() => {})
+  }
+  const preloadAudio = () => {
+    const lobbyMusic = musicAudio('lobby')
+    const placementMusic = musicAudio('placement')
+    const battleMusic = musicAudio('battle')
+    const clips: Record<SoundEffect, string> = {
+      'enter-room': 'vaophongtacchien.mp3',
+      'start-match': 'batdau.mp3',
+      pickup: 'nhatlen.mp3',
+      place: 'datxuong.mp3',
+      hit: 'trungtau.mp3',
+      miss: 'trungnuoc.mp3',
+      sunk: 'tauchim.mp3',
+    }
+    for (const [sound, file] of Object.entries(clips) as [SoundEffect, string][]) {
+      const audio = effectAudioRef.current[sound] ?? new Audio(`/audio/${file}`)
+      audio.preload = 'auto'
+      effectAudioRef.current[sound] = audio
+      audio.load()
+    }
+    lobbyMusic.preload = 'auto'
+    placementMusic.preload = 'auto'
+    battleMusic.preload = 'auto'
+    lobbyMusic.load()
+    placementMusic.load()
+    battleMusic.load()
+  }
   const releasePending = () => {
     clearTimeout(timerRef.current)
     pendingRef.current = false
@@ -730,7 +786,31 @@ export default function App() {
   useEffect(() => {
     const leave = () => socketRef.current?.close()
     window.addEventListener('pagehide', leave)
-    return () => { window.removeEventListener('pagehide', leave); closeSession() }
+    return () => {
+      window.removeEventListener('pagehide', leave); closeSession()
+      shotEffectTimersRef.current.forEach((timer) => clearTimeout(timer))
+      shotEffectTimersRef.current.clear()
+    }
+  }, [])
+  useEffect(() => {
+    preloadAudio()
+    playMusic('lobby')
+    const resumeMusic = () => {
+      if (!soundEnabledRef.current || musicStoppedAtEndRef.current) return
+      const audio = musicAudio(activeMusicRef.current)
+      if (audio?.paused) void audio.play().catch(() => {})
+    }
+    window.addEventListener('pointerdown', resumeMusic)
+    window.addEventListener('keydown', resumeMusic)
+    return () => {
+      window.removeEventListener('pointerdown', resumeMusic)
+      window.removeEventListener('keydown', resumeMusic)
+      clearTimeout(sunkAudioTimerRef.current)
+      lobbyMusicRef.current?.pause()
+      placementMusicRef.current?.pause()
+      battleMusicRef.current?.pause()
+      Object.values(effectAudioRef.current).forEach((audio) => audio?.pause())
+    }
   }, [])
   useEffect(() => { mainRef.current?.focus() }, [screen])
   useEffect(() => {
@@ -748,11 +828,14 @@ export default function App() {
     if (tokenRef.current && viewRef.current.phase !== 'finished' &&
         !window.confirm('Rời trận sẽ tính là bỏ cuộc. Bạn muốn rời?')) return
     closeSession(true); saveToken(''); releasePending(); updateView(emptyView())
+    shotEffectTimersRef.current.forEach((timer) => clearTimeout(timer))
+    shotEffectTimersRef.current.clear(); setShotEffects({})
+    playMusic('lobby')
     setScreen('landing'); setHelpOpen(false); setNotice('')
   }
   const connect = (resume = '') => {
     if (socketRef.current?.readyState === WebSocket.OPEN || socketRef.current?.readyState === WebSocket.CONNECTING) return
-    releasePending(); setScreen('battle'); setNotice('')
+    releasePending(); setScreen('battle'); setNotice(''); playMusic('battle')
     const socket = new WebSocket(`${location.protocol === 'https:' ? 'wss:' : 'ws:'}//${location.host}/play${resume ? '?resume=' + encodeURIComponent(resume) : ''}`)
     socketRef.current = socket
     const current = () => socketRef.current === socket
@@ -783,17 +866,29 @@ export default function App() {
             if (viewRef.current.phase === 'finished') saveToken('')
             if (!viewRef.current.accepted && viewRef.current.phase !== 'finished') {
               if (commandRef.current) socket.send(commandRef.current)
-              else { setFleet(createFleet()); setScreen('placement'); setNotice('Phiên đã khôi phục. Hãy bố trí và xác nhận hạm đội.') }
+              else { setFleet(createFleet()); setScreen('placement'); setNotice('Phiên đã khôi phục. Hãy bố trí và xác nhận hạm đội.'); playMusic('placement') }
             }
           }
           return
         }
         const frame = parseFrame(String(message.data))
         if (frame.kind === 'WELCOME' && viewRef.current.player !== null) throw new Error('Máy chủ gửi danh tính lặp.')
+        if (frame.kind === 'SHOT') showShotEffect(frame.coord, frame.outcome === 'MISS' ? 'miss' : 'hit')
+        if (frame.kind === 'SHOT' || frame.kind === 'INCOMING') {
+          playSound(frame.outcome === 'MISS' ? 'miss' :
+            frame.outcome === 'WIN' || frame.outcome.startsWith('SUNK ') ? 'sunk' : 'hit')
+        }
         updateView(applyFrame(viewRef.current, frame))
         if (frame.kind === 'WELCOME' && !resume) socket.send(commandRef.current)
         if (['OK', 'TURN', 'ERROR', 'GAME_OVER'].includes(frame.kind)) releasePending()
-        if (frame.kind === 'GAME_OVER') { clearTimeout(reconnectRef.current); saveToken('') }
+        if (frame.kind === 'GAME_OVER') {
+          clearTimeout(reconnectRef.current)
+          battleMusicRef.current?.pause()
+          lobbyMusicRef.current?.pause()
+          musicStoppedAtEndRef.current = true
+          activeMusicRef.current = 'lobby'
+          saveToken('')
+        }
       } catch (error) {
         updateView({ ...viewRef.current, phase: 'disconnected', error: (error as Error).message })
         releasePending(); socket.close()
@@ -818,6 +913,7 @@ export default function App() {
   const start = () => {
     try { commandRef.current = encodeFleet(fleet) }
     catch (error) { setNotice((error as Error).message); return }
+    playMusic('battle')
     if (socketRef.current?.readyState === WebSocket.OPEN && tokenRef.current) {
       socketRef.current.send(commandRef.current); setScreen('battle'); return
     }
@@ -851,10 +947,24 @@ export default function App() {
       else await document.documentElement.requestFullscreen()
     } catch { setNotice('Trình duyệt chưa cho phép mở toàn màn hình.') }
   }
+  const toggleSound = () => {
+    const enabled = !soundEnabledRef.current
+    soundEnabledRef.current = enabled
+    setSoundEnabled(enabled)
+    if (!enabled) {
+      clearTimeout(sunkAudioTimerRef.current)
+      lobbyMusicRef.current?.pause()
+      placementMusicRef.current?.pause()
+      battleMusicRef.current?.pause()
+      Object.values(effectAudioRef.current).forEach((audio) => audio?.pause())
+      return
+    }
+    if (!musicStoppedAtEndRef.current) playMusic(activeMusicRef.current)
+  }
   return (
     <div className="app-shell">
       <a className="skip-link" href="#main-content">Bỏ qua thanh công cụ</a>
-      <Header onFullscreen={() => void toggleFullscreen()} onHelp={() => setHelpOpen(true)} onHome={goHome} />
+      <Header onFullscreen={() => void toggleFullscreen()} onHelp={() => setHelpOpen(true)} onHome={goHome} onSoundToggle={toggleSound} soundEnabled={soundEnabled} />
       {notice && <p className="game-error" role="alert">{notice}</p>}
       {screen === 'landing' && <section className="recovery-panel" aria-label="Khôi phục trận">
         <label>Mã khôi phục<input aria-label="Mã khôi phục" value={recoveryCode} onChange={(event) => setRecoveryCode(event.target.value)} /></label>
@@ -873,12 +983,22 @@ export default function App() {
         </>}
       </section>}
       <div id="main-content" ref={mainRef} tabIndex={-1}>
-        {screen === 'landing' && <Landing onHelp={() => setHelpOpen(true)} onStart={() => setScreen('mode')} />}
-        {screen === 'mode' && <ModeSelect onBack={() => setScreen('landing')} onSelect={(next) => {
-          setMode(next); setFleet(createFleet()); setScreen('placement')
+        {screen === 'landing' && <Landing onHelp={() => setHelpOpen(true)} onStart={() => {
+          playSound('enter-room')
+          playMusic('placement')
+          setFleet(createFleet())
+          setScreen('placement')
         }} />}
-        {screen === 'placement' && <Placement fleet={fleet} mode={mode} onBack={() => setScreen('mode')} onStart={start} setFleet={setFleet} />}
-        {screen === 'battle' && <Battle fleet={fleet} view={view} pending={pending} onFire={fire} onHome={goHome} />}
+        {screen === 'placement' && <Placement
+          fleet={fleet}
+          onBack={() => { playMusic('lobby'); setScreen('landing') }}
+          onPickup={() => playSound('pickup')}
+          onPlace={() => playSound('place')}
+          onStart={start}
+          onStartSound={() => playSound('start-match')}
+          setFleet={setFleet}
+        />}
+        {screen === 'battle' && <Battle fleet={fleet} view={view} pending={pending} shotEffects={shotEffects} onFire={fire} onHome={goHome} />}
       </div>
       {helpOpen && <HelpDialog onClose={() => setHelpOpen(false)} />}
     </div>
