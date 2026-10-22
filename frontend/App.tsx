@@ -1,5 +1,6 @@
 import {
   type DragEvent,
+  type FormEvent,
   type MouseEvent,
   type ReactNode,
   useEffect,
@@ -16,9 +17,18 @@ import {
 } from './game.ts'
 import { parseBridgeMessage, decodeOwnFleet, replayView, recoveryURL } from './connection.ts'
 
-type Screen = 'landing' | 'placement' | 'battle'
+type Screen = 'landing' | 'rooms' | 'placement' | 'battle'
 type MusicTrack = 'lobby' | 'placement' | 'battle'
 type SoundEffect = 'enter-room' | 'start-match' | 'pickup' | 'place' | 'hit' | 'miss' | 'sunk'
+type RoomInfo = {
+  roomId: string
+  roomName: string
+  seat: 'P1' | 'P2'
+  displayName: string
+  opponentName: string | null
+  ticket?: string
+  expiresAt: number | null
+}
 type IconName =
   | 'anchor'
   | 'arrow-right'
@@ -559,9 +569,10 @@ function Placement({
   )
 }
 
-function Battle({ fleet, view, pending, shotEffects, onFire, onHome }: {
+function Battle({ fleet, view, pending, room, shotEffects, onFire, onHome }: {
   fleet: ShipState[]; view: PlayerView; pending: boolean
   shotEffects: Record<string, 'hit' | 'miss'>
+  room: RoomInfo | null
   onFire: (row: number, col: number) => void; onHome: () => void
 }) {
   const ready = view.phase === 'playing' && view.player === view.turn && !pending && !view.missing?.length
@@ -571,18 +582,18 @@ function Battle({ fleet, view, pending, shotEffects, onFire, onHome }: {
       <div className="tactical-backdrop battle-backdrop" aria-hidden="true" />
       <div className="page-container battle-container">
         <div className="battle-heading">
-          <div><p className="eyebrow"><span /> CỔ ĐIỂN • {view.player ?? 'ĐANG KẾT NỐI'}</p><h1>Phòng chiến đấu</h1></div>
-          <div className="connection-pill"><span />{view.player ? 'Người chơi ' + view.player : 'Kết nối máy chủ'}</div>
+          <div><p className="eyebrow"><span /> CỔ ĐIỂN • {room?.roomId ?? view.player ?? 'ĐANG KẾT NỐI'}</p><h1>{room?.roomName ?? 'Phòng chiến đấu'}</h1></div>
+          <div className="connection-pill"><span />{view.player ? room?.displayName ?? 'Người chơi ' + view.player : 'Kết nối máy chủ'}</div>
         </div>
         <div className="game-status" role="status">{statusText(view, pending)}</div>
         {view.error && <p className="game-error" role="alert">{view.error}</p>}
         <div className="battle-boards">
           <article className="battle-board-card" aria-label="Bàn phòng thủ">
-            <div className="battle-board-title"><div><small>LƯỚI PHÒNG THỦ</small><h2>Hạm đội của bạn</h2></div><span>{view.accepted ? 'ĐÃ XÁC NHẬN' : 'ĐỘI HÌNH ĐÃ CHỌN'}</span></div>
+            <div className="battle-board-title"><div><small>LƯỚI PHÒNG THỦ</small><h2>{room?.displayName ?? 'Hạm đội của bạn'}</h2></div><span>{view.accepted ? 'ĐÃ XÁC NHẬN' : 'ĐỘI HÌNH ĐÃ CHỌN'}</span></div>
             <Board fleet={fleet} shots={view.incoming} />
           </article>
           <article className="battle-board-card enemy-card" aria-label="Bàn mục tiêu">
-            <div className="battle-board-title"><div><small>LƯỚI TẤN CÔNG</small><h2>Vùng biển đối phương</h2></div><span>{ready ? 'CHỌN Ô BẮN' : 'CHỜ'}</span></div>
+            <div className="battle-board-title"><div><small>LƯỚI TẤN CÔNG</small><h2>{room?.opponentName ?? 'Vùng biển đối phương'}</h2></div><span>{ready ? 'CHỌN Ô BẮN' : 'CHỜ'}</span></div>
             <Board enemy fleet={[]} interactive={ready} shots={view.outgoing} shotEffects={shotEffects} onCellClick={onFire} />
           </article>
         </div>
@@ -590,7 +601,7 @@ function Battle({ fleet, view, pending, shotEffects, onFire, onHome }: {
           <div><h2>{view.phase === 'finished' ? 'Trận đấu kết thúc' : 'Nhật ký tác chiến'}</h2>
             <p>• Trượt: chuyển lượt. × Trúng/chìm: giữ lượt. Chỉ các ô đã bắn được hiển thị.</p>
             <ol className="shot-log" aria-label="Kết quả bắn">{Object.entries(view.outgoing).map(([coord, result]) => <li key={coord}>{coord}: {outcomeText(result)}</li>)}</ol>
-            {view.phase === 'finished' && <p>Máy chủ hiện phục vụ một trận. Khởi động lại server Haskell trước trận mới.</p>}
+            {view.phase === 'finished' && <p>Phòng này đã kết thúc. Tạo phòng mới để bắt đầu trận khác.</p>}
           </div>
           <button className="secondary-button" onClick={onHome} type="button">{['finished', 'disconnected'].includes(view.phase) ? 'Về trang đầu' : 'Rời trận (bỏ cuộc)'}</button>
         </div>
@@ -602,6 +613,85 @@ function Battle({ fleet, view, pending, shotEffects, onFire, onHome }: {
           <button className="primary-button" onClick={onHome} type="button">Về trang đầu</button>
         </section>
       </div>}
+    </section>
+  )
+}
+
+function RoomSetup({ onBack, onReady }: { onBack: () => void; onReady: (room: RoomInfo) => void }) {
+  const [action, setAction] = useState<'create' | 'join'>('create')
+  const [displayName, setDisplayName] = useState('Player1')
+  const [roomName, setRoomName] = useState('')
+  const [roomLookup, setRoomLookup] = useState('')
+  const [password, setPassword] = useState('')
+  const [error, setError] = useState('')
+  const [busy, setBusy] = useState(false)
+
+  const submit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    setError(''); setBusy(true)
+    try {
+      const response = await fetch(`/api/rooms/${action}`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(action === 'create'
+          ? { roomName, password, displayName }
+          : { room: roomLookup, password, displayName }),
+      })
+      const value = await response.json()
+      if (!response.ok) throw new Error(typeof value.error === 'string' ? value.error : 'Không thể xử lý phòng.')
+      onReady({ ...value, opponentName: value.opponentName ?? null })
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'Không kết nối được máy chủ phòng.')
+    } finally { setBusy(false) }
+  }
+
+  const chooseAction = (next: 'create' | 'join') => {
+    setAction(next); setError('')
+    if ((next === 'join' && displayName === 'Player1') || (next === 'create' && displayName === 'Player2'))
+      setDisplayName(next === 'create' ? 'Player1' : 'Player2')
+  }
+
+  return (
+    <section className="screen room-screen">
+      <div className="radar-backdrop" aria-hidden="true" />
+      <div className="page-container room-container">
+        <button className="back-button" onClick={onBack} type="button"><Icon name="back" /> Quay lại</button>
+        <div className="section-heading">
+          <p className="eyebrow"><span /> KẾT NỐI QUA INTERNET</p>
+          <h1>Phòng tác chiến</h1>
+          <p>Tạo phòng riêng hoặc nhập tên/ID phòng bạn bè gửi. Mật khẩu được nhập dạng chữ thường.</p>
+        </div>
+        <div className="room-panel">
+          <div className="room-tabs" role="tablist" aria-label="Thao tác phòng">
+            <button aria-selected={action === 'create'} className={action === 'create' ? 'active' : ''}
+              onClick={() => chooseAction('create')} role="tab" type="button">Tạo phòng</button>
+            <button aria-selected={action === 'join'} className={action === 'join' ? 'active' : ''}
+              onClick={() => chooseAction('join')} role="tab" type="button">Tham gia phòng</button>
+          </div>
+          <form className="room-form" onSubmit={(event) => void submit(event)}>
+            <label>Tên hiển thị
+              <input autoComplete="nickname" maxLength={24} onChange={(event) => setDisplayName(event.target.value)}
+                required value={displayName} />
+            </label>
+            {action === 'create' ? <label>Tên phòng
+              <input autoComplete="off" maxLength={48} onChange={(event) => setRoomName(event.target.value)}
+                placeholder="Ví dụ: Hạm đội Sao Bắc" required value={roomName} />
+            </label> : <label>Tên hoặc ID phòng
+              <input autoComplete="off" maxLength={48} onChange={(event) => setRoomLookup(event.target.value)}
+                placeholder="Nhập tên phòng hoặc ID" required value={roomLookup} />
+            </label>}
+            <label>Mật khẩu phòng
+              <input autoComplete="off" maxLength={128} onChange={(event) => setPassword(event.target.value)}
+                required type="text" value={password} />
+            </label>
+            {error && <p className="room-error" role="alert">{error}</p>}
+            <button className="primary-button room-submit" disabled={busy} type="submit">
+              {busy ? 'Đang kết nối…' : action === 'create' ? 'Tạo phòng' : 'Tham gia'}
+              {!busy && <Icon name="arrow-right" />}
+            </button>
+          </form>
+          <p className="room-note">Phòng sẽ tự hết hạn sau 5 phút nếu chưa có người thứ hai tham gia.</p>
+        </div>
+      </div>
     </section>
   )
 }
@@ -639,7 +729,7 @@ function HelpDialog({ onClose }: { onClose: () => void }) {
         <p className="eyebrow"><span /> HƯỚNG DẪN NHANH</p>
         <h2 id="help-title">Ba bước vào trận</h2>
         <ol className="help-steps">
-          <li><span>01</span><div><strong>Chọn chế độ</strong><p>Chọn Cổ điển. Mở hai tab trình duyệt cho hai người chơi.</p></div></li>
+          <li><span>01</span><div><strong>Tạo hoặc tham gia phòng</strong><p>Một người tạo phòng và gửi tên hoặc mã phòng cùng mật khẩu cho bạn chơi.</p></div></li>
           <li><span>02</span><div><strong>Bố trí hạm đội</strong><p>Kéo tàu lên lưới, xoay hướng và tránh chồng lấn.</p></div></li>
           <li><span>03</span><div><strong>Vào trận</strong><p>Nhấn “Bắt đầu trận” để xác nhận tàu. Đợi đủ hai người, rồi bấm ô đối phương khi đến lượt. Trúng/chìm giữ lượt; trượt chuyển lượt. Mất kết nối có 5 phút khôi phục bằng mã riêng. Nút rời trận là bỏ cuộc ngay.</p></div></li>
         </ol>
@@ -659,10 +749,12 @@ export default function App() {
   const [pending, setPending] = useState(false)
   const [notice, setNotice] = useState('')
   const [token, setToken] = useState('')
+  const [roomInfo, setRoomInfo] = useState<RoomInfo | null>(null)
   const [recoveryCode, setRecoveryCode] = useState('')
   const [serverAddress, setServerAddress] = useState(location.origin)
   const [now, setNow] = useState(Date.now())
   const tokenRef = useRef('')
+  const roomTicketRef = useRef('')
   const commandRef = useRef('')
   const reconnectRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
   const retryUntilRef = useRef(0)
@@ -831,12 +923,16 @@ export default function App() {
     shotEffectTimersRef.current.forEach((timer) => clearTimeout(timer))
     shotEffectTimersRef.current.clear(); setShotEffects({})
     playMusic('lobby')
+    setRoomInfo(null); roomTicketRef.current = ''
     setScreen('landing'); setHelpOpen(false); setNotice('')
   }
   const connect = (resume = '') => {
     if (socketRef.current?.readyState === WebSocket.OPEN || socketRef.current?.readyState === WebSocket.CONNECTING) return
-    releasePending(); setScreen('battle'); setNotice(''); playMusic('battle')
-    const socket = new WebSocket(`${location.protocol === 'https:' ? 'wss:' : 'ws:'}//${location.host}/play${resume ? '?resume=' + encodeURIComponent(resume) : ''}`)
+    releasePending(); setScreen('battle'); setNotice('')
+    const query = resume ? `?resume=${encodeURIComponent(resume)}` : roomTicketRef.current
+      ? `?ticket=${encodeURIComponent(roomTicketRef.current)}` : ''
+    playMusic('battle')
+    const socket = new WebSocket(`${location.protocol === 'https:' ? 'wss:' : 'ws:'}//${location.host}/play${query}`)
     socketRef.current = socket
     const current = () => socketRef.current === socket
     const timedOut = () => {
@@ -854,6 +950,17 @@ export default function App() {
             if (meta.code === 'INVALID_SESSION') saveToken('')
             updateView({ ...viewRef.current, phase: 'disconnected', error: meta.message })
             releasePending(); socket.close(); return
+          }
+          if (meta.type === 'ROOM_ERROR') {
+            setNotice(meta.message); setScreen('rooms'); releasePending(); socket.close(); return
+          }
+          if (meta.type === 'ROOM_SESSION') {
+            setRoomInfo((previous) => ({
+              roomId: meta.roomId, roomName: meta.roomName, seat: meta.seat,
+              displayName: meta.displayName, opponentName: meta.opponentName,
+              ticket: previous?.ticket, expiresAt: null,
+            }))
+            return
           }
           if (meta.type === 'CONNECTION') {
             if (meta.missing.length) releasePending()
@@ -985,20 +1092,30 @@ export default function App() {
       <div id="main-content" ref={mainRef} tabIndex={-1}>
         {screen === 'landing' && <Landing onHelp={() => setHelpOpen(true)} onStart={() => {
           playSound('enter-room')
-          playMusic('placement')
-          setFleet(createFleet())
-          setScreen('placement')
+          setScreen('rooms')
         }} />}
+        {screen === 'rooms' && <RoomSetup onBack={() => { playMusic('lobby'); setScreen('landing') }} onReady={(room) => {
+          roomTicketRef.current = room.ticket ?? ''
+          setRoomInfo(room); setFleet(createFleet()); setNotice(''); playMusic('placement'); setScreen('placement')
+        }} />}
+        {screen === 'placement' && roomInfo && <div className="room-share-card">
+          <div><small>{roomInfo.roomName} • PHÒNG {roomInfo.seat}</small><strong>{roomInfo.roomId}</strong>
+            <span>{roomInfo.expiresAt ? `Chờ người thứ hai · còn ${Math.max(0, Math.ceil((roomInfo.expiresAt - now) / 1000))} giây` : 'Bạn có thể chia sẻ tên phòng hoặc mã này.'}</span>
+          </div>
+          {roomInfo.expiresAt && <button className="secondary-button" onClick={() => {
+            void navigator.clipboard?.writeText(roomInfo.roomId).catch(() => setNotice('Không sao chép được mã phòng.'))
+          }} type="button">Sao chép mã</button>}
+        </div>}
         {screen === 'placement' && <Placement
           fleet={fleet}
-          onBack={() => { playMusic('lobby'); setScreen('landing') }}
+          onBack={() => setScreen('rooms')}
           onPickup={() => playSound('pickup')}
           onPlace={() => playSound('place')}
           onStart={start}
           onStartSound={() => playSound('start-match')}
           setFleet={setFleet}
         />}
-        {screen === 'battle' && <Battle fleet={fleet} view={view} pending={pending} shotEffects={shotEffects} onFire={fire} onHome={goHome} />}
+        {screen === 'battle' && <Battle fleet={fleet} view={view} pending={pending} room={roomInfo} shotEffects={shotEffects} onFire={fire} onHome={goHome} />}
       </div>
       {helpOpen && <HelpDialog onClose={() => setHelpOpen(false)} />}
     </div>

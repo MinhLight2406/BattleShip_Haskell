@@ -562,7 +562,10 @@ await label action = do
 
 awaitSocket :: String -> Socket -> IO a -> IO a
 awaitSocket label connection action =
-  withAsync (threadDelay 10000000 >> release) $ \_ -> await label action
+  withAsync (threadDelay 10000000 >> release) $ \_ -> do
+    -- Let the watchdog's socket shutdown interrupt a blocked IO before timing out.
+    result <- timeout 15000000 action
+    maybe (ioError (userError ("C-02 timeout: " ++ label))) pure result
   where
     release = do
       void (try (shutdown connection ShutdownBoth) :: IO (Either IOException ()))

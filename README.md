@@ -56,6 +56,14 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts/Start-LanCompose.ps1
 
 Chỉ chạy **một** lệnh start phù hợp. Trước khi chuyển chế độ/cổng của deployment đã chạy, kết thúc trận, Ctrl+C helper Auto rồi `down` bằng env-file ở mục 4; sau đó start cấu hình mới. Đổi mapping cổng tạo lại web và mất phiên. IP đổi trong Auto chỉ cập nhật file, không restart. Nếu cần origin cố định, dùng `-Mode Manual -PublicOrigin 'http://<IPv4-host>:8081'`; IP này phải do người vận hành cập nhật, không dùng để tự dò mạng.
 
+**Internet qua máy cá nhân**, dùng một thư mục runtime riêng để không ghi đè cấu hình LAN. Sau khi biết IPv4 công khai, chạy:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/Start-LanCompose.ps1 -Mode Manual -PublicOrigin 'http://<IPv4-công-khai>:8081' -EnvFile .env.example -ProjectName battleship -ConfigDir .docker-runtime/internet
+```
+
+Lệnh trên chỉ cấu hình ứng dụng; router vẫn cần chuyển tiếp TCP `8081` tới máy này và Windows Firewall phải cho phép cổng đó. Nhà mạng phải cấp IPv4 công khai, không bị CGNAT. Kết nối HTTP chỉ nên dùng cho demo tạm thời vì mật khẩu phòng không được mã hóa khi truyền. Chỉ publish cổng web `8081`; không publish cổng Haskell `4000`.
+
 ### 3. Kết nối hai người và chơi
 
 Mỗi người chọn **Vào phòng tác chiến → Cổ điển**, đặt đủ năm tàu CV/BB/CR/SB/DD dài 5/4/3/3/2 bằng click, rồi **Bắt đầu trận**. Người xác nhận và kết nối trước nhận P1, người tiếp theo P2; người thứ ba báo phòng đầy. P1 bắn trước; trượt đổi lượt, trúng/chìm giữ lượt. Không cần nhập lệnh TCP.

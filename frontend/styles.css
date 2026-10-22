@@ -1704,6 +1704,37 @@ a:focus-visible {
 .match-result h2 { margin: 0; color: #bafbf0; font-size: clamp(1.5rem, 4vw, 2.5rem); text-align: center; text-shadow: 0 0 24px rgba(52, 229, 190, .55); }
 .match-result img { display: block; width: 100%; aspect-ratio: 1; border: 1px solid rgba(52, 229, 190, .55); border-radius: 12px; object-fit: cover; box-shadow: 0 20px 80px rgba(0, 0, 0, .5); }
 @media (max-width: 640px) { .battle-screen .ready-banner { grid-template-columns: minmax(0, 1fr); } }
+.room-container { max-width: 860px; }
+.room-panel, .room-share-card {
+  color: #d3e1e4; background: rgba(9, 27, 36, .94); border: 1px solid #31505a;
+  border-radius: 16px; box-shadow: 0 18px 55px rgba(0, 0, 0, .24);
+}
+.room-panel { max-width: 620px; margin: 1.5rem auto 4rem; overflow: hidden; }
+.room-tabs { display: grid; grid-template-columns: 1fr 1fr; border-bottom: 1px solid #31505a; }
+.room-tabs button { padding: 1rem; color: #9cb4bb; background: #0a202a; border: 0; cursor: pointer; font-weight: 750; }
+.room-tabs button.active { color: #071a24; background: #32d6bb; }
+.room-form { display: grid; gap: 1rem; padding: 1.4rem; }
+.room-form label { display: grid; gap: .45rem; color: #b9cbd0; font-size: .9rem; font-weight: 700; }
+.room-form input {
+  box-sizing: border-box; width: 100%; min-width: 0; padding: .8rem .9rem; color: #e8f8fa;
+  background: #061820; border: 1px solid #48636b; border-radius: 8px; font: inherit;
+}
+.room-form input:focus { outline: 2px solid #32d6bb; outline-offset: 1px; }
+.room-submit { justify-content: center; gap: .5rem; margin-top: .25rem; }
+.room-note { margin: 0; padding: 0 1.4rem 1.3rem; color: #91a9af; font-size: .85rem; }
+.room-error { margin: 0; padding: .75rem; color: #ffd6db; background: #4c1921; border: 1px solid #f48293; border-radius: 8px; }
+.room-share-card {
+  display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+  max-width: 1040px; margin: 1rem auto; padding: 1rem 1.25rem;
+}
+.room-share-card > div { display: grid; gap: .25rem; }
+.room-share-card small { color: #63dfcb; font-weight: 800; letter-spacing: .09em; }
+.room-share-card strong { color: #effbfc; font-size: 1.25rem; letter-spacing: .12em; overflow-wrap: anywhere; }
+.room-share-card span { color: #a5bbc1; font-size: .9rem; }
+@media (max-width: 640px) {
+  .room-share-card { align-items: flex-start; flex-direction: column; }
+  .room-share-card .secondary-button { width: 100%; }
+}
 .recovery-panel {
   margin: 1rem auto;
   padding: 1rem;

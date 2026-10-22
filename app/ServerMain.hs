@@ -1,9 +1,9 @@
 {-# LANGUAGE CPP #-}
 module Main (main) where
 
-import Battleship.Server (gameCapability, parseGameRuntimeConfig, parseServerConfig, runServerWithRuntime, serverBindHost)
+import Battleship.Server (GameRuntimeConfig, ServerConfig, gameCapability, parseGameRuntimeConfig, parseServerConfig, runRoomServerWithRuntime, runServerWithRuntime, serverBindHost)
 import qualified Battleship.Rules as Rules
-import Battleship.Types (initialGameState)
+import Battleship.Types (GameState, Step, initialGameState)
 import Control.Concurrent (getNumCapabilities)
 import Control.Exception (IOException, catch)
 import Network.Socket (PortNumber)
@@ -26,13 +26,22 @@ main = do
   case arguments of
     ["--help"] -> putStrLn usage
     [] -> start 4000
+    ["--rooms", argument] -> case readMaybe argument :: Maybe Integer of
+      Just port | port >= 0 && port <= 65535 -> startRooms (fromInteger port)
+      _ -> failWith usage
     [argument] -> case readMaybe argument :: Maybe Integer of
       Just port | port >= 0 && port <= 65535 -> start (fromInteger port)
       _ -> failWith usage
     _ -> failWith usage
 
 start :: PortNumber -> IO ()
-start port = do
+start = startUsing runServerWithRuntime
+
+startRooms :: PortNumber -> IO ()
+startRooms = startUsing runRoomServerWithRuntime
+
+startUsing :: (GameRuntimeConfig -> ServerConfig -> Step -> GameState -> PortNumber -> (PortNumber -> IO ()) -> IO ()) -> PortNumber -> IO ()
+startUsing runSelectedServer port = do
   hSetBuffering stdout LineBuffering
   -- Enumeration preserves explicitly empty values on Windows too.
   environment <- getEnvironment
@@ -40,7 +49,7 @@ start port = do
   config <- either failWith pure (parseServerConfig (setting "BATTLESHIP_BIND_HOST") (setting "BATTLESHIP_READY_FILE"))
   capabilities <- getNumCapabilities
   runtime <- either failWith pure (parseGameRuntimeConfig capabilities (setting "BATTLESHIP_GAME_CAPABILITY"))
-  withTermination $ runServerWithRuntime runtime config Rules.step initialGameState port
+  withTermination $ runSelectedServer runtime config Rules.step initialGameState port
     (\actual -> do
       putStrLn ("Battleship server listening on " ++ serverBindHost config ++ ":" ++ show actual)
       putStrLn ("Battleship runtime capabilities: " ++ show capabilities)
@@ -62,7 +71,7 @@ withTermination action = do
 #endif
 
 usage :: String
-usage = "Usage: battleship-server [PORT] (default 4000; 0 selects a free port)"
+usage = "Usage: battleship-server [PORT] | --rooms [PORT] (default PORT 4000; 0 selects a free port)"
 
 failWith :: String -> IO a
 failWith message = hPutStrLn stderr message >> exitFailure
