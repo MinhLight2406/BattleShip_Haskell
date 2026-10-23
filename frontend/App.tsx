@@ -29,6 +29,8 @@ type RoomInfo = {
   ticket?: string
   expiresAt: number | null
 }
+
+type AvailableRoom = { roomId: string; roomName: string; hasPassword: boolean }
 type IconName =
   | 'anchor'
   | 'arrow-right'
@@ -618,19 +620,54 @@ function RoomSetup({ onBack, onReady }: { onBack: () => void; onReady: (room: Ro
   const [displayName, setDisplayName] = useState('Player1')
   const [roomName, setRoomName] = useState('')
   const [roomLookup, setRoomLookup] = useState('')
+  const [search, setSearch] = useState('')
+  const [rooms, setRooms] = useState<AvailableRoom[]>([])
+  const [loadingRooms, setLoadingRooms] = useState(false)
+  const [listError, setListError] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
 
+  const selectedRoom = rooms.find((room) => room.roomId === roomLookup)
+  const query = search.trim().normalize('NFC').toLocaleLowerCase('vi')
+  const visibleRooms = rooms.filter((room) => room.roomName.toLocaleLowerCase('vi').includes(query) || room.roomId.toLowerCase().includes(query))
+
+  useEffect(() => {
+    if (action !== 'join') return
+    const controller = new AbortController()
+    let timer: ReturnType<typeof setTimeout>
+    setLoadingRooms(true)
+    const loadRooms = async () => {
+      try {
+        const response = await fetch('/api/rooms', { signal: controller.signal })
+        if (!response.ok) throw new Error('Không tải được danh sách phòng.')
+        const value = await response.json()
+        if (controller.signal.aborted) return
+        setRooms(value.rooms); setListError('')
+      } catch {
+        if (controller.signal.aborted) return
+        setRooms([]); setListError('Không tải được danh sách phòng. Đang thử lại…')
+      } finally {
+        if (!controller.signal.aborted) {
+          setLoadingRooms(false)
+          timer = setTimeout(() => void loadRooms(), 3000)
+        }
+      }
+    }
+    void loadRooms()
+    return () => { controller.abort(); clearTimeout(timer) }
+  }, [action])
+
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
+    if (action === 'join' && !selectedRoom) return
     setError(''); setBusy(true)
     try {
       const response = await fetch(`/api/rooms/${action}`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(action === 'create'
           ? { roomName, password, displayName }
-          : { room: roomLookup, password, displayName }),
+          : { room: roomLookup, password: selectedRoom?.hasPassword ? password : '', displayName }),
       })
       const value = await response.json()
       if (!response.ok) throw new Error(typeof value.error === 'string' ? value.error : 'Không thể xử lý phòng.')
@@ -641,7 +678,7 @@ function RoomSetup({ onBack, onReady }: { onBack: () => void; onReady: (room: Ro
   }
 
   const chooseAction = (next: 'create' | 'join') => {
-    setAction(next); setError('')
+    setAction(next); setError(''); setPassword(''); setRoomLookup('')
     if ((next === 'join' && displayName === 'Player1') || (next === 'create' && displayName === 'Player2'))
       setDisplayName(next === 'create' ? 'Player1' : 'Player2')
   }
@@ -669,16 +706,30 @@ function RoomSetup({ onBack, onReady }: { onBack: () => void; onReady: (room: Ro
             {action === 'create' ? <label>Tên phòng
               <input autoComplete="off" maxLength={48} onChange={(event) => setRoomName(event.target.value)}
                 placeholder="Ví dụ: Hạm đội Sao Bắc" required value={roomName} />
-            </label> : <label>Tên hoặc ID phòng
-              <input autoComplete="off" maxLength={48} onChange={(event) => setRoomLookup(event.target.value)}
-                placeholder="Nhập tên phòng hoặc ID" required value={roomLookup} />
-            </label>}
-            <label>Mật khẩu phòng
+            </label> : <>
+              <label>Tìm tên hoặc ID phòng
+                <input autoComplete="off" maxLength={48} onChange={(event) => setSearch(event.target.value)}
+                  placeholder="Nhập tên hoặc mã ID phòng" type="search" value={search} />
+              </label>
+              <div className="room-list" aria-label="Phòng đang hoạt động" aria-busy={loadingRooms}>
+                {loadingRooms ? <p role="status">Đang tải danh sách phòng…</p>
+                  : listError ? <p role="alert">{listError}</p>
+                    : visibleRooms.length === 0 ? <p role="status">{query ? 'Không tìm thấy phòng phù hợp.' : 'Chưa có phòng đang chờ.'}</p>
+                      : visibleRooms.map((room) => <button key={room.roomId} type="button"
+                        aria-pressed={roomLookup === room.roomId} disabled={busy}
+                        onClick={() => { setRoomLookup(room.roomId); setPassword(''); setError('') }}>
+                        <span><strong>{room.roomName}</strong><small>ID: {room.roomId}</small></span>
+                        {room.hasPassword && <span className="room-lock" role="img" aria-label="Có mật khẩu"><Icon name="lock" /></span>}
+                      </button>)}
+              </div>
+            </>}
+            {(action === 'create' || selectedRoom?.hasPassword) && <label>
+              {action === 'create' ? 'Mật khẩu phòng (không bắt buộc)' : 'Mật khẩu phòng'}
               <input autoComplete="off" maxLength={128} onChange={(event) => setPassword(event.target.value)}
-                required type="text" value={password} />
-            </label>
+                required={action === 'join'} type="password" value={password} />
+            </label>}
             {error && <p className="room-error" role="alert">{error}</p>}
-            <button className="primary-button room-submit" disabled={busy} type="submit">
+            <button className="primary-button room-submit" disabled={busy || (action === 'join' && !selectedRoom)} type="submit">
               {busy ? 'Đang kết nối…' : action === 'create' ? 'Tạo phòng' : 'Tham gia'}
               {!busy && <Icon name="arrow-right" />}
             </button>
@@ -691,6 +742,7 @@ function RoomSetup({ onBack, onReady }: { onBack: () => void; onReady: (room: Ro
 }
 
 function HelpDialog({ onClose }: { onClose: () => void }) {
+  const [tab, setTab] = useState<'about' | 'guide'>('about')
   const dialogRef = useRef<HTMLElement>(null)
   useEffect(() => {
     const previous = document.activeElement as HTMLElement | null
@@ -720,13 +772,55 @@ function HelpDialog({ onClose }: { onClose: () => void }) {
         <button aria-label="Đóng hướng dẫn" className="dialog-close" onClick={onClose} type="button">
           <Icon name="close" />
         </button>
+        <div className="help-tabs" role="tablist" aria-label="Thông tin trò chơi"
+          onKeyDown={(event) => {
+            if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return
+            event.preventDefault()
+            const next = event.key === 'Home' ? 'about' : event.key === 'End' ? 'guide' : tab === 'about' ? 'guide' : 'about'
+            setTab(next)
+            document.getElementById(`help-tab-${next}`)?.focus()
+          }}>
+          {(['about', 'guide'] as const).map((name) => <button key={name} type="button" role="tab"
+            id={`help-tab-${name}`} aria-controls={`help-panel-${name}`} aria-selected={tab === name}
+            tabIndex={tab === name ? 0 : -1} onClick={() => setTab(name)}>
+            {name === 'about' ? 'GIỚI THIỆU' : 'HƯỚNG DẪN'}
+          </button>)}
+        </div>
+        <div id="help-panel-about" role="tabpanel" aria-labelledby="help-tab-about" hidden={tab !== 'about'}>
+          <p className="eyebrow"><span /> ĐỒ ÁN MÔN LẬP TRÌNH HÀM</p>
+          <h2 id={tab === 'about' ? 'help-title' : undefined}>BattleShip Haskell</h2>
+          <div className="about-content">
+            <p>BattleShip Haskell là trò chơi hải chiến dành cho hai người, được nhóm xây dựng trong môn Lập Trình Hàm.
+              Người chơi tạo hoặc tham gia phòng, bố trí hạm đội trên bàn cờ 10 × 10 và lần lượt tấn công để đánh chìm toàn bộ tàu đối phương.</p>
+            <p>Dự án vận dụng kiến thức lập trình hàm để xây dựng lõi xử lý luật chơi bằng Haskell,
+              kết hợp giao diện web và Docker để kết nối người chơi và triển khai trò chơi.</p>
+            <h3>Thành viên nhóm</h3>
+            <ul className="about-members">
+              {[
+                ['Ngô Đỗ Nhật Minh', '31241025709'],
+                ['Phạm Tấn Trung Nam', '31241020538'],
+                ['Phạm Trần Minh Thư', '31241025703'],
+                ['Nguyễn Duy Thành Vũ', '31241020208'],
+                ['Nguyễn Văn Tuấn Đạt', '31241020801'],
+              ].map(([name, studentId]) => <li key={studentId}><strong>{name}</strong><span>{studentId}</span></li>)}
+            </ul>
+            <div className="about-thanks">
+              <h3>Lời cảm ơn</h3>
+              <p>Nhóm xin chân thành cảm ơn cô <strong>ThS. Hồ Thị Thanh Tuyến</strong> đã giảng dạy môn Lập Trình Hàm,
+                giúp chúng em có nền tảng kiến thức để triển khai dự án. Những kiến thức cô truyền đạt là cơ sở để nhóm
+                vận dụng vào việc xây dựng và hoàn thiện trò chơi Battleship.</p>
+            </div>
+          </div>
+        </div>
+        <div id="help-panel-guide" role="tabpanel" aria-labelledby="help-tab-guide" hidden={tab !== 'guide'}>
         <p className="eyebrow"><span /> HƯỚNG DẪN NHANH</p>
-        <h2 id="help-title">Ba bước vào trận</h2>
+        <h2 id={tab === 'guide' ? 'help-title' : undefined}>Ba bước vào trận</h2>
         <ol className="help-steps">
-          <li><span>01</span><div><strong>Tạo hoặc tham gia phòng</strong><p>Một người tạo phòng và gửi tên hoặc mã phòng cùng mật khẩu cho bạn chơi.</p></div></li>
+          <li><span>01</span><div><strong>Tạo hoặc tham gia phòng</strong><p>Tạo phòng hoặc chọn một phòng đang chờ trong danh sách. Tìm bằng tên hoặc mã phòng; nhập mật khẩu nếu phòng có biểu tượng ổ khóa.</p></div></li>
           <li><span>02</span><div><strong>Bố trí hạm đội</strong><p>Kéo tàu lên lưới, xoay hướng và tránh chồng lấn.</p></div></li>
           <li><span>03</span><div><strong>Vào trận</strong><p>Nhấn “Bắt đầu trận” để xác nhận tàu. Đợi đủ hai người, rồi bấm ô đối phương khi đến lượt. Trúng/chìm giữ lượt; trượt chuyển lượt. Mất kết nối có 5 phút khôi phục bằng mã riêng. Nút rời trận là bỏ cuộc ngay.</p></div></li>
         </ol>
+        </div>
         <button className="primary-button dialog-button" onClick={onClose} type="button">Đã hiểu</button>
       </section>
     </div>

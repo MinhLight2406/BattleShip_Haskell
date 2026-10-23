@@ -9,6 +9,37 @@ import { WebSocket } from 'ws'
 import { createBridge, readBridgeConfig, parseLanOrigins, lanAddresses, RECONNECT_GRACE_MS } from '../bridge.mjs'
 import { peer, listen, within } from './helpers.mjs'
 
+test('room directory lists only joinable rooms and exposes password presence without secrets', async (t) => {
+  const bridge = createBridge({ roomWaitMs: 500 })
+  const port = await listen(bridge.server)
+  t.after(() => bridge.close())
+  const url = `http://127.0.0.1:${port}/api/rooms`
+  const post = (action, body) => fetch(`${url}/${action}`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
+  })
+  const openResponse = await post('create', { roomName: 'Biển xanh', password: '' })
+  assert.equal(openResponse.status, 201)
+  const open = await openResponse.json()
+  const lockedResponse = await post('create', { roomName: 'Bắc Hải', password: 'secret' })
+  assert.equal(lockedResponse.status, 201)
+  const locked = await lockedResponse.json()
+  const directory = await fetch(url)
+  assert.equal(directory.status, 200)
+  assert.equal(directory.headers.get('cache-control'), 'no-store')
+  assert.deepEqual(await directory.json(), { rooms: [
+    { roomId: open.roomId, roomName: 'Biển xanh', hasPassword: false },
+    { roomId: locked.roomId, roomName: 'Bắc Hải', hasPassword: true },
+  ] })
+  assert.equal((await post('join', { room: locked.roomId, password: '' })).status, 403)
+  assert.equal((await post('join', { room: open.roomId, password: '' })).status, 201)
+  assert.equal((await post('join', { room: locked.roomId, password: 'secret' })).status, 201)
+  assert.deepEqual(await (await fetch(url)).json(), { rooms: [] })
+  assert.equal((await post('create', { roomName: 'Hết hạn', password: '' })).status, 201)
+  await new Promise((resolve) => setTimeout(resolve, 550))
+  assert.deepEqual(await (await fetch(url)).json(), { rooms: [] })
+  assert.equal((await post('create', { roomName: 'Sai', password: 123 })).status, 400)
+})
+
 async function fixture(t, options = {}) {
   let tcp
   const server = net.createServer((socket) => { tcp = socket })

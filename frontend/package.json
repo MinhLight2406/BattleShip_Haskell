@@ -15,6 +15,8 @@
     "test:docker-contract": "node --test test/docker-contract.test.mjs",
     "test:integration": "node --test test/integration.test.mjs test/reconnect.test.mjs",
     "test:browser": "node --test test/browser.test.mjs",
+    "test:rooms": "node --test test/rooms.test.mjs",
+    "test:help": "node --test test/help.test.mjs",
     "test:lan": "node --test test/lan.test.mjs",
     "test:lan-helper": "node --test test/lan-helper.test.mjs"
   },

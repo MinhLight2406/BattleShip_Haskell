@@ -166,7 +166,7 @@ export function createBridge({ tcpHost = '127.0.0.1', tcpPort = 4000, devOrigin 
   const validateRoomInput = (body, joining = false) => {
     if (body.displayName !== undefined && !validRoomText(body.displayName, 1, 24))
       throw apiError(400, 'Tên người chơi cần từ 1 đến 24 ký tự.')
-    if (!validRoomText(body.password, 1, 128)) throw apiError(400, 'Mật khẩu phòng cần từ 1 đến 128 ký tự.')
+    if (!validRoomText(body.password, 0, 128)) throw apiError(400, 'Mật khẩu phòng tối đa 128 ký tự.')
     if (!validRoomText(joining ? body.room : body.roomName, 1, 48))
       throw apiError(400, joining ? 'Nhập tên hoặc ID phòng.' : 'Tên phòng cần từ 1 đến 48 ký tự.')
   }
@@ -184,7 +184,7 @@ export function createBridge({ tcpHost = '127.0.0.1', tcpPort = 4000, devOrigin 
     do { id = randomBytes(12).toString('hex').toUpperCase() } while (roomsById.has(id))
     const salt = randomBytes(16)
     const room = {
-      id, name: roomName, nameKey, salt, passwordHash: passwordDigest(salt, body.password),
+      id, name: roomName, nameKey, salt, hasPassword: body.password.length > 0, passwordHash: passwordDigest(salt, body.password),
       players: [], status: 'waiting', createdAt: Date.now(), expiresAt: Date.now() + roomWaitMs,
       sessions: new Set(), expiry: undefined,
     }
@@ -231,6 +231,14 @@ export function createBridge({ tcpHost = '127.0.0.1', tcpPort = 4000, devOrigin 
       if (pathname === '/healthz') {
         if (request.method !== 'GET') { response.writeHead(405, { Allow: 'GET' }).end(); return }
         response.writeHead(200, { 'Content-Type': 'application/json' }).end('{"status":"ok"}')
+        return
+      }
+      if (pathname === '/api/rooms') {
+        if (request.method !== 'GET') { response.writeHead(405, { Allow: 'GET' }).end(); return }
+        const rooms = [...roomsById.values()]
+          .filter((room) => room.status === 'waiting' && Date.now() < room.expiresAt && room.players.length < ROOM_CAPACITY)
+          .map((room) => ({ roomId: room.id, roomName: room.name, hasPassword: room.hasPassword }))
+        respondJson(response, 200, { rooms })
         return
       }
       if (pathname === '/api/rooms/create' || pathname === '/api/rooms/join') {
