@@ -358,7 +358,8 @@ export function createBridge({ tcpHost = '127.0.0.1', tcpPort = 4000, devOrigin 
       if (binary) { ws.close(1003, 'Text commands only'); return }
       const line = bytes.toString('utf8')
       if (!line.length || /[^\x20-\x7e]/.test(line)) { send(ws, 'ERROR INVALID_COMMAND'); return }
-      if (line !== 'QUIT' && [...sessions.values()].some((peer) => peer.deadline && !peer.ended)) {
+      if (line !== 'QUIT' && [...sessions.values()].some((peer) =>
+        peer.room === session.room && peer.deadline && !peer.ended)) {
         send(ws, connectionState()); return
       }
       if (session.tcp.writableLength > 65536) { ws.close(1008, 'Too many pending commands'); return }

@@ -40,6 +40,109 @@ test('room directory lists only joinable rooms and exposes password presence wit
   assert.equal((await post('create', { roomName: 'Sai', password: 123 })).status, 400)
 })
 
+test('a disconnected player in one room does not block commands in another room', async (t) => {
+  const roomSockets = new Map()
+  const backend = net.createServer((socket) => {
+    let pending = ''
+    let roomId
+    let player
+    socket.on('data', (chunk) => {
+      pending += chunk.toString('ascii')
+      let end
+      while ((end = pending.indexOf('\n')) >= 0) {
+        const line = pending.slice(0, end).replace(/\r$/, '')
+        pending = pending.slice(end + 1)
+        if (!roomId) {
+          const handshake = line.match(/^ROOM ([A-F0-9]+) (P1|P2)$/)
+          if (!handshake) { socket.end('ERROR INVALID_COMMAND\n'); return }
+          roomId = handshake[1]
+          player = handshake[2]
+          const state = roomSockets.get(roomId) ?? { peers: new Map(), placed: new Set() }
+          state.peers.set(player, socket)
+          roomSockets.set(roomId, state)
+          socket.write(`WELCOME 1 ${player}\n`)
+        } else if (line.startsWith('PLACE ')) {
+          const state = roomSockets.get(roomId)
+          state.placed.add(player)
+          socket.write('OK PLACE\n')
+          if (state.placed.size === 1) socket.write('WAITING OPPONENT\n')
+          else for (const peer of state.peers.values()) peer.write('START P1\nTURN P1\n')
+        }
+      }
+    })
+  })
+  const tcpPort = await listen(backend)
+  const bridge = createBridge({ tcpPort })
+  const port = await listen(bridge.server)
+  const allSockets = new Set()
+  const roomPeer = async (ticket) => {
+    const ws = new WebSocket(`ws://127.0.0.1:${port}/play?ticket=${encodeURIComponent(ticket)}`, {
+      origin: `http://127.0.0.1:${port}`,
+    })
+    const queue = []
+    const waiters = []
+    ws.on('message', (bytes) => {
+      queue.push(bytes.toString())
+      for (const wake of waiters.splice(0)) wake()
+    })
+    await within(once(ws, 'open'), 'room websocket open')
+    const client = {
+      ws,
+      async wait(frame) {
+        await within((async () => {
+          while (!queue.includes(frame)) {
+            if (ws.readyState === WebSocket.CLOSED) throw new Error(`closed waiting for ${frame}: ${queue.join(', ')}`)
+            await new Promise((resolve) => waiters.push(resolve))
+          }
+          queue.splice(queue.indexOf(frame), 1)
+        })(), frame)
+      },
+    }
+    allSockets.add(ws)
+    return client
+  }
+  const request = (action, body) => fetch(`http://127.0.0.1:${port}/api/rooms/${action}`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
+  })
+  t.after(async () => {
+    for (const ws of allSockets) ws.terminate()
+    await bridge.close()
+    for (const sockets of roomSockets.values()) for (const socket of sockets.peers.values()) socket.destroy()
+    await new Promise((resolve) => backend.close(resolve))
+  })
+
+  const create = async (roomName) => {
+    const response = await request('create', { roomName, password: '' })
+    assert.equal(response.status, 201)
+    return response.json()
+  }
+  const join = async (roomId) => {
+    const response = await request('join', { room: roomId, password: '' })
+    assert.equal(response.status, 201)
+    return response.json()
+  }
+
+  const firstRoom = await create('room-one')
+  await join(firstRoom.roomId)
+  const missingPlayer = await roomPeer(firstRoom.ticket)
+  await missingPlayer.wait('WELCOME 1 P1')
+  missingPlayer.ws.close()
+  await within(once(missingPlayer.ws, 'close'), 'disconnected room player')
+
+  const secondRoom = await create('room-two')
+  const secondSeat = await join(secondRoom.roomId)
+  const p1 = await roomPeer(secondRoom.ticket)
+  const p2 = await roomPeer(secondSeat.ticket)
+  await p1.wait('WELCOME 1 P1')
+  await p2.wait('WELCOME 1 P2')
+  p1.ws.send('PLACE CV=A1:H;BB=A2:H;CR=A3:H;SB=A4:H;DD=A5:H')
+  await p1.wait('OK PLACE')
+  await p1.wait('WAITING OPPONENT')
+  p2.ws.send('PLACE CV=A6:H;BB=A7:H;CR=A8:H;SB=A9:H;DD=A10:H')
+  await p2.wait('OK PLACE')
+  await Promise.all([p1.wait('TURN P1'), p2.wait('TURN P1')])
+})
+
 async function fixture(t, options = {}) {
   let tcp
   const server = net.createServer((socket) => { tcp = socket })
