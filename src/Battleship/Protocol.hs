@@ -12,6 +12,7 @@ import qualified Data.ByteString as BS
 import qualified Data.ByteString.Char8 as BSC
 import Data.Char (chr, ord)
 import Data.List (sortOn)
+import Text.ParserCombinators.ReadP (ReadP, char, eof, munch1, readP_to_S, sepBy1, string, (<++))
 
 data ProtocolError = LineTooLong | InvalidMessage | InvalidCoordinateToken | UnsupportedVersion
   deriving (Eq, Show)
@@ -52,23 +53,34 @@ encodeCoord (Coord column row)
 parseCommand :: BS.ByteString -> Either ProtocolError Command
 parseCommand payload = do
   validatePayload payload
-  case BSC.split ' ' payload of
-    [name] | name == b "QUIT" -> Right Quit
-    [name, coordinate] | name == b "FIRE" && not (BS.null coordinate) ->
-      Fire <$> parseCoord coordinate
-    [name, entries] | name == b "PLACE" && not (BS.null entries) ->
-      PlaceFleet <$> traverse parsePlacement (BSC.split ';' entries)
-    _ -> Left InvalidMessage
+  case [result | (result, rest) <- readP_to_S (commandParser <* eof) (BSC.unpack payload), null rest] of
+    result : _ -> result
+    [] -> Left InvalidMessage
+
+commandParser :: ReadP (Either ProtocolError Command)
+commandParser = quitParser <++ fireParser <++ placeParser
   where
-    parsePlacement entry = case BSC.split '=' entry of
-      [code, position] -> case BSC.split ':' position of
-        [coordinate, direction] -> do
-          ship <- parseShip code
-          start <- parseCoord coordinate
-          orientation <- require InvalidMessage (lookup direction [(b "H", Horizontal), (b "V", Vertical)])
-          pure (ShipPlacement ship start orientation)
-        _ -> Left InvalidMessage
-      _ -> Left InvalidMessage
+    quitParser = string "QUIT" >> pure (Right Quit)
+    fireParser = do
+      _ <- string "FIRE "
+      token <- munch1 (/= ' ')
+      pure (Fire <$> parseCoord (b token))
+    placeParser = do
+      _ <- string "PLACE "
+      placements <- placementParser `sepBy1` char ';'
+      pure (PlaceFleet <$> sequence placements)
+    placementParser = do
+      code <- munch1 (\character -> character /= '=' && character /= ';' && character /= ' ')
+      _ <- char '='
+      coordinate <- munch1 (\character -> character /= '=' && character /= ':' && character /= ';' && character /= ' ')
+      _ <- char ':'
+      orientation <- munch1 (\character -> character /= ';' && character /= ' ')
+      pure $ do
+        require InvalidMessage (if ':' `elem` orientation then Nothing else Just ())
+        ship <- parseShip (b code)
+        start <- parseCoord (b coordinate)
+        direction <- require InvalidMessage (lookup orientation [("H", Horizontal), ("V", Vertical)])
+        pure (ShipPlacement ship start direction)
 
 -- Canonical ship order; duplicates and incomplete fleets are preserved for
 -- Board/Rules to validate. Empty PLACE is not representable in wire v1.

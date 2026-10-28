@@ -15,7 +15,7 @@ Từ thư mục gốc có `compose.yaml`. Cần **Docker Desktop đang chạy Li
 Dùng terminal PowerShell riêng cho Docker. Nếu terminal còn biến từ cách chạy native, xóa chúng **chỉ trong terminal này** để shell không ghi đè env-file:
 
 ```powershell
-Remove-Item Env:HOST,Env:PORT,Env:PUBLIC_ORIGIN,Env:WEB_PUBLIC_PORT,Env:BATTLESHIP_TCP_HOST,Env:BATTLESHIP_TCP_PORT,Env:BATTLESHIP_BIND_HOST,Env:BATTLESHIP_READY_FILE,Env:LAN_CONFIG_DIR,Env:LAN_ORIGINS_FILE,Env:LAN_INTERFACE -ErrorAction SilentlyContinue
+Remove-Item Env:HOST,Env:PORT,Env:PUBLIC_ORIGIN,Env:WEB_PUBLIC_PORT,Env:BATTLESHIP_TCP_HOST,Env:BATTLESHIP_TCP_PORT,Env:BATTLESHIP_BIND_HOST,Env:BATTLESHIP_READY_FILE,Env:BATTLESHIP_SESSION_FILE,Env:LAN_CONFIG_DIR,Env:LAN_ORIGINS_FILE,Env:LAN_INTERFACE -ErrorAction SilentlyContinue
 docker info
 docker compose version
 New-Item -ItemType Directory -Force .docker-runtime/lan | Out-Null
@@ -58,6 +58,8 @@ Chỉ chạy **một** lệnh start phù hợp. Trước khi chuyển chế đ�
 
 ### 3. Kết nối hai người và chơi
 
+Web là client chơi; máy chủ chạy server Haskell và cầu WebSocket. Mở trang ở localhost khi cả hai người dùng máy chủ, hoặc dùng Player URL/IP máy chủ khi người chơi truy cập từ thiết bị khác trong cùng mạng. Đây là cùng một ứng dụng web; LAN chỉ là cách thiết bị kia kết nối tới máy chủ.
+
 Mỗi người chọn **Vào phòng tác chiến → Cổ điển**, đặt đủ năm tàu CV/BB/CR/SB/DD dài 5/4/3/3/2 bằng click, rồi **Bắt đầu trận**. Người xác nhận và kết nối trước nhận P1, người tiếp theo P2; người thứ ba báo phòng đầy. P1 bắn trước; trượt đổi lượt, trúng/chìm giữ lượt. Không cần nhập lệnh TCP.
 
 Demo có thể làm lại: P1 đặt ngang tại A1/A2/A3/A4/A5, P2 tại A6/A7/A8/A9/A10. Mỗi người bắn J10 trượt; P1 bắn A6, reload để kiểm tra giữ trận, rồi B6/C6/D6/E6, A7/B7/C7/D7, A8/B8/C8, A9/B9/C9, A10/B10 để thắng. Đây là đội tàu demo được thống nhất, không phải bot/stub. Khi đổi IP giữa trận, lưu mã phiên riêng, mở Player URL mới và nhập mã tại Khôi phục trận **trước hạn 5 phút**; không gửi mã cho đối thủ.
@@ -89,11 +91,13 @@ docker compose --env-file .docker-runtime/lan/compose.env -p battleship stop --t
 docker compose --env-file .docker-runtime/lan/compose.env -p battleship down --timeout 10
 ```
 
-Sau stop/down, chạy lại lệnh start chế độ đã chọn ở mục 2 để mở deployment/trận mới. Stop/restart/down mất dữ liệu RAM của trận. **Docker không giữ server hoạt động khi máy chủ tắt/ngủ hoặc Docker Engine dừng**; muốn phục vụ liên tục cần một máy chủ luôn bật. Thời hạn nối lại 5 phút chỉ được bảo đảm khi bridge và Haskell còn chạy.
+Trận đang chơi được lưu thành nhật ký lệnh và phiên khôi phục trong Docker volume `battleship-state`. `stop`, `down` thường, tắt máy hoặc dừng Docker không xóa volume. Sau khi bật máy, chạy lại lệnh start ở mục 2, rồi mỗi người nhập mã khôi phục riêng của mình (hiện trong giao diện trận) để tiếp tục đúng P1/P2, lượt và lịch sử. Hãy lưu mã trước khi tắt máy; trình duyệt có thể không giữ `sessionStorage` sau khi đóng.
+
+Không dùng `docker compose down -v` nếu muốn giữ trận; tùy chọn `-v` xóa volume dữ liệu. Khi ván đã kết thúc, ứng dụng xóa journal đang chơi để lần khởi động Haskell tiếp theo tạo được trận mới. Máy chủ không phục vụ khi máy tắt/ngủ; volume chỉ giữ dữ liệu, không giữ tiến trình chạy.
 
 ### 5. Kết quả, giới hạn và xử lý lỗi
 
-Đã chạy Linux amd64: 908 ví dụ Haskell, 36 frontend test, 19 test Compose; thêm Chrome/Edge hai tiến trình trên cùng Windows host đến thắng/thua và reload thành công. Log/ảnh tại [nghiệm thu DK-08](docs/dk08_acceptance.md), lệnh chuẩn và hồ sơ bàn giao tại [DK-09](docs/dk09_handover.md); [hợp đồng chung](docs/shared_contract.md#7-hợp-đồng-docker-và-bàn-giao-dk-09) còn chờ review nhóm. Hai thiết bị Wi-Fi thật, arm64, đổi Wi-Fi vật lý và phục hồi sau restart chưa được nghiệm thu.
+Kết quả cũ trong hồ sơ DK-08/DK-09 xác nhận Linux amd64 và chơi Chrome/Edge trên cùng host; chúng có trước tính năng lưu/khôi phục. Ngày 2026-10-28, chạy riêng hai ca Compose restart Haskell và web: **2/2 qua**, giữ đúng P1/P2, fleet, lịch sử/lượt và chơi tiếp; dùng bridge hiện tại bind-mount vào image cache nên chưa phải build image mới. [Kết quả chi tiết](docs/demo/dk10/persistence-restart-results.txt). Tắt/bật toàn máy, hai thiết bị Wi-Fi thật, arm64 và đổi Wi-Fi vật lý vẫn chưa nghiệm thu.
 
 | Triệu chứng | Kiểm tra/cách xử lý |
 |---|---|
@@ -102,7 +106,7 @@ Sau stop/down, chạy lại lệnh start chế độ đã chọn ở mục 2 đ�
 | Conflicting shell / origin sai | Dùng terminal riêng, xóa các biến ở mục 1; giữ đúng env-file hiệu lực của helper cho mọi lệnh |
 | LAN không mở được, localhost mở được | Kiểm tra adapter/IP mới, helper còn chạy, hai máy cùng mạng và mạng/firewall có cho phép cổng web; không dùng IP container |
 | Web lên nhưng không vào trận | `ps --all`: Haskell đã Exited thì `start haskell`; chờ healthy, tạo phiên mới |
-| Phiên cũ lỗi sau restart | Trạng thái/token đã mất; quay về trang đầu và mở trận mới, không thử phục hồi đội tàu cũ |
+| Không vào lại được trận sau reboot | Dùng mã khôi phục đã lưu; kiểm tra Docker volume `battleship-state` còn tồn tại và không dùng `down -v` |
 
 ## Chơi bằng giao diện web
 
@@ -120,16 +124,17 @@ cd ..
 
 Mở hai terminal ở thư mục gốc:
 
-```sh
+```powershell
 # Terminal 1: server luật Haskell
 stack exec battleship-server -- 4000
-# Terminal 2: web server và cầu kết nối
+# Terminal 2: bật lưu phiên bền trên máy host, rồi chạy web server/cầu kết nối
+$env:BATTLESHIP_SESSION_FILE = (Join-Path (Get-Location) '.battleship-sessions.json')
 node frontend/bridge.mjs
 ```
 
 Mở link LAN được terminal cầu web tự in, hoặc `http://127.0.0.1:8080` ở **hai tab**. Chọn Cổ điển, đặt đủ năm tàu, nhấn Bắt đầu trận. Tab xác nhận trước là P1; chờ đủ hai người rồi bấm ô đối phương khi đến lượt. Trượt chuyển lượt; trúng/chìm giữ lượt. Nút Rời trận gửi QUIT để bỏ cuộc ngay; đóng tab/mất Wi-Fi được giữ phiên 5 phút. Người thứ ba nhận lỗi phòng đầy. Không cần nhập giao thức thô.
 
-Server Haskell hiện phục vụ **một trận**. Sau khi thắng hoặc bỏ cuộc, chạy lại lệnh server ở Terminal 1 trước trận mới; cầu web ở Terminal 2 có thể giữ nguyên. Trinh sát chưa được hỗ trợ.
+Bridge ghi nhật ký vào `BATTLESHIP_SESSION_FILE` trước khi chuyển lệnh tới Haskell. Sau khi restart cả hai tiến trình, chạy server trước rồi chạy bridge với cùng tệp; bridge dựng lại trạng thái bằng cách phát lại nhật ký. Mỗi người cần mã khôi phục riêng. Giữ tệp này khi muốn tiếp tục trận; xóa nó để bỏ trận đã lưu. Server Haskell hiện phục vụ **một trận**; sau thắng/bỏ cuộc, chạy lại server để mở trận mới. Trinh sát chưa được hỗ trợ.
 
 ### Cấu hình listener Haskell — DK-02
 
@@ -279,7 +284,7 @@ Terminal in các link lấy từ IP thực tế; hai thiết bị mở link củ
 5. Đúng mã và trước hạn: nhận lại chính P1/P2, đội tàu của mình, lịch sử đã lọc và lượt hiện tại; không gửi lại phát bắn cũ. Một mã không được dùng trên hai kết nối đang hoạt động.
 6. Hết hạn: cầu gửi QUIT cho Haskell, người mất kết nối thua do bỏ cuộc; kết quả là GAME_OVER ... OPPONENT_LEFT. Có thể quay lại xem kết quả trong 5 phút sau khi phiên TCP kết thúc. Nếu cả hai cùng mất kết nối, phiên hết hạn trước bị xử QUIT trước.
 
-Giữ cả process cầu web và server Haskell chạy khi đổi Wi-Fi. Khởi động lại process sẽ mất phiên đang giữ trong RAM. Hai thiết bị phải cùng mạng có thể liên lạc và firewall cho phép cổng web; tự nhận IP không vượt qua cô lập mạng khách. Chế độ client TCP terminal vẫn dùng luật EOF/QUIT tức thời; hạn khôi phục này áp dụng cho giao diện web qua cầu.
+Giữ cả process cầu web và server Haskell chạy khi đổi Wi-Fi. Với cấu hình native có `BATTLESHIP_SESSION_FILE`, journal được giữ trong tệp; sau khi restart cả Haskell và bridge, nhập mã khôi phục để dựng lại ván. Nếu không cấu hình tệp, phiên chỉ ở RAM. Docker dùng named volume tương ứng. Hai thiết bị phải cùng mạng có thể liên lạc và firewall cho phép cổng web; tự nhận IP không vượt qua cô lập mạng khách. Chế độ client TCP terminal vẫn dùng luật EOF/QUIT tức thời; persistence áp dụng cho giao diện web qua cầu. Khôi phục sau reboot ở revision này chưa được nghiệm thu tích hợp.
 
 ### Cấu hình IP thủ công — tùy chọn LAN-01
 

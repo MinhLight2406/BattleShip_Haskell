@@ -169,7 +169,7 @@ Mũi tên phụ thuộc thể hiện module nền được lớp phía sau sử 
 | Socket registry/drained/readerDone | Server MVar/lifecycle | Worker/supervisor IO, không tự quyết luật |
 | Đội hình nháp | Terminal/UI | Người chơi trước xác nhận |
 | Public view/pending | Terminal/UI | Fold response; own fleet từ request đã OK |
-| Token/TCP/own PLACE/private frames/deadline | Bridge RAM | Bridge attach/disconnect/cleanup; Quit đi core |
+| Token/TCP/own PLACE/private frames/deadline | Bridge RAM; tùy chọn nhật ký phiên bền vững | Bridge attach/disconnect/cleanup; Compose mount named volume; Quit đi core |
 | Origin LAN hiện tại/heartbeat | Windows JSON + bridge allowlist | Helper duy nhất ghi; bridge validate/poll |
 
 Hai container không chia sẻ TVar. Bridge session không phải bản sao GameState: nó biết TCP/player và dữ liệu phiên được phép thấy, không chứa fleet đối thủ hay tự tính outcome.
@@ -199,7 +199,7 @@ React `Board enemy fleet={[]}` chỉ dùng `view.outgoing`; own Board dùng own 
 
 HTTP phục vụ `frontend/dist`, `GET /healthz` chỉ kiểm tra HTTP, WS `/play` kiểm tra Origin/Host trước tạo TCP. TCP v1 không đổi. Bridge thêm SESSION/CONNECTION/RESUME_ERROR JSON chỉ ở WS, `connection.ts` xử lý riêng với parser frame.
 
-Một session = một TCP player + token 32 byte random + own PLACE đã OK + FIFO lịch sử frame riêng (≤4096). WS mới không có token tạo TCP mới; resume hợp lệ gắn TCP đang giữ. WebSocket close/heartbeat mất tạo deadline 5 phút; timer cũ hủy khi resume; hết hạn QUIT. GAME_OVER có thể replay để xem kết quả trong thời gian giữ phiên sau kết thúc, không hồi sinh ván. Bridge restart/TCP bị core đóng thì không phục hồi state mới từ phiên cũ.
+Một session = một TCP player + token 32 byte random + own PLACE đã OK + FIFO lịch sử frame riêng (≤4096). WS mới không có token tạo TCP mới; resume hợp lệ gắn TCP đang giữ. WebSocket close/heartbeat mất tạo deadline 5 phút; timer cũ hủy khi resume; hết hạn QUIT. Khi cấu hình `BATTLESHIP_SESSION_FILE`, bridge ghi atomically token hash, PLACE riêng, frame và nhật ký có thứ tự của lệnh đã gửi; sau restart, nó mở lại slot P1/P2 rồi phát lại nhật ký lên Haskell mới để dựng lại GameState. Compose lưu tệp trong named volume `battleship-state`. Cơ chế này chỉ áp dụng cho web bridge, không cho TCP terminal trực tiếp. GAME_OVER có thể replay để xem kết quả trong thời gian giữ phiên sau kết thúc, không hồi sinh ván. Phục hồi sau host restart cần được nghiệm thu tích hợp trước khi xem là bảo đảm vận hành.
 
 Bridge còn kiểm tra max WS payload 256 byte, pending TCP writable buffer/WS bufferedAmount ngưỡng 65.536 byte và pending commands 256. Đây là giới hạn ở các tầng khác nhau, không phải capacity TBQueue; threshold buffer được kiểm tra khi send/nhận command và có thể vượt ngưỡng một frame trước lượt kiểm tra tiếp theo. Không claim toàn RAM đã giới hạn ở 128 phần tử.
 
@@ -220,7 +220,7 @@ Library Client có HostName parameter; ClientMain hiện chưa có flag remote h
 
 Host helper lọc IPv4/up/nonloopback, loại 127/link-local/IPv6, cho chọn tên adapter. Không tự nhận VPN là sai nếu nó còn IPv4: chọn Wi-Fi/Ethernet để giới hạn đúng mạng. Một writer lock, temp+flush+atomic rename, heartbeat 2 giây. Bridge poll 2 giây, schema/file/port/TTL kiểm tra; origin cũ bị loại khi file đổi/lỗi/quá hạn, origin mới được phép nhưng Host phải trùng Origin. Phiên/TCP/deadline giữ nguyên khi hot reload allowlist.
 
-Compose có đúng hai service, dependency healthy khi start, healthcheck không mở game TCP. Haskell nhận SIGTERM để unwinding bracket; Node bridge PID1 xử lý SIGTERM/SIGINT đóng WS/TCP/HTTP/timers. Stop grace 10 giây; restart no. Không volume lưu trận, không secret state trong health/log. Host tắt/Engine dừng làm cả dịch vụ dừng.
+Compose có đúng hai service, dependency healthy khi start, healthcheck không mở game TCP. Haskell nhận SIGTERM để unwinding bracket; Node bridge PID1 xử lý SIGTERM/SIGINT đóng WS/TCP/HTTP/timers. Stop grace 10 giây; restart no. Web mount named volume cho journal phiên; Haskell vẫn giữ GameState trong RAM và bridge dựng lại bằng replay khi hai service khởi động lại. Host tắt/Engine dừng làm dịch vụ ngừng; volume giữ journal trừ khi bị xóa rõ ràng.
 
 ## Điểm kiểm chứng khi thay kiến trúc
 

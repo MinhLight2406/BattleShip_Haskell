@@ -11,7 +11,7 @@ Nguồn phải giữ đúng: [luật R-01](game_spec.md), [wire v1](protocol.md)
 
 ## 1. Phạm vi và cấu trúc cố định
 
-Hai service production là **`haskell`** và **`web`**. `web` gồm giao diện React đã build và Node bridge; Haskell vẫn quyết định toàn bộ luật. Không thêm database, GUI mới, nhiều phòng hoặc phục hồi trận sau restart trong đợt Docker này.
+Hai service production là **`haskell`** và **`web`**. `web` gồm giao diện React đã build và Node bridge; Haskell vẫn quyết định toàn bộ luật. Không thêm database, GUI mới hoặc nhiều phòng. Web ghi command journal vào named volume để có thể dựng lại ván sau restart; đây không phải checkpoint GameState.
 
 | Thành phần | Trong container | Máy chủ/người chơi | Quy định |
 |---|---|---|---|
@@ -165,7 +165,7 @@ Log ignored ở `.stack-work/dk06/`: `powershell-unit.log`, `lan-helper-test.log
 
 ## 5. Vòng đời trận, dừng và restart
 
-Haskell vẫn một trận/lần chạy. Hai service dùng **`restart: "no"`** ở bản Compose MVP: không tự tạo trận mới khi container thoát. Không thêm vòng lặp chơi vào Main hoặc đổi behavior server vì đóng gói.
+Haskell vẫn một trận/lần chạy. Hai service dùng **`restart: "no"`** ở bản Compose MVP: không tự tạo trận mới khi container thoát. Web lưu journal phục hồi vào named volume `battleship-state`; khi khởi động lại, bridge tạo slot P1/P2 trên Haskell mới và phát lại journal theo thứ tự. TCP terminal không được lưu.
 
 | Tình huống | Hành vi phải giữ |
 |---|---|
@@ -173,9 +173,9 @@ Haskell vẫn một trận/lần chạy. Hai service dùng **`restart: "no"`** �
 | QUIT hoặc TCP rời đi | Rules quyết định winner, không dùng Docker để tính thắng; Haskell kết thúc như hiện tại |
 | WebSocket rời đi | Bridge giữ TCP/token tối đa 5 phút; đặt/bắn tạm dừng; hết hạn gửi Quit đúng người |
 | C-07 quá tải | Queue 128/126/2 và Quit cho đúng người nhận giữ nguyên; healthy peer nhận kết quả |
-| Container Haskell crash/bị restart | TCP cũ mất, không phục hồi GameState; bridge kết thúc phiên cũ, không gán token cũ vào trận mới và không tự chế GAME_OVER |
-| Container web crash/bị restart | Phiên/token/deadline trong RAM mất; TCP đóng dẫn đến đường rời trận hiện có nếu Haskell còn chạy |
-| Host tắt/reboot | Cả hai process dừng, trận mất; hạn 5 phút không tồn tại độc lập với bridge đang chạy |
+| Container Haskell crash/bị restart | TCP cũ mất; nếu web journal còn nguyên, bridge dựng lại GameState bằng replay khi có người resume; nếu web cũng dừng, recovery bắt đầu sau khi hai service khởi động |
+| Container web crash/bị restart | TCP đóng; journal/token hash vẫn ở volume, bridge khôi phục khi Haskell được restart sạch và người chơi nhập mã |
+| Host tắt/reboot | Process dừng; named volume giữ journal. Sau khi start lại cùng Compose project, web phục hồi bằng replay; hai người cần mã riêng. Hạn reconnect 5 phút chỉ áp dụng khi process chạy và phát hiện WebSocket rời |
 
 Sau GAME_OVER, người vận hành chờ Haskell ở trạng thái Exited, rồi **`docker compose start haskell`** và chờ healthy để mở trận mới; web đang chạy được giữ nguyên. Người chơi dùng phiên mới, không resume token của trận cũ. Token/kết quả cũ có thể chỉ được xem lại trong thời hạn lưu kết quả 5 phút hiện có, không có quyền đặt/bắn trong trận mới. `docker compose restart haskell` khi đang chơi là hành động ngắt trận; tài liệu thao tác phải nói rõ.
 
@@ -183,7 +183,7 @@ Sau GAME_OVER, người vận hành chờ Haskell ở trạng thái Exited, rồ
 
 Tiến trình server/bridge là PID 1 của container bằng exec-form entrypoint, hoặc lớp init chỉ chuyển tín hiệu và thu child; không dùng shell background `server &` để Docker hiểu nhầm vòng đời. Đặt `stop_grace_period: 10s`; handler/finalizer phải đóng socket và worker trước hạn. DK-08 phải kiểm tra dừng thực tế, không coi SIGKILL cuối hạn là cleanup thành công. Khi down có cả hai service, web dừng trước Haskell theo dependency; không yêu cầu GAME_OVER tới browser đã bị đóng bởi thao tác down.
 
-Không có volume lưu GameState. Thư mục LAN là cấu hình, không phải lưu trận. Nếu sau này cần tự restart/luôn mở trận mới hoặc phục hồi sau lỗi, phải bổ sung task và review vòng đời riêng; không bật `always`/`unless-stopped` để ngầm đổi chính sách này.
+`battleship-state` là named volume chứa `/var/lib/battleship/sessions.json`; không xóa volume nếu muốn tiếp tục ván. `docker compose stop` và `docker compose down` giữ volume; `docker compose down -v` xóa dữ liệu. Giữ nguyên project name để Compose gắn lại đúng volume. Sau khi start lại cần Haskell sẵn sàng trước khi browser gửi mã khôi phục. Chỉ web bridge có persistence; chạy bridge native phải đặt cùng `BATTLESHIP_SESSION_FILE` trỏ tới tệp bền vững. Nếu tệp không cấu hình, phiên chỉ nằm trong RAM. Ngày 2026-10-28, hai ca restart riêng Haskell và web qua Compose đều qua (2/2), khôi phục P1/P2 và chơi tiếp. Ca tắt/bật toàn host chưa được nghiệm thu.
 
 ## 6. Readiness và healthcheck không chiếm slot
 
@@ -212,7 +212,7 @@ Các biến bắt buộc dùng `${VAR:?message}` để thiếu/rỗng báo lỗi
 
 Healthcheck Compose dùng đúng chính sách 2s/1s/10s/5 retries; Node abort HTTP sau 800ms trong deadline 1s. Web Dockerfile được đồng bộ với timeout này. Dấu dollar trong healthcheck Haskell dùng `$$` để shell **trong container** đọc BATTLESHIP_READY_FILE, không nội suy biến host thành nội dung marker. Healthcheck không chứa token/fleet hoặc tạo kết nối chơi. Readiness, SIGTERM và cleanup vẫn do code DK-02/DK-05 xử lý, không thêm shell nền vào entrypoint production.
 
-Hai service dùng restart no, stop_signal SIGTERM, stop_grace_period 10s. Backend Exited sau một trận không tự mở trận tiếp theo. Dùng `start haskell` khi trận cũ đã kết thúc; web không restart. `stop`/`down` là dừng trận có chủ đích, dữ liệu RAM mất; thời hạn resume không tồn tại khi bridge dừng. Khi dùng helper, các lệnh ps/start/down phải dùng đúng env-file hiệu lực và project của helper. Ví dụ thao tác ở README và docker/README; nghiệm thu gameplay đầy đủ/LAN hai thiết bị vẫn thuộc DK-08.
+Hai service dùng restart no, stop_signal SIGTERM, stop_grace_period 10s. Backend Exited sau một trận không tự mở trận tiếp theo. Sau GAME_OVER dùng `start haskell` để mở trận mới; web không restart. `stop`/`down` dừng trận đang chạy nhưng volume giữ journal; người chơi nhập mã sau khi start lại để dựng lại trận cũ. `down -v` xóa journal. Khi dùng helper, lệnh start/down phải dùng đúng env-file, project và cấu hình của helper. Ví dụ thao tác ở README và docker/README; nghiệm thu gameplay đầy đủ/LAN hai thiết bị vẫn thuộc DK-08. Ca tắt/bật toàn host chưa được chạy.
 
 ## 7. Phân công và ca kiểm thử bắt buộc
 

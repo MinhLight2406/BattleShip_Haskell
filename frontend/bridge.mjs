@@ -1,11 +1,11 @@
 import http from 'node:http'
 import net from 'node:net'
-import { readFile } from 'node:fs/promises'
-import { openSync, readSync, closeSync, fstatSync } from 'node:fs'
+import { mkdir, open, readFile, rename, rm } from 'node:fs/promises'
+import { openSync, readSync, closeSync, fstatSync, readFileSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { networkInterfaces } from 'node:os'
-import { randomBytes } from 'node:crypto'
+import { createHash, randomBytes } from 'node:crypto'
 import { WebSocketServer, WebSocket } from 'ws'
 
 const root = path.join(path.dirname(fileURLToPath(import.meta.url)), 'dist')
@@ -39,8 +39,11 @@ export function readBridgeConfig(env = process.env) {
   const publicPort = env.WEB_PUBLIC_PORT === undefined ? undefined : readPort('WEB_PUBLIC_PORT', port)
   const originSetting = env.PUBLIC_ORIGIN || undefined
   const lanOriginsFile = env.LAN_ORIGINS_FILE || undefined
+  const sessionFile = env.BATTLESHIP_SESSION_FILE || undefined
   if (lanOriginsFile && (!path.isAbsolute(lanOriginsFile) || lanOriginsFile.includes('\0')))
     throw new Error('LAN_ORIGINS_FILE must be an absolute file path')
+  if (sessionFile && (!path.isAbsolute(sessionFile) || sessionFile.includes('\0')))
+    throw new Error('BATTLESHIP_SESSION_FILE must be an absolute file path')
   if (originSetting && lanOriginsFile) throw new Error('PUBLIC_ORIGIN and LAN_ORIGINS_FILE are mutually exclusive')
   if (publicPort !== undefined && !originSetting && !lanOriginsFile)
     throw new Error('PUBLIC_ORIGIN or LAN_ORIGINS_FILE is required with WEB_PUBLIC_PORT')
@@ -61,7 +64,7 @@ export function readBridgeConfig(env = process.env) {
   }
   if (!local && !publicOrigin && !autoLan && !lanOriginsFile)
     throw new Error('PUBLIC_ORIGIN is required when HOST listens beyond localhost')
-  return { host, port, tcpHost, tcpPort, publicPort, publicOrigin, autoLan, lanOriginsFile, lanInterface: env.LAN_INTERFACE || undefined }
+  return { host, port, tcpHost, tcpPort, publicPort, publicOrigin, autoLan, lanOriginsFile, sessionFile, lanInterface: env.LAN_INTERFACE || undefined }
 }
 
 function parseHttpOrigin(value, label) {
@@ -94,6 +97,31 @@ export function parseLanOrigins(bytes, publicPort, now = Date.now()) {
   return [...new Set(origins)]
 }
 
+function loadSessions(filename) {
+  let text
+  try { text = readFileSync(filename, 'utf8') }
+  catch (error) {
+    if (error.code === 'ENOENT') return { commands: [], sessions: [] }
+    throw error
+  }
+  let value
+  try { value = JSON.parse(text) }
+  catch { throw new Error('BATTLESHIP_SESSION_FILE contains invalid JSON; preserve the file and repair it before starting.') }
+  if (!value || value.version !== 1 || !Array.isArray(value.commands) || !Array.isArray(value.sessions) ||
+      value.commands.length > 4096 || value.sessions.length > 2 ||
+      new Set(value.sessions.map((entry) => entry?.key)).size !== value.sessions.length ||
+      new Set(value.sessions.map((entry) => entry?.session?.player)).size !== value.sessions.length ||
+      !value.commands.every((entry) => entry && ['P1', 'P2'].includes(entry.player) &&
+        typeof entry.line === 'string' && entry.line.length > 0 && entry.line.length <= 256 && /^[\x20-\x7e]+$/.test(entry.line)) ||
+      !value.sessions.every((entry) => entry && /^[a-f0-9]{64}$/.test(entry.key) && entry.session &&
+        ['P1', 'P2'].includes(entry.session.player) && (entry.session.fleet === null ||
+          (typeof entry.session.fleet === 'string' && entry.session.fleet.length <= 256)) &&
+        Array.isArray(entry.session.frames) && entry.session.frames.length <= 4096 &&
+        entry.session.frames.every((frame) => typeof frame === 'string' && frame.length <= 256 && /^[\x20-\x7e]*$/.test(frame))))
+    throw new Error('BATTLESHIP_SESSION_FILE has an invalid session journal; preserve the file and repair it before starting.')
+  return value
+}
+
 function readLanOriginsFile(filename, publicPort) {
   const descriptor = openSync(filename, 'r')
   try {
@@ -108,13 +136,22 @@ function readLanOriginsFile(filename, publicPort) {
 
 // One resumable browser session = one TCP player. Haskell owns every game rule.
 export function createBridge({ tcpHost = '127.0.0.1', tcpPort = 4000, devOrigin = 'http://127.0.0.1:5173', host = '127.0.0.1', port = 8080,
-  publicPort, publicOrigin, lanOriginsFile, autoLan = false, lanInterface, reconnectGraceMs = RECONNECT_GRACE_MS, heartbeatMs = 10000,
+  publicPort, publicOrigin, lanOriginsFile, sessionFile, autoLan = false, lanInterface, reconnectGraceMs = RECONNECT_GRACE_MS, heartbeatMs = 10000,
   addresses = () => lanAddresses(networkInterfaces(), lanInterface) } = {}) {
   const config = readBridgeConfig({ HOST: autoLan ? undefined : host, PORT: String(port),
     BATTLESHIP_TCP_HOST: tcpHost, BATTLESHIP_TCP_PORT: String(tcpPort), PUBLIC_ORIGIN: publicOrigin,
-    WEB_PUBLIC_PORT: publicPort === undefined ? undefined : String(publicPort), LAN_ORIGINS_FILE: lanOriginsFile })
+    WEB_PUBLIC_PORT: publicPort === undefined ? undefined : String(publicPort), LAN_ORIGINS_FILE: lanOriginsFile,
+    BATTLESHIP_SESSION_FILE: sessionFile })
   let lanOrigins = config.lanOriginsFile ? readLanOriginsFile(config.lanOriginsFile, config.publicPort ?? config.port) : []
   const sessions = new Map()
+  const durable = config.sessionFile ? loadSessions(config.sessionFile) : { commands: [], sessions: [] }
+  for (const saved of durable.sessions) sessions.set(saved.key, { ...saved.session, token: undefined, tokenHash: saved.key,
+    tcp: null, ws: null, commands: [], pendingAcks: [], deadline: null, grace: undefined, ended: false,
+    restoring: false, replayQueue: [], replayWaiters: [] })
+  let persistQueue = Promise.resolve()
+  let forwardQueue = Promise.resolve()
+  let restorePromise
+  let matchEnded = false
   let stopping = false
   const server = http.createServer(async (request, response) => {
     try {
@@ -180,17 +217,58 @@ export function createBridge({ tcpHost = '127.0.0.1', tcpPort = 4000, devOrigin 
       ws.send(typeof message === 'string' ? message : JSON.stringify(message))
     }
   }
+  const tokenKey = (token) => createHash('sha256').update(token).digest('hex')
   const connectionState = () => ({ type: 'CONNECTION', missing: [...sessions.values()]
     .filter((session) => session.deadline && !session.ended)
     .map(({ player, deadline }) => ({ player, deadline })) })
   const notify = () => { for (const session of sessions.values()) send(session.ws, connectionState()) }
+  let persistError
+  const persistSnapshot = () => {
+    if (!config.sessionFile) return Promise.resolve()
+    persistQueue = persistQueue.catch(() => {}).then(async () => {
+      if (persistError) throw persistError
+      const savedSessions = [...sessions.entries()].filter(([, session]) => session.player && !matchEnded)
+        .map(([key, session]) => ({ key, session: { player: session.player, fleet: session.fleet, frames: session.frames } }))
+      durable.sessions = savedSessions
+      const contents = JSON.stringify({ version: 1, commands: matchEnded ? [] : durable.commands, sessions: savedSessions })
+      const temporary = `${config.sessionFile}.${process.pid}.${randomBytes(6).toString('hex')}.tmp`
+      let handle
+      try {
+        await mkdir(path.dirname(config.sessionFile), { recursive: true })
+        handle = await open(temporary, 'w', 0o600)
+        await handle.writeFile(contents, 'utf8')
+        await handle.sync()
+        await handle.close()
+        handle = undefined
+        await rename(temporary, config.sessionFile)
+      } catch (error) {
+        if (handle) await handle.close().catch(() => {})
+        await rm(temporary, { force: true }).catch(() => {})
+        persistError = error
+        throw error
+      }
+    })
+    return persistQueue
+  }
+  const persistCommand = async (session, line) => {
+    if (!config.sessionFile) return
+    if (persistError) throw persistError
+    if (durable.commands.length >= 4096) throw new Error('Persistent match journal reached its 4096-command limit')
+    durable.commands.push({ player: session.player, line })
+    await persistSnapshot()
+  }
+  const clearPersistentMatch = () => { matchEnded = true; durable.commands = []; return persistSnapshot() }
   const expire = (session) => {
     if (session.ended) return
     session.ended = true
     clearTimeout(session.grace)
+    if (config.sessionFile) void clearPersistentMatch().catch((error) => console.error(`Battleship session store: ${error.message}`))
     // Only Haskell decides the winner. Expiry is exactly the existing Quit command.
-    if (session.tcp.writable) session.tcp.end('QUIT\n')
-    else session.tcp.destroy()
+    if (session.tcp?.writable) {
+      void persistCommand(session, 'QUIT').then(() => session.tcp?.end('QUIT\n'))
+        .catch((error) => { console.error(`Battleship expiry persistence: ${error.message}`); session.tcp?.destroy() })
+    }
+    else session.tcp?.destroy()
   }
   const attach = (session, ws) => {
     session.ws = ws
@@ -201,7 +279,7 @@ export function createBridge({ tcpHost = '127.0.0.1', tcpPort = 4000, devOrigin 
       if (session.ws !== ws) return
       session.ws = null
       if (stopping || session.ended) return
-      if (!session.player) { session.tcp.destroy(); return }
+      if (!session.player) { session.tcp?.destroy(); return }
       if (reconnectGraceMs === 0) { expire(session); return }
       session.deadline = Date.now() + reconnectGraceMs
       session.grace = setTimeout(() => expire(session), reconnectGraceMs)
@@ -215,59 +293,49 @@ export function createBridge({ tcpHost = '127.0.0.1', tcpPort = 4000, devOrigin 
       if (line !== 'QUIT' && [...sessions.values()].some((peer) => peer.deadline && !peer.ended)) {
         send(ws, connectionState()); return
       }
-      if (session.tcp.writableLength > 65536) { ws.close(1008, 'Too many pending commands'); return }
+      if (!session.tcp?.writable || session.tcp.writableLength > 65536) { ws.close(1011, 'Haskell server unavailable'); return }
       session.commands.push(line)
       if (session.commands.length > 256) { ws.close(1008, 'Too many pending commands'); return }
-      session.tcp.write(line + '\n')
+      const write = async () => {
+        await persistCommand(session, line)
+        if (!session.tcp?.writable) throw new Error('Haskell server unavailable')
+        const acknowledged = new Promise((resolve, reject) => session.pendingAcks.push({ resolve, reject }))
+        session.tcp.write(line + '\n')
+        await acknowledged
+      }
+      forwardQueue = forwardQueue.then(write).catch((error) => {
+        console.error(`Battleship bridge persistence/command: ${error.message}`)
+        session.ws?.close(1011, 'Could not save match before sending command')
+      })
     })
   }
-  // Ping detects a Wi-Fi loss even when the browser cannot send a close frame.
-  const heartbeat = setInterval(() => {
-    for (const ws of websocket.clients) {
-      if (!ws.alive) ws.terminate()
-      else { ws.alive = false; ws.ping() }
-    }
-  }, heartbeatMs)
-  heartbeat.unref()
-  websocket.on('connection', (ws, request) => {
-    const url = new URL(request.url, 'http://localhost')
-    if (url.searchParams.has('resume')) {
-      const token = url.searchParams.get('resume')
-      const session = sessions.get(token)
-      if (!session || (session.ended && !session.frames.some((line) => line.startsWith('GAME_OVER '))) ||
-          (session.deadline && Date.now() >= session.deadline && !session.ended)) {
-        if (session && !session.ended) expire(session)
-        send(ws, { type: 'RESUME_ERROR', code: 'INVALID_SESSION', message: 'Phiên không tồn tại hoặc đã hết 5 phút khôi phục.' })
-        ws.close(1008, 'Invalid or expired session'); return
-      }
-      if (session.ws) {
-        send(ws, { type: 'RESUME_ERROR', code: 'SESSION_ACTIVE', message: 'Đang chờ kết nối cũ đóng; sẽ tự thử lại.' })
-        ws.close(1008, 'Session already connected'); return
-      }
-      clearTimeout(session.grace)
-      session.deadline = null
-      attach(session, ws)
-      send(ws, { type: 'SESSION', token, fleet: session.fleet, frames: session.frames })
-      notify()
-      if (session.ended) ws.close(1000, 'Match closed')
-      return
-    }
+  const nextReplayFrame = (session) => session.replayQueue.length
+    ? Promise.resolve(session.replayQueue.shift())
+    : new Promise((resolve, reject) => session.replayWaiters.push({ resolve, reject }))
+  const openTcp = (session, restoring = false) => new Promise((resolve, reject) => {
     const tcp = net.createConnection({ host: config.tcpHost, port: config.tcpPort })
+    session.tcp = tcp
+    session.restoring = restoring
     sockets.add(tcp)
-    const token = randomBytes(32).toString('hex')
-    const session = { tcp, token, ws: null, player: null, fleet: null, frames: [], commands: [], deadline: null, ended: false }
-    attach(session, ws)
-    let buffer = Buffer.alloc(0)
+    let buffer = Buffer.alloc(0), welcomed = false, settled = false, cleaned = false
     const timer = setTimeout(() => tcp.destroy(new Error('TCP connect timeout')), 5000)
     timer.unref()
     tcp.on('connect', () => clearTimeout(timer))
-    let cleaned = false
+    const fail = (error) => { if (!settled) { settled = true; reject(error) } }
     const cleanup = () => {
       if (cleaned) return
       cleaned = true
-      clearTimeout(timer); clearTimeout(session.grace); sockets.delete(tcp); session.ended = true
-      if (!stopping && sessions.has(token)) {
-        session.grace = setTimeout(() => sessions.delete(token), RECONNECT_GRACE_MS)
+      clearTimeout(timer); clearTimeout(session.grace); sockets.delete(tcp)
+      if (session.tcp === tcp) session.tcp = null
+      for (const pending of session.pendingAcks ?? []) pending.reject(new Error('Haskell connection closed'))
+      session.pendingAcks = []
+      if (restoring) for (const pending of session.replayWaiters ?? []) pending.reject(new Error('Haskell connection closed during replay'))
+      if (restoring) session.replayWaiters = []
+      if (!config.sessionFile) session.ended = true
+      // A failed restoration must leave the durable journal available for an
+      // operator to restart Haskell and retry; it is not a player disconnect.
+      if (!stopping && !restoring && sessions.has(session.tokenHash)) {
+        session.grace = setTimeout(() => expire(session), RECONNECT_GRACE_MS)
         session.grace.unref()
       }
     }
@@ -284,26 +352,180 @@ export function createBridge({ tcpHost = '127.0.0.1', tcpPort = 4000, devOrigin 
         if (text === 'OK PLACE' || text.startsWith('ERROR ') || text.startsWith('SHOT ')) {
           const command = session.commands.shift()
           if (text === 'OK PLACE' && command?.startsWith('PLACE ')) session.fleet = command
+          session.pendingAcks?.shift()?.resolve()
         }
+        if (text.startsWith('GAME_OVER ')) session.pendingAcks?.shift()?.resolve()
         if (text.startsWith('WELCOME 1 ')) {
           session.player = text.slice(-2)
-          sessions.set(token, session)
-          send(session.ws, { type: 'SESSION', token, fleet: null, frames: null })
+          if (session.tokenHash) sessions.set(session.tokenHash, session)
+          welcomed = true
+          if (session.restoring) {
+            if (!settled) { settled = true; resolve() }
+          } else {
+            if (!settled) { settled = true; resolve() }
+            if (session.token && session.tokenHash) {
+              void persistSnapshot().catch((error) => session.ws?.close(1011, `Could not save session: ${error.message}`))
+              send(session.ws, { type: 'SESSION', token: session.token, fleet: null, frames: null })
+            }
+          }
         }
         session.frames.push(text)
         if (session.frames.length > 4096) { tcp.destroy(new Error('Too many session frames')); return }
-        if (text === 'OK PLACE') send(session.ws, { type: 'SESSION', token, fleet: session.fleet, frames: null })
-        send(session.ws, text)
+        if (session.restoring) {
+          const waiter = session.replayWaiters.shift()
+          if (waiter) waiter.resolve(text)
+          else session.replayQueue.push(text)
+        } else {
+          if (text === 'OK PLACE') send(session.ws, { type: 'SESSION', token: session.token, fleet: session.fleet, frames: null })
+          send(session.ws, text)
+          if (text.startsWith('GAME_OVER ')) {
+            session.ended = true
+            if (config.sessionFile) void clearPersistentMatch().catch((error) => console.error(`Battleship session store: ${error.message}`))
+          } else if (config.sessionFile) {
+            void persistSnapshot().catch((error) => session.ws?.close(1011, `Could not save session: ${error.message}`))
+          }
+        }
         buffer = buffer.subarray(end + 1)
       }
       if (buffer.length > 257) tcp.destroy(new Error('Server line too long'))
     })
-    tcp.on('end', () => { cleanup(); session.ws?.close(buffer.length ? 1011 : 1000, buffer.length ? 'Incomplete server frame' : 'Match closed') })
+    tcp.on('end', () => {
+      cleanup()
+      if (!welcomed) fail(new Error('Haskell server closed before admitting a player slot'))
+      else session.ws?.close(buffer.length ? 1011 : 1000, buffer.length ? 'Incomplete server frame' : 'Haskell server unavailable')
+    })
     tcp.on('error', (error) => {
       console.error(`Battleship bridge TCP ${config.tcpHost}:${config.tcpPort}: ${error.code ?? error.message}`)
-      cleanup(); session.ws?.close(1011, 'Haskell server unavailable')
+      cleanup(); fail(error); session.ws?.close(1011, 'Haskell server unavailable')
     })
-    tcp.on('close', () => { cleanup(); session.ws?.close() })
+    tcp.on('close', () => {
+      cleanup()
+      if (restoring && !welcomed) fail(new Error('Haskell server closed before restoring a player slot'))
+      session.ws?.close()
+    })
+  })
+  const restoreBackend = async () => {
+    if (!config.sessionFile || !durable.sessions.length) return
+    const ordered = [...sessions.values()].filter((session) => session.tokenHash).sort((a, b) => a.player.localeCompare(b.player))
+    if (ordered.length !== durable.sessions.length) throw new Error('Saved player identities are incomplete')
+    for (const session of ordered) {
+      session.frames = []; session.commands = []; session.replayQueue = []; session.replayWaiters = []
+      session.player = null; session.ended = false; session.deadline = null
+      await openTcp(session, true)
+      if (session.player !== (session.tokenHash && durable.sessions.find((saved) => saved.key === session.tokenHash)?.session.player))
+        throw new Error('Restored player slot does not match saved identity')
+    }
+    // WELCOME arrives before any journaled command. Consume it so it cannot
+    // be read as the response to the first PLACE/FIRE.
+    for (const session of ordered) {
+      const welcome = await nextReplayFrame(session)
+      if (welcome !== `WELCOME 1 ${session.player}`)
+        throw new Error(`Unexpected ${session.player} restore welcome: ${welcome}`)
+    }
+    for (const entry of durable.commands) {
+      const actor = ordered.find((session) => session.player === entry.player)
+      if (!actor?.tcp?.writable) throw new Error(`No restored TCP slot for ${entry.player}`)
+      actor.commands.push(entry.line)
+      actor.tcp.write(entry.line + '\n')
+      const first = await nextReplayFrame(actor)
+      const drain = async (session, count) => {
+        for (let index = 0; index < count; index++) {
+          await nextReplayFrame(session)
+        }
+      }
+      if (first.startsWith('ERROR ')) continue
+      if (first === 'OK PLACE') {
+        if (actor.player === 'P1') await drain(actor, 1)
+        else {
+          const firstPlayer = ordered.find((session) => session.player === 'P1')
+          await drain(firstPlayer, 2)
+          await drain(actor, 2)
+        }
+      } else if (first.startsWith('SHOT ')) {
+        const second = await nextReplayFrame(actor)
+        if (!second.startsWith('TURN ') && !second.startsWith('GAME_OVER ')) throw new Error('Unexpected shot replay response')
+        for (const session of ordered) if (session !== actor) await drain(session, 2)
+      } else if (first.startsWith('GAME_OVER ')) {
+        for (const session of ordered) if (session !== actor) await drain(session, 1)
+      } else throw new Error(`Unexpected replay response: ${first}`)
+    }
+    const finished = ordered.some((session) => session.frames.some((frame) => frame.startsWith('GAME_OVER ')))
+    for (const session of ordered) { session.restoring = false; session.ended = finished }
+    if (finished) { matchEnded = true; durable.commands = [] }
+    await persistSnapshot()
+  }
+  const ensureRestored = async () => {
+    if (!config.sessionFile || !durable.sessions.length) return
+    if (restorePromise) return restorePromise
+    const links = [...sessions.values()].filter((session) => session.tcp?.writable).length
+    if (links === sessions.size) return
+    if (links > 0) throw new Error('A partial backend match is still connected; restart Haskell before restoring all saved players')
+    restorePromise = restoreBackend().finally(() => { restorePromise = undefined })
+    return restorePromise
+  }
+  // Ping detects a Wi-Fi loss even when the browser cannot send a close frame.
+  const heartbeat = setInterval(() => {
+    for (const ws of websocket.clients) {
+      if (!ws.alive) ws.terminate()
+      else { ws.alive = false; ws.ping() }
+    }
+  }, heartbeatMs)
+  heartbeat.unref()
+  websocket.on('connection', async (ws, request) => {
+    const url = new URL(request.url, 'http://localhost')
+    if (url.searchParams.has('resume')) {
+      const token = url.searchParams.get('resume')
+      const session = sessions.get(tokenKey(token))
+      if (!session || (session.ended && !session.frames.some((line) => line.startsWith('GAME_OVER '))) ||
+          (session.deadline && Date.now() >= session.deadline && !session.ended)) {
+        if (session && !session.ended) expire(session)
+        send(ws, { type: 'RESUME_ERROR', code: 'INVALID_SESSION', message: 'Phiên không tồn tại hoặc đã hết 5 phút khôi phục.' })
+        ws.close(1008, 'Invalid or expired session'); return
+      }
+      if (session.ws) {
+        send(ws, { type: 'RESUME_ERROR', code: 'SESSION_ACTIVE', message: 'Đang chờ kết nối cũ đóng; sẽ tự thử lại.' })
+        ws.close(1008, 'Session already connected'); return
+      }
+      if (session.resuming) {
+        send(ws, { type: 'RESUME_ERROR', code: 'SESSION_ACTIVE', message: 'Phiên đang được khôi phục; hãy thử lại sau.' })
+        ws.close(1008, 'Session is restoring'); return
+      }
+      session.resuming = true
+      clearTimeout(session.grace)
+      session.deadline = null
+      session.token = token
+      try { await ensureRestored() }
+      catch (error) {
+        session.resuming = false
+        console.error(`Battleship bridge restore: ${error.message}`)
+        send(ws, { type: 'RESUME_ERROR', code: 'SERVER_UNAVAILABLE', message: 'Không thể khôi phục trận từ dữ liệu đã lưu.' })
+        ws.close(1011, 'Could not restore match'); return
+      }
+      attach(session, ws)
+      session.resuming = false
+      send(ws, { type: 'SESSION', token, fleet: session.fleet, frames: session.frames })
+      notify()
+      if (session.ended) ws.close(1000, 'Match closed')
+      return
+    }
+    if (matchEnded) {
+      sessions.clear(); durable.commands = []; matchEnded = false
+      try { await persistSnapshot() }
+      catch (error) { send(ws, { type: 'RESUME_ERROR', code: 'SERVER_UNAVAILABLE', message: 'Không thể lưu trạng thái mới.' }); ws.close(1011); return }
+    } else {
+      try { await ensureRestored() }
+      catch (error) {
+        console.error(`Battleship bridge restore: ${error.message}`)
+        send(ws, { type: 'RESUME_ERROR', code: 'SERVER_UNAVAILABLE', message: 'Không thể khôi phục trận từ dữ liệu đã lưu.' })
+        ws.close(1011, 'Could not restore match'); return
+      }
+    }
+    const token = randomBytes(32).toString('hex')
+    const session = { tcp: null, token, tokenHash: tokenKey(token), ws: null, player: null, fleet: null,
+      frames: [], commands: [], pendingAcks: [], replayQueue: [], replayWaiters: [], deadline: null, ended: false }
+    attach(session, ws)
+    try { await openTcp(session) }
+    catch { ws.close(1011, 'Haskell server unavailable') }
   })
   return {
     server,

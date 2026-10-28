@@ -17,6 +17,7 @@ frontend/test-results/
 !/.env.performance.example
 !/.env.numa.example
 /.docker-runtime/
+/.battleship-sessions.json
 # Local reports: keep the files on this machine, outside Git.
 /docs/**/*.[dD][oO][cC][xX]
 /docs/**/[Bb][Aa][Oo]_[Cc][Aa][Oo]_*

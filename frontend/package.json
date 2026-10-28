@@ -13,7 +13,7 @@
     "start": "node bridge.mjs",
     "test": "node --test test/unit.test.ts test/connection.test.ts test/bridge.test.mjs test/docker-contract.test.mjs",
     "test:docker-contract": "node --test test/docker-contract.test.mjs",
-    "test:integration": "node --test test/integration.test.mjs test/reconnect.test.mjs",
+    "test:integration": "node --test test/integration.test.mjs test/reconnect.test.mjs test/persistence.test.mjs",
     "test:browser": "node --test test/browser.test.mjs",
     "test:lan": "node --test test/lan.test.mjs",
     "test:lan-helper": "node --test test/lan-helper.test.mjs"
