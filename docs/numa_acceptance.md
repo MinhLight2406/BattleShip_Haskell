@@ -417,7 +417,7 @@ Các điểm này không bị đổi thành pass. Phần mã/test/tài liệu h�
 
 ## 13. Liên kết kiến thức với code và bằng chứng
 
-[slide_mapping.md](slide_mapping.md) chứa đủ 14 tài liệu/trang. Rút gọn các kiến thức thêm ở đợt này:
+Báo cáo và đối chiếu slide được nhóm quản lý riêng. Các cơ chế kỹ thuật và bằng chứng của đợt này được tóm tắt dưới đây:
 
 | Slide | Cơ chế đã dùng | Bằng chứng | Giới hạn |
 |---|---|---|---|

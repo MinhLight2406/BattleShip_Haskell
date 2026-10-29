@@ -17,6 +17,16 @@ frontend/test-results/
 !/.env.performance.example
 !/.env.numa.example
 /.docker-runtime/
+/.battleship-sessions.json
 # Local reports: keep the files on this machine, outside Git.
 /docs/**/*.[dD][oO][cC][xX]
 /docs/**/[Bb][Aa][Oo]_[Cc][Aa][Oo]_*
+
+# Reports and slide preparation are maintained separately; preserve local copies.
+/docs/battleship_report_sample.md
+/docs/report_draft.md
+/docs/report_final.md
+/docs/report_outline.md
+/docs/slide_mapping.md
+/docs/slides_outline.md
+/docs/report_assets/

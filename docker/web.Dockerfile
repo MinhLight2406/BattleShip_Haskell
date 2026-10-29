@@ -30,6 +30,7 @@ WORKDIR /app
 COPY --from=test /build/frontend/dist ./dist
 COPY --from=test /build/frontend/bridge.mjs ./bridge.mjs
 COPY --from=production /build/frontend/node_modules ./node_modules
+RUN mkdir -p /var/lib/battleship && chown node:node /var/lib/battleship
 USER node
 EXPOSE 8080
 STOPSIGNAL SIGTERM

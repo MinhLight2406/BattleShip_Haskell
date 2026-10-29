@@ -6,14 +6,13 @@ Phần NUMA NM-01..NM-09 được cập nhật **2026-10-12** trên `Update_NUMA
 xem các hồ sơ riêng bên dưới để đọc trạng thái runtime và gate mới. Các
 hồ sơ cũ giữ ngày và phạm vi nghiệm thu của từng mốc.
 
+Báo cáo và slide được nhóm quản lý riêng. Repo giữ tài liệu hợp đồng, kiến trúc, xử lý, vận hành và kiểm thử.
+
 ## Đọc theo mục đích
 
 | Mục đích | Thứ tự đọc |
 |---|---|
 | Chạy và chơi | [README gốc](../README.md) → [kịch bản demo](demo_script.md) |
-| Viết báo cáo | [Báo cáo tổng thể](report_final.md) → [quyết định thiết kế](design_decisions.md) → [đối chiếu slide](slide_mapping.md) |
-| Mẫu theo đề tài tham khảo | [Bản Markdown năm mục](battleship_report_sample.md) |
-| Báo cáo đồ án và căn cứ thiết kế | [Báo cáo tổng thể](report_final.md) → [quyết định thiết kế](design_decisions.md) → [đối chiếu slide](slide_mapping.md) |
 | Hiểu xử lý | [Kiến trúc](architecture.md) → [luật](game_spec.md) → [giao thức](protocol.md) |
 | Phát triển module | [Hợp đồng chung](shared_contract.md) → source liên kết trong kiến trúc → test tương ứng |
 | Docker/LAN | [Hợp đồng triển khai](docker_deployment.md) → [Dockerfile và runtime test](../docker/README.md) → [DK-09](dk09_handover.md) |
@@ -27,15 +26,15 @@ hồ sơ cũ giữ ngày và phạm vi nghiệm thu của từng mốc.
 | Kết luận kiến thức và cấu hình báo cáo | [NM-09: cơ chế, đánh đổi, số liệu riêng/kết hợp, tái hiện và phần chưa nghiệm thu](numa_acceptance.md) |
 | Kiểm chứng kết quả | [Hướng dẫn test](testing.md) → [chỉ mục bằng chứng](test_evidence.md) → log/ảnh từng mốc |
 | Kiểm tra đợt sửa docs này | [Hồ sơ rà tài liệu](docs_review.md): thay đổi, gate mới chạy và giới hạn |
-| Chuẩn bị bảo vệ | [Dàn ý báo cáo](report_outline.md) → [dàn ý trình bày](slides_outline.md) → [phần nhóm cần chốt](report_draft.md) |
 | Quá trình thực hiện | [Lịch sử phát triển](development_history.md) → [hồ sơ tích hợp UI](frontend_integration.md) |
 
 ## Nguồn chuẩn và hồ sơ lịch sử
 
+Báo cáo, dàn ý và đối chiếu slide được nhóm quản lý riêng, không nằm trong các file được Git theo dõi. Tài liệu trong repo tập trung vào hợp đồng, kiến trúc, xử lý, vận hành và kiểm thử.
+
 Các file Word `.docx` và báo cáo có tên bắt đầu bằng `Bao_cao_`/`bao_cao_` được giữ cục bộ, không đưa vào Git. Bản chuyên sâu biên soạn ngày **2026-10-11** thuộc nhóm file cục bộ này. Các kết quả runtime trong báo cáo được dẫn từ hồ sơ nghiệm thu theo đúng ngày và revision; lần biên soạn này không chạy lại hoặc ghi thêm xác nhận nghiệm thu của nhóm.
 
 - **Luật:** `game_spec.md`. **Wire TCP v1:** `protocol.md`. **Kiểu/chữ ký/chủ sở hữu:** `shared_contract.md`. **Cấu hình Docker:** `docker_deployment.md`. Báo cáo giải thích, không định nghĩa một bộ luật khác.
-- **Báo cáo hiện hành:** `report_final.md`. Hồ sơ S-02 trước đây nằm trong file này được giữ nguyên tại [s02_acceptance.md](s02_acceptance.md).
 - **Hồ sơ theo thời điểm:** [S-02](s02_acceptance.md), [S-03](s03_acceptance.md), [S-04](s04_feature_freeze.md), [D-06](d06_demo.md), [DK-08](dk08_acceptance.md), [DK-09](dk09_handover.md). Số test/phạm vi thuộc lần chạy được ghi, không cộng thành số test hiện tại.
 - **Vấn đề đã ghi nhận:** [round9_fixes.md](round9_fixes.md). Không đổi TODO thành hoàn thành khi chưa có log chạy lại.
 - **Log/ảnh trong Git:** `docs/demo/`. Log local trong `.stack-work/` không bảo đảm người clone nhận được.

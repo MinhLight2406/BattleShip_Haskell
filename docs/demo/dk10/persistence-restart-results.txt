@@ -1,0 +1,30 @@
+Session journal recovery — targeted Docker Compose verification
+Date: 2026-10-28
+Branch: persist-session-and-parser
+
+Command:
+  node --test --test-name-pattern="restarting .* mid-game restores" scripts/test-compose.mjs
+
+Result:
+  tests 2
+  pass 2
+  fail 0
+  skipped 0
+
+Scenarios:
+  - Restart Haskell during a match, then resume both saved player codes.
+  - Restart web during a match, restart Haskell after its TCP clients exit,
+    then resume both saved player codes.
+  - Both scenarios verify P1/P2 identity, each player's own fleet, private
+    shot history, the current turn, and a further legal shot after recovery.
+
+Scope and limits:
+  - Tests used the current frontend/bridge.mjs bind-mounted into the existing
+    local Docker web image. The cached Haskell image was used without rebuild;
+    game rules and the TCP v1 protocol were unchanged by this work.
+  - This verifies service/container restart with the Compose named volume.
+    A full host shutdown/reboot, a clean image rebuild, and persistence after
+    `docker compose down -v` were not part of this run.
+  - Frontend build passed; frontend unit tests passed 36/36.
+  - `Protocol.hs` passed `ghc -fno-code -Wall`; the full Haskell suite was not
+    run because the Windows Stack build of `network` failed in hsc2hs.

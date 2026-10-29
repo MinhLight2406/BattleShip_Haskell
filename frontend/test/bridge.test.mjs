@@ -82,13 +82,13 @@ test('HTTP serves built UI/hero and reports nonexistent assets clearly', async (
 
 test('automatic LAN is the CLI default; explicit localhost and LAN binding still work', () => {
   assert.deepEqual(readBridgeConfig({}), { host: '0.0.0.0', port: 8080, tcpHost: '127.0.0.1', tcpPort: 4000,
-    publicPort: undefined, publicOrigin: undefined, autoLan: true, lanOriginsFile: undefined, lanInterface: undefined })
+    publicPort: undefined, publicOrigin: undefined, autoLan: true, lanOriginsFile: undefined, sessionFile: undefined, lanInterface: undefined })
   assert.equal(RECONNECT_GRACE_MS, 300000)
   assert.equal(readBridgeConfig({ HOST: 'localhost' }).host, '127.0.0.1')
   for (const host of ['192.168.1.10', '0.0.0.0']) {
     assert.deepEqual(readBridgeConfig({ HOST: host, PORT: '8081', PUBLIC_ORIGIN: 'http://192.168.1.10:8081/' }), {
       host, port: 8081, tcpHost: '127.0.0.1', tcpPort: 4000, publicPort: undefined,
-      publicOrigin: 'http://192.168.1.10:8081', autoLan: false, lanOriginsFile: undefined, lanInterface: undefined,
+      publicOrigin: 'http://192.168.1.10:8081', autoLan: false, lanOriginsFile: undefined, sessionFile: undefined, lanInterface: undefined,
     })
   }
   assert.equal(readBridgeConfig({ PUBLIC_ORIGIN: 'http://localhost:8080' }).publicOrigin, 'http://localhost:8080')

@@ -37,6 +37,7 @@ services:
       WEB_PUBLIC_PORT: ${WEB_PUBLIC_PORT:?Set WEB_PUBLIC_PORT in the env file}
       PUBLIC_ORIGIN: ${PUBLIC_ORIGIN-}
       LAN_ORIGINS_FILE: ${LAN_ORIGINS_FILE-}
+      BATTLESHIP_SESSION_FILE: /var/lib/battleship/sessions.json
     ports:
       - "${WEB_PUBLIC_PORT:?Set WEB_PUBLIC_PORT in the env file}:${PORT:?Set PORT in the env file}"
     volumes:
@@ -46,6 +47,7 @@ services:
         read_only: true
         bind:
           create_host_path: false
+      - battleship-state:/var/lib/battleship
     depends_on:
       haskell:
         condition: service_healthy
@@ -59,3 +61,6 @@ services:
     restart: "no"
     stop_signal: SIGTERM
     stop_grace_period: 10s
+
+volumes:
+  battleship-state:

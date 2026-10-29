@@ -371,11 +371,16 @@ isInvalidCommand (Left InvalidMessage) = True
 isInvalidCommand _ = False
 
 checkBlock :: String -> String -> ([String] -> IO ()) -> IO ()
-checkBlock document marker check = case dropWhile (/= "<!-- " ++ marker ++ " -->") (lines document) of
+checkBlock document marker check = case dropWhile (/= "<!-- " ++ marker ++ " -->") normalizedLines of
   _ : "```text" : rest -> case break (== "```") rest of
     (payloads, _ : _) -> check payloads
     _ -> expectationFailure ("Unclosed fixture: " ++ marker)
   _ -> expectationFailure ("Missing fixture: " ++ marker)
+  where
+    normalizedLines = map dropTrailingCR (lines document)
+    dropTrailingCR line = case reverse line of
+      '\r' : rest -> reverse rest
+      _ -> line
 
 checkTranscriptRow :: String -> IO ()
 checkTranscriptRow row = case stripPrefix "C1 -> S: " row of

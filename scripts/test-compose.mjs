@@ -82,7 +82,7 @@ function fixture(t, overrides = {}) {
       if (child?.exitCode === null && child.signalCode === null) {
         const closed = once(child, 'close'); child.kill(); await within(closed, 'host helper shutdown')
       }
-      if (started) await command('down', '--remove-orphans')
+      if (started) await command('down', '--remove-orphans', '--volumes')
     } finally {
       assert.equal(path.dirname(directory), parent, 'cleanup must stay inside the owned Compose fixture')
       rmSync(directory, { recursive: true, force: true })
@@ -178,7 +178,7 @@ function fixture(t, overrides = {}) {
   }
 }
 
-test('DK-07: rendered Compose has exactly two services, explicit env, private TCP and read-only LAN directory', async t => {
+test('DK-07: rendered Compose has two services, private TCP, LAN config and persistent browser sessions', async t => {
   const f = fixture(t)
   await f.command('config', '--quiet')
   const model = await f.model()
@@ -188,7 +188,8 @@ test('DK-07: rendered Compose has exactly two services, explicit env, private TC
   assert.deepEqual(haskell.command, ['4000'])
   assert.deepEqual(Object.keys(haskell.environment).sort(), ['BATTLESHIP_BIND_HOST', 'BATTLESHIP_GAME_CAPABILITY', 'BATTLESHIP_READY_FILE'])
   assert.equal(haskell.environment.BATTLESHIP_GAME_CAPABILITY, '0')
-  assert.deepEqual(Object.keys(web.environment).sort(), ['BATTLESHIP_TCP_HOST', 'BATTLESHIP_TCP_PORT', 'HOST', 'LAN_ORIGINS_FILE', 'PORT', 'PUBLIC_ORIGIN', 'WEB_PUBLIC_PORT'])
+  assert.deepEqual(Object.keys(web.environment).sort(), ['BATTLESHIP_SESSION_FILE', 'BATTLESHIP_TCP_HOST', 'BATTLESHIP_TCP_PORT', 'HOST', 'LAN_ORIGINS_FILE', 'PORT', 'PUBLIC_ORIGIN', 'WEB_PUBLIC_PORT'])
+  assert.equal(web.environment.BATTLESHIP_SESSION_FILE, '/var/lib/battleship/sessions.json')
   assert.equal(web.environment.BATTLESHIP_TCP_HOST, 'haskell')
   assert.equal(web.environment.BATTLESHIP_TCP_PORT, '4000')
   assert.equal(web.ports.length, 1)
@@ -196,11 +197,15 @@ test('DK-07: rendered Compose has exactly two services, explicit env, private TC
   assert.ok(!web.ports[0].host_ip || web.ports[0].host_ip === '0.0.0.0')
   assert.equal(web.depends_on.haskell.condition, 'service_healthy')
   assert.ok(!web.depends_on.haskell.restart, 'restarting web would destroy its retained sessions')
-  assert.equal(web.volumes.length, 1)
+  assert.equal(web.volumes.length, 2)
   assert.equal(web.volumes[0].source, f.values.LAN_CONFIG_DIR)
   assert.equal(web.volumes[0].target, '/run/battleship-lan')
   assert.equal(web.volumes[0].read_only, true)
   assert.equal(web.volumes[0].bind.create_host_path, false)
+  assert.equal(web.volumes[1].type, 'volume')
+  assert.equal(web.volumes[1].source, 'battleship-state')
+  assert.equal(web.volumes[1].target, '/var/lib/battleship')
+  assert.ok(model.volumes['battleship-state'])
   for (const [service, file] of [[haskell, 'docker/haskell.Dockerfile'], [web, 'docker/web.Dockerfile']]) {
     assert.equal(service.build.dockerfile, file); assert.equal(service.build.target, 'runtime')
     assert.equal(path.resolve(service.build.context), path.resolve(root))
@@ -527,10 +532,14 @@ for (const inBattle of [false, true]) test(`DK-08: exact five-minute clock bound
   t.diagnostic('Clock fixture imports unmodified /app/bridge.mjs; default RECONNECT_GRACE_MS remains 300000, winner comes from real Haskell Quit.')
 })
 
-for (const service of ['haskell', 'web']) test(`DK-08: restarting ${service} mid-game closes old sessions and never restores old state`, async t => {
+for (const service of ['haskell', 'web']) test(`DK-08: restarting ${service} mid-game restores both players from the durable journal`, async t => {
   const f = fixture(t, { WEB_PUBLIC_PORT: String(await freePort()) })
+  const bridgeFile = path.join(root, 'frontend/bridge.mjs').replaceAll('\\', '/')
+  f.override({ services: { web: { user: '0:0', volumes: [
+    { type: 'bind', source: bridgeFile, target: '/app/bridge.mjs', read_only: true },
+  ] } } })
   f.values.PUBLIC_ORIGIN = f.origin(); f.save(); await f.up()
-  const pair = await f.pair(), token = (await pair[0].meta('SESSION')).token
+  const pair = await f.pair(), tokens = await Promise.all(pair.map(async client => (await client.meta('SESSION')).token))
   pair[0].send(fleet1); await pair[0].wait('OK PLACE')
   pair[1].send(fleet2); await pair[1].wait('OK PLACE'); await pair[0].wait('START P1'); await pair[0].wait('TURN P1')
   pair[0].send('FIRE A6'); await pair[0].wait('SHOT A6 HIT')
@@ -543,15 +552,94 @@ for (const service of ['haskell', 'web']) test(`DK-08: restarting ${service} mid
     await f.command('start', 'haskell')
   }
   await f.healthy()
-  const old = await peer(Number(f.values.WEB_PUBLIC_PORT), '127.0.0.1', token)
-  assert.equal((await old.meta('RESUME_ERROR')).code, 'INVALID_SESSION', 'unfinished sessions cannot replay into a restarted match')
-  await within(old.closed)
-  const fresh = await f.pair()
-  const current = await fresh[0].meta('SESSION')
-  assert.notEqual(current.token, token); assert.equal(current.fleet, null)
-  fresh[0].send('FIRE A6'); await fresh[0].wait('ERROR FLEETS_NOT_READY')
-  fresh[0].send('QUIT')
-  for (const client of fresh) { await client.wait('GAME_OVER P2 OPPONENT_LEFT'); await within(client.closed) }
+  const resumed = [], sessions = []
+  for (const token of tokens) {
+    let restored
+    for (let attempt = 0; attempt < 10 && !restored; attempt++) {
+      const client = await peer(Number(f.values.WEB_PUBLIC_PORT), '127.0.0.1', token)
+      resumed.push(client)
+      try { restored = await client.meta('SESSION') }
+      catch (error) {
+        if (attempt === 9) {
+          const logs = await f.command('logs', 'web')
+          t.diagnostic(`Resume frames: ${JSON.stringify(resumed.map(peer => peer.frames))}\nWeb logs during journal restore:\n${logs.stdout}${logs.stderr}`)
+          throw error
+        }
+        await client.closed
+        await new Promise(resolve => setTimeout(resolve, 200))
+      }
+    }
+    sessions.push(restored)
+  }
+  assert.equal(sessions[0].fleet, fleet1)
+  assert.equal(sessions[1].fleet, fleet2)
+  assert.ok(sessions[0].frames.includes('WELCOME 1 P1'))
+  assert.ok(sessions[0].frames.includes('SHOT A6 HIT'))
+  assert.ok(sessions[0].frames.includes('TURN P1'))
+  assert.ok(sessions[1].frames.includes('WELCOME 1 P2'))
+  assert.ok(sessions[1].frames.includes('INCOMING A6 HIT'))
+  assert.ok(sessions[1].frames.includes('TURN P1'))
+  resumed[0].send('FIRE B6'); await resumed[0].wait('SHOT B6 HIT')
+  await resumed[0].wait('TURN P1'); await resumed[1].wait('INCOMING B6 HIT')
+})
+
+test('DK-08: recreating the full Compose stack keeps both players, turn and match history', async t => {
+  const f = fixture(t, { WEB_PUBLIC_PORT: String(await freePort()) })
+  f.values.PUBLIC_ORIGIN = f.origin(); f.save(); await f.up()
+  const pair = await f.pair()
+  const tokens = await Promise.all(pair.map(async client => (await client.meta('SESSION')).token))
+  pair[0].send(fleet1); await pair[0].wait('OK PLACE')
+  pair[1].send(fleet2); await pair[1].wait('OK PLACE')
+  for (const client of pair) { await client.wait('START P1'); await client.wait('TURN P1') }
+  pair[0].send('FIRE A6'); await pair[0].wait('SHOT A6 HIT')
+  await pair[0].wait('TURN P1'); await pair[1].wait('INCOMING A6 HIT')
+  const web = await f.inspect('web')
+  const before = JSON.parse((await docker('exec', web.Id, 'node', '-e',
+    "process.stdout.write(require('node:fs').readFileSync('/var/lib/battleship/sessions.json', 'utf8'))")).stdout)
+  assert.equal(before.sessions.length, 2)
+  assert.ok(before.commands.length >= 3)
+
+  // `down` removes the containers/network but deliberately retains the named volume.
+  await f.command('down', '--remove-orphans')
+  for (const client of pair) await within(client.closed, 'old websocket closes on full stack stop')
+  const volumeName = `${f.project}_battleship-state`
+  const journal = JSON.parse((await docker('run', '--rm', '--mount', `type=volume,src=${volumeName},dst=/state`,
+    '--entrypoint', 'node', 'battleship-web:local', '-e',
+    "process.stdout.write(require('node:fs').readFileSync('/state/sessions.json', 'utf8'))")).stdout)
+  t.diagnostic(`Journal retained after stack stop: ${JSON.stringify({ sessions: journal.sessions.length, commands: journal.commands.length })}`)
+  await f.up()
+
+  const resumed = [], sessions = []
+  for (const token of tokens) {
+    let restored
+    for (let attempt = 0; attempt < 10 && !restored; attempt++) {
+      const client = await peer(Number(f.values.WEB_PUBLIC_PORT), '127.0.0.1', token)
+      resumed.push(client)
+      try { restored = await client.meta('SESSION') }
+      catch (error) {
+        if (attempt === 9) {
+          const logs = await f.command('logs')
+          t.diagnostic(`Resume frames: ${JSON.stringify(resumed.map(peer => peer.frames))}\nStack logs after full restart:\n${logs.stdout}${logs.stderr}`)
+          throw error
+        }
+        await client.closed
+        await new Promise(resolve => setTimeout(resolve, 200))
+      }
+    }
+    sessions.push(restored)
+  }
+  assert.equal(sessions[0].token, tokens[0])
+  assert.equal(sessions[0].fleet, fleet1)
+  assert.ok(sessions[0].frames.includes('WELCOME 1 P1'))
+  assert.ok(sessions[0].frames.includes('SHOT A6 HIT'))
+  assert.ok(sessions[0].frames.includes('TURN P1'))
+  assert.equal(sessions[1].token, tokens[1])
+  assert.equal(sessions[1].fleet, fleet2)
+  assert.ok(sessions[1].frames.includes('WELCOME 1 P2'))
+  assert.ok(sessions[1].frames.includes('INCOMING A6 HIT'))
+  assert.ok(sessions[1].frames.includes('TURN P1'))
+  resumed[0].send('FIRE B6'); await resumed[0].wait('SHOT B6 HIT')
+  await resumed[0].wait('TURN P1'); await resumed[1].wait('INCOMING B6 HIT')
 })
 
 test('DK-08: concurrent WebSocket shots have one valid actor and exactly one update per target', async t => {
