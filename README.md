@@ -236,12 +236,12 @@ Các bộ test tích hợp, trình duyệt, LAN và runtime profile có điều 
 | Kiến trúc, luồng xử lý | [architecture.md](docs/architecture.md) |
 | Luật, giao thức, hợp đồng module | [game_spec.md](docs/game_spec.md), [protocol.md](docs/protocol.md), [shared_contract.md](docs/shared_contract.md) |
 | Docker, biến môi trường, Origin/Host và LAN | [docker_deployment.md](docs/docker_deployment.md), [docker/README.md](docker/README.md) |
-| Báo cáo và quyết định thiết kế | [report_final.md](docs/report_final.md), [design_decisions.md](docs/design_decisions.md) |
+| Kiến trúc và quyết định thiết kế | [architecture.md](docs/architecture.md), [design_decisions.md](docs/design_decisions.md) |
 | Kịch bản demo và bằng chứng | [demo_script.md](docs/demo_script.md), [test_evidence.md](docs/test_evidence.md) |
 | Lịch sử phát triển | [development_history.md](docs/development_history.md) |
 | CPU affinity và worker | [affinity_runtime.md](docs/affinity_runtime.md), [worker_locality.md](docs/worker_locality.md) |
 | Fleet index và NUMA | [fleet_index.md](docs/fleet_index.md), [numa_experiments.md](docs/numa_experiments.md) |
-| Hồi quy runtime và kết luận báo cáo | [runtime_regression.md](docs/runtime_regression.md), [numa_acceptance.md](docs/numa_acceptance.md), [slide_mapping.md](docs/slide_mapping.md) |
+| Hồi quy runtime và đánh giá kỹ thuật | [runtime_regression.md](docs/runtime_regression.md), [numa_acceptance.md](docs/numa_acceptance.md) |
 
 ### Phạm vi đã kiểm chứng và giới hạn
 

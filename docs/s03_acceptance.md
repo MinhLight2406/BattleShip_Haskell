@@ -1,6 +1,6 @@
 # S-03 — Nghiệm thu trận đầu cuối hai terminal
 
-**Hồ sơ lịch sử terminal**, kết quả/giới hạn thuộc ngày chạy bên dưới. Hiện trạng UI/LAN/Docker và bằng chứng mới ở [report_final.md](report_final.md), DK-08/DK-09; vẫn giữ vấn đề 80 cột và xác nhận nhóm như hồ sơ đã ghi.
+**Hồ sơ lịch sử terminal**, kết quả/giới hạn thuộc ngày chạy bên dưới. Hiện trạng UI/LAN/Docker và bằng chứng mới ở [kiến trúc hệ thống](architecture.md), DK-08/DK-09; vẫn giữ vấn đề 80 cột và xác nhận nhóm như hồ sơ đã ghi.
 
 **Kỹ thuật: ĐẠT với một vấn đề trình bày P3 đã ghi Đợt 9. Xác nhận nhóm: CHỜ A/B/C/D và R.**
 

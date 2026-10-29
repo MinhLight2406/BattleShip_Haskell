@@ -2,7 +2,7 @@
 
 ## Chỉ mục hiện hành và cách đọc — 2026-10-10
 
-Các mục C-01..S-04 bên dưới là **kết quả lịch sử 2026-10-04/05**, giữ nguyên số test, working tree, giới hạn và lỗi tại thời điểm chạy. TQueue/unverified Linux trong đoạn cũ không mô tả hiện trạng sau C-07/Docker. Báo cáo hiện hành xem [report_final.md](report_final.md); phương pháp/lệnh/seed/coverage xem [testing.md](testing.md).
+Các mục C-01..S-04 bên dưới là **kết quả lịch sử 2026-10-04/05**, giữ nguyên số test, working tree, giới hạn và lỗi tại thời điểm chạy. TQueue/unverified Linux trong đoạn cũ không mô tả hiện trạng sau C-07/Docker. Kiến trúc hệ thống xem [architecture.md](architecture.md); phương pháp/lệnh/seed/coverage xem [testing.md](testing.md).
 
 | Đợt bổ sung | Code/test liên quan | Bằng chứng hiện có |
 |---|---|---|

@@ -1,6 +1,6 @@
 # S-04 — Khóa tính năng và chốt mã
 
-**Hồ sơ lịch sử bản terminal 2026-10-05.** Sau mốc này người dùng yêu cầu UI/LAN/QuickCheck/queue/Docker; phạm vi mới được ghi trong [development_history.md](development_history.md) và [report_final.md](report_final.md). Không đọc giới hạn “không GUI/chưa Linux” ở bản S-04 này như hiện trạng source `8bd7da9`. Không sửa log/count/chữ ký cũ để gán ngược tính năng mới vào S-04.
+**Hồ sơ lịch sử bản terminal 2026-10-05.** Sau mốc này người dùng yêu cầu UI/LAN/QuickCheck/queue/Docker; phạm vi mới được ghi trong [development_history.md](development_history.md) và [kiến trúc hệ thống](architecture.md). Không đọc giới hạn “không GUI/chưa Linux” ở bản S-04 này như hiện trạng source `8bd7da9`. Không sửa log/count/chữ ký cũ để gán ngược tính năng mới vào S-04.
 
 Ngày: 2026-10-05. Nhánh: `Luong_nhap_gui_dat_tau`. Chủ trì: R.
 

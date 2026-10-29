@@ -1,6 +1,6 @@
 # Hợp đồng triển khai Docker — DK-01 v1
 
-**Cách đọc hiện hành:** hợp đồng được lập ở DK-01 và bổ sung đến DK-09, source bàn giao `8bd7da9`. Lệnh chạy chuẩn ở README/DK-09; lý do chọn hai service/stage/health/IP/restart ở [design_decisions.md](design_decisions.md), hệ thống ở [architecture.md](architecture.md), căn cứ slide ở [slide_mapping.md](slide_mapping.md). Ngày/nhánh lập DK-01 bên dưới là lịch sử, không nhánh hiện tại. Các key/default/schema được test artifact giữ đồng bộ với .env.example.
+**Cách đọc hiện hành:** hợp đồng được lập ở DK-01 và bổ sung đến DK-09, source bàn giao `8bd7da9`. Lệnh chạy chuẩn ở README/DK-09; lý do chọn hai service/stage/health/IP/restart ở [design_decisions.md](design_decisions.md), hệ thống ở [architecture.md](architecture.md). Ngày/nhánh lập DK-01 bên dưới là lịch sử, không nhánh hiện tại. Các key/default/schema được test artifact giữ đồng bộ với .env.example.
 
 Ngày lập: **2026-10-10**. Nhánh: `Update_using_docker`, nền `0a7c250`.
 Chủ trì: R. C/D review cấu hình, healthcheck và vòng đời phiên trước hợp nhất.
